@@ -18,7 +18,6 @@ import net.runelite.api.EquipmentInventorySlot;
 import net.runelite.api.GameState;
 import net.runelite.api.InventoryID;
 import net.runelite.api.Item;
-import net.runelite.api.ItemComposition;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.Player;
 import net.runelite.api.events.ClientTick;
@@ -30,7 +29,6 @@ import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
-import net.runelite.client.game.chatbox.ChatboxItemSearch;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.screenmarkers.ScreenMarkerPlugin;
@@ -43,11 +41,10 @@ import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.swing.*;
 import java.awt.image.BufferedImage;
-import java.lang.reflect.Array;
-import java.lang.reflect.Field;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.Consumer;
@@ -57,29 +54,27 @@ import static com.weaponanimationreplacer.AnimationReplacementRule.AnimationType
 
 /* TODO
     for release:
-    rename rules.
-    use rule regardless of item equipped.
-    minimize rule.
-    item selector "any" option.
-    play animation when it is changed.
-    @Inject stuff instead of plugin.dothing.
-    rule deletion confirm.
-    prettify the ui so people know the x and + are clickable.
-    why does dwh gadderhammer not use gadderhammer attack with all? I mean I like it, but I didn't expect this.
-    ranged and magic weapons, and attack animations for existing weapons..
-        staff animations.
-        https://github.com/equirs/fashionscape-plugin/blob/master/src/main/java/eq/uirs/fashionscape/data/IdleAnimationID.java
-    code attribution.
-    Remove plugin panel while plugin is disabled.
-    it is unintuitive that unchecking all "use with item" boxes results in all items being affected.
-        There should be a dropdown that chooses between "any item" and "specific item".
-    having checkboxes on every item is confusing and should be locked behind a toggle.
+        prettify the ui so people know the x and + are clickable.
+            Show visually where one rule ends and the other begins.
 
-    keep client focus.
+        A simple dropdown menu to change all animations. This would be an easy way for people to test them all out and see what the plugin can do. The advanced stuff should be shown to people via a checkbox for hiding plugin panel.
+        rule deletion confirm.
 
-    Fix animations when animations are updated - no more holding chally wrong.
+        ranged and magic weapons, and attack animations for existing weapons..
+            staff animations.
+            https://github.com/equirs/fashionscape-plugin/blob/master/src/main/java/eq/uirs/fashionscape/data/IdleAnimationID.java
+        code attribution in readme.
+
+    custom ids.
     disambiguate walk/run for shuffle animations.
-    weapon swap while walking doesn't activate immediately.
+    add back checkboxes? maybe as an option?
+    get rid of enabled flags that you do not need.
+    Some indicator that a rule is active.
+    npc animations - e.g. street sweeper.
+    "unarmed" item id.
+        This could actually just be the default state of the item button (instead of "None", have it say "unarmed").
+        How can you add this for the model swap as well?
+            This is kinda shit. Who would use this?
 
     at some point maybe:
     interference with transmog plugin.
@@ -94,13 +89,13 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
     @Inject
     @Nullable // TODO remove this and loadWhenOutdated.
-    private Client client;
+    Client client;
 
     @Inject
-    private ChatboxItemSearch itemSearch;
+    private ChatBoxFilterableSearch itemSearch;
 
     @Inject
-    private ClientUI clientUI;
+    ClientUI clientUI;
 
     @Inject
     ItemManager itemManager;
@@ -148,6 +143,8 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
         pluginPanel = null;
 
         transmogManager.shutDown();
+
+        clientToolbar.removeNavigation(navigationButton);
     }
 
     static Gson customGson;
@@ -207,7 +204,6 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
     }
 
     public void updateAnimationsAndTransmog() {
-        System.out.println("updating animations and transmog");
         saveRules();
 
         Player localPlayer = client.getLocalPlayer();
@@ -232,6 +228,14 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
     public void addNewRule(int index) {
         animationReplacementRules.add(index + 1, AnimationReplacementRule.createTemplate(AnimationSet.animationSets.get(0)));
+        SwingUtilities.invokeLater(() -> pluginPanel.rebuild());
+        saveRules();
+    }
+
+    public void moveRule(int index, boolean up) {
+        if ((!up && index == animationReplacementRules.size() - 1) || (up && index == 0)) return;
+        AnimationReplacementRule animationReplacementRule = animationReplacementRules.remove(index);
+        animationReplacementRules.add(index + (up ? -1 : 1), animationReplacementRule);
         SwingUtilities.invokeLater(() -> pluginPanel.rebuild());
         saveRules();
     }
@@ -285,6 +289,8 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
         Integer weaponItemId = getEquippedWeapon();
         if (weaponItemId == null) weaponItemId = -1;
         Integer finalWeaponItemId = weaponItemId;
+        ArrayList<AnimationReplacementRule> animationReplacementRules = new ArrayList<>(this.animationReplacementRules);
+        Collections.reverse(animationReplacementRules);
         return animationReplacementRules.stream().filter(rule -> rule.enabled && rule.appliesToItem(finalWeaponItemId)).sorted((r1, r2) -> {
             if (r1.appliesSpecificallyToItem(finalWeaponItemId) == r2.appliesSpecificallyToItem(finalWeaponItemId)) return 0;
             return r1.appliesSpecificallyToItem(finalWeaponItemId) ? 1 : -1;
@@ -296,10 +302,26 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
     int lastAnimation = -1;
     int poseToUse = -1;
     int animationToUse = -1;
+    int animationToDemo = -1;
+    int demoAnimation = -1;
+    int lastDemoAnimation = -1;
+    boolean animationDemod = false;
     @Subscribe
     public void onClientTick(ClientTick event)
     {
         Player localPlayer = client.getLocalPlayer();
+        logPoseAnimationChanges(localPlayer);
+        if (localPlayer.getAnimation() == -1) {
+            if (!animationDemod) {
+                demoAnimation = animationToDemo;
+                animationDemod = true;
+                localPlayer.setActionFrame(0);
+            } else {
+                demoAnimation = -1;
+            }
+            if (demoAnimation != -1) localPlayer.setAnimation(demoAnimation);
+        }
+        lastDemoAnimation = localPlayer.getAnimation();
         AnimationSet currentAnimationSet = getCurrentAnimationSet();
         if (currentAnimationSet == null) {
             poseToUse = -1;
@@ -346,6 +368,24 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
         lastAnimation = playerAnimation;
         if (animationToUse != -1) {
             localPlayer.setAnimation(animationToUse);
+        }
+    }
+
+    private List<Integer> lastPlayerPoseAnimations = Collections.emptyList();
+    private void logPoseAnimationChanges(Player localPlayer) {
+        ArrayList<Integer> newPoses = new ArrayList<>();
+        newPoses.add(localPlayer.getRunAnimation());
+        newPoses.add(localPlayer.getWalkAnimation());
+        newPoses.add(localPlayer.getIdlePoseAnimation());
+        newPoses.add(localPlayer.getWalkRotate180());
+        newPoses.add(localPlayer.getIdleRotateLeft());
+        newPoses.add(localPlayer.getWalkRotateLeft());
+        newPoses.add(localPlayer.getWalkRotateRight());
+
+        if (!newPoses.equals(lastPlayerPoseAnimations)) {
+            System.out.println("animation update:");
+            System.out.println(newPoses);
+            lastPlayerPoseAnimations = newPoses;
         }
     }
 
@@ -403,6 +443,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
     }
 
     private boolean isRunning() { // TODO.
+        // It appears that, if the player model is rotating, but you are not interacting, walking animations are used. Or, if you are walking one tile at a time, walking animations are of course also used.
         return client.getVarpValue(173) == 1;
     }
 
@@ -423,76 +464,16 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 //            Player swoofii = client.getPlayers().stream().filter(p -> p.getName().equals("swoofii")).findAny().get();
 //            Player localPlayer1 = client.getLocalPlayer();
 //
-//        if ("set".equals(commandExecuted.getCommand())) {
-//            String[] arguments = commandExecuted.getArguments();
-//            currentAnimationSet = AnimationSet.animationSets.stream().filter(s -> s.name.equals(arguments[0])).findAny().orElseGet(() -> null);
-//            if (currentAnimationSet == null) {
-//                client.getLocalPlayer().setIdlePoseAnimation(808);
-//                client.getLocalPlayer().setPoseAnimation(808);
-//            } else {
-//                client.getLocalPlayer().setIdlePoseAnimation(currentAnimationSet.getStand());
-//                client.getLocalPlayer().setPoseAnimation(currentAnimationSet.getStand());
-//            }
-//            System.out.println("animation set to " + (currentAnimationSet == null ? "null" : currentAnimationSet.name));
-//        }
         if ("dumpanim".equals(commandExecuted.getCommand())) {
-            System.out.println("dumping fields: ");
-            dumpAnim("", client.getLocalPlayer().getPlayerComposition(), new ArrayList<>());
-        }
-//        if ("seta".equals(commandExecuted.getCommand())) {
-//            String[] arguments = commandExecuted.getArguments();
-//            AttackType attackType = Arrays.stream(AttackType.values()).filter(e -> e.toString().toLowerCase().equals(arguments[0].toLowerCase())).findAny().orElse(null);
-//            currentAttackType = attackType;
-//            System.out.println("attack type set to " + (currentAttackType == null ? "null" : currentAttackType));
-//        }
-    }
-
-    private void dumpAnim(String prefix, Object o, List<Object> seen) {
-        Class<?> aClass = o.getClass();
-        seen.add(o);
-        while (true) {
-            Field[] fields = aClass.getDeclaredFields();
-            for (int i = 0; i < fields.length; i++) {
-                if (prefix.length() > 20) {
-
-                    System.out.println("too deep!");
-                    return;
-                }
-                Field field = fields[i];
-                try {
-                    field.setAccessible(true);
-                } catch (Exception e) {
-                    System.out.println(prefix + "inaccessible: " + fields[i].getName() + " " + field.getType());
-                    continue;
-                }
-                try {
-                    Object o1 = field.get(o);
-                    String s;
-                    if (o1 != null) {
-                        s = o1.toString();
-                        if (field.getType().isArray()) {
-                            s = "[";
-                            for (int j = 0; j < Math.min(Array.getLength(o1), 100); j++) {
-                                s += Array.get(o1, j) + ", ";
-                            }
-                            s += "]";
-                            if (Array.getLength(o1) >= 100) {
-                                s += " size: " + Array.getLength(o1);
-                            }
-                        }
-                        System.out.println(prefix + fields[i].getName() + " | " + field.getType() + " | " + s + " | " + aClass.getName());
-                        if (!field.getType().isPrimitive() && o1 != null && !seen.contains(o1)) {
-                            dumpAnim(prefix + "\t", o1, seen);
-                        }
-                    }
-                } catch (IllegalAccessException e) {
-                    e.printStackTrace();
-                }
-            }
-            aClass = aClass.getSuperclass();
-            if (aClass == null) {
-                break;
-            }
+            System.out.println(
+            client.getLocalPlayer().getRunAnimation() + " " +
+            client.getLocalPlayer().getWalkAnimation() + " " +
+            client.getLocalPlayer().getIdlePoseAnimation() + " " +
+            client.getLocalPlayer().getWalkRotate180() + " " +
+            client.getLocalPlayer().getIdleRotateLeft() + " " +
+            client.getLocalPlayer().getWalkRotateLeft() + " " +
+            client.getLocalPlayer().getWalkRotateRight()
+            );
         }
     }
 
@@ -515,36 +496,25 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
         }
     }
 
-    public void doItemSearch(JButton button, Consumer<Integer> onItemChosen) {
+    public void doItemSearch(AnimationReplacementRulePanel.ItemSelectionButton button, Consumer<Integer> onItemChosen) {
         if (client.getGameState() != GameState.LOGGED_IN)
         {
-            // TODO uncomment or do something similar.
-//            JOptionPane.showMessageDialog(panel,
-//                    "You must be logged in to search.",
-//                    "Cannot Search for Item",
-//                    JOptionPane.ERROR_MESSAGE);
-//            return;
-            System.out.println("cannot do this while logged out.");
+            JOptionPane.showMessageDialog(pluginPanel,
+                    "This plugin uses the in-game item search panel; you must be logged in to use this.",
+                    "Log in to choose items",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
         }
 
         itemSearch
-                .tooltipText("only use these changes with this item:")
+                .tooltipText("select")
                 .onItemSelected((itemId) ->
-                {
-                    clientThread.invokeLater(() ->
-                    {
-                        int finalId = itemManager.canonicalize(itemId);
+                        clientThread.invokeLater(() ->
+                        {
+                            button.setItem(itemId);
 
-                        ItemComposition itemComposition = itemManager.getItemComposition(itemId);
-
-                        button.setIcon(new ImageIcon(itemManager.getImage(itemId)));
-
-                        SwingUtilities.invokeLater(() -> {
-                            System.out.println("value is " + itemId);
-                        });
-                        onItemChosen.accept(itemId);
-                    });
-                })
+                            onItemChosen.accept(itemId);
+                        }))
                 .build();
         clientUI.requestFocus();
     }
@@ -562,5 +532,11 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
             if (!clientLoaded) SwingUtilities.invokeLater(pluginPanel::rebuild);
             clientLoaded = true;
         }
+    }
+
+    public void demoAnimation(Integer animation) {
+        client.getLocalPlayer().setAnimation(animation);
+        animationToDemo = animation;
+        animationDemod = false;
     }
 }

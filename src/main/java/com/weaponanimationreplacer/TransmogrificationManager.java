@@ -139,16 +139,16 @@ public class TransmogrificationManager
         List<AnimationReplacementRule> applicableAnimationReplacementRules = plugin.getApplicableAnimationReplacementRules();
         System.out.println(applicableAnimationReplacementRules.size() + " rules " + applicableAnimationReplacementRules);
         List<AnimationReplacementRule> collect = applicableAnimationReplacementRules.stream().filter(rule -> rule.isModelSwapEnabled()).collect(Collectors.toList());
-        if (collect.isEmpty()) {
+        if (collect.isEmpty() || collect.get(collect.size() - 1).modelSwap == -1) {
             System.out.println("removing transmog");
             removeTransmog();
         } else {
             AnimationReplacementRule animationReplacementRule = collect.get(collect.size() - 1);
             System.out.println("model is " + animationReplacementRule.modelSwap);
             kits[3] = animationReplacementRule.modelSwap + 512;
-            transmogHash = Arrays.hashCode(kits);
             player.getPlayerComposition().setHash();
         }
+        transmogHash = Arrays.hashCode(kits);
     }
 
     void removeTransmog()

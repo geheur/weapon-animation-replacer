@@ -13,8 +13,10 @@ import java.util.List;
  *  List of animation replacements, which each contain an animation type to replace, and animation set to use for replacement, and, optionally, an animation type to use as the replacement (if it is different from the one being replaced).
  */
 public class AnimationReplacementRule {
-    boolean modelSwapEnabled = true;
+    String name = "";
+    boolean modelSwapEnabled = false;
     boolean enabled = true;
+    public boolean minimized = false;
     public int modelSwap = -1;
     public List<ItemRestriction> itemRestrictions;
     public List<AnimationReplacement> animationReplacements;
@@ -26,10 +28,11 @@ public class AnimationReplacementRule {
 
     public static AnimationReplacementRule createTemplate(AnimationSet animationSet) {
         List<ItemRestriction> itemRestrictions = new ArrayList<>();
-        itemRestrictions.add(new ItemRestriction(-1, false));
         List<AnimationReplacement> animationReplacements = new ArrayList<>();
-        animationReplacements.add(new AnimationReplacement(animationSet, AnimationType.ALL, null, false));
-        return new AnimationReplacementRule(itemRestrictions, animationReplacements);
+//        animationReplacements.add(new AnimationReplacement(animationSet, AnimationType.ALL, null, false));
+        AnimationReplacementRule animationReplacementRule = new AnimationReplacementRule(itemRestrictions, animationReplacements);
+        animationReplacementRule.name = "New Replacement";
+        return animationReplacementRule;
     }
 
     public boolean appliesToItem(int weaponItemId) {
@@ -41,7 +44,7 @@ public class AnimationReplacementRule {
     }
 
     public boolean isModelSwapEnabled() {
-        return enabled && modelSwapEnabled;
+        return enabled;// && modelSwapEnabled;
     }
 
     @Data

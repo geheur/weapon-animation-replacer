@@ -145,7 +145,8 @@ public class AnimationSet {
         animationSets.add(new AnimationSet("gadderhammer",true,
                      STAND, 1662,
                      WALK, 1663,
-                     RUN, 1664
+                     RUN, 1664,
+                ATTACK_CRUSH, 1665
         ));
 
         animationSets.add(new AnimationSet("ratpole",false,
@@ -346,7 +347,7 @@ public class AnimationSet {
             case WALK:
                 return getWalk();
             case WALK_BACKWARD:
-                return getWalkBackwards(isRunning);
+                return getWalkBackwards(false);
             case SHUFFLE_LEFT:
                 return getShuffleLeft(isRunning);
             case SHUFFLE_RIGHT:

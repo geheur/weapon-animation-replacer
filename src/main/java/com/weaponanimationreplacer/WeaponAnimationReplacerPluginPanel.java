@@ -80,12 +80,13 @@ public class WeaponAnimationReplacerPluginPanel extends PluginPanel {
         markerView.add(noMarkersPanel, constraints);
         constraints.gridy++;
 
-        addMarker.setToolTipText("Add a new animation replacement rule.");
+        addMarker.setToolTipText("Add a new animation replacement replacement.");
         addMarker.addMouseListener(new MouseAdapter()
         {
             @Override
             public void mousePressed(MouseEvent mouseEvent)
             {
+                plugin.addNewRule(0);
 //                setCreation(true);
             }
 
