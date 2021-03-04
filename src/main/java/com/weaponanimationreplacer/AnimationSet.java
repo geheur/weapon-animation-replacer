@@ -43,6 +43,76 @@ public class AnimationSet {
                      DEFEND, 430
         ));
 
+        animationSets.add(new AnimationSet("dart",false,
+                STAND, 808,
+                WALK, 819,
+                WALK_BACKWARD, 820,
+                SHUFFLE_LEFT, 821,
+                SHUFFLE_RIGHT, 822,
+                ROTATE, 823,
+                RUN, 824,
+                ATTACK_STAB, 7554,
+                ATTACK_SLASH, 440,
+                ATTACK_SPEC, 1203,
+                DEFEND, 424
+        ));
+
+        animationSets.add(new AnimationSet("blowpipe",false,
+                STAND, 808,
+                WALK, 819,
+                WALK_BACKWARD, 820,
+                SHUFFLE_LEFT, 821,
+                SHUFFLE_RIGHT, 822,
+                ROTATE, 823,
+                RUN, 824,
+                ATTACK_STAB, 5061,
+                ATTACK_SLASH, 440,
+                ATTACK_SPEC, 1203,
+                DEFEND, 424
+        ));
+
+        animationSets.add(new AnimationSet("bow",false,
+                STAND, 808,
+                WALK, 819,
+                WALK_BACKWARD, 820,
+                SHUFFLE_LEFT, 821,
+                SHUFFLE_RIGHT, 822,
+                ROTATE, 823,
+                RUN, 824,
+                ATTACK_STAB, 426,
+                ATTACK_SLASH, 440,
+                ATTACK_SPEC, 1203,
+                DEFEND, 424
+        ));
+
+        animationSets.add(new AnimationSet("xbow",false,
+                STAND, 808,
+                WALK, 819,
+                WALK_BACKWARD, 820,
+                SHUFFLE_LEFT, 821,
+                SHUFFLE_RIGHT, 822,
+                ROTATE, 823,
+                RUN, 824,
+                ATTACK_STAB, 7552,
+                ATTACK_SLASH, 440,
+                ATTACK_SPEC, 1203,
+                DEFEND, 424
+        ));
+
+        animationSets.add(new AnimationSet("snowball",false,
+                STAND, 808,
+                WALK, 819,
+                WALK_BACKWARD, 820,
+                SHUFFLE_LEFT, 821,
+                SHUFFLE_RIGHT, 822,
+                ROTATE, 823,
+                RUN, 824,
+                ATTACK_STAB, 5063,
+                ATTACK_SLASH, 440,
+                ATTACK_SPEC, 1203,
+                DEFEND, 424
+        ));
+
         animationSets.add(new AnimationSet("banana",false,
                      STAND, 4646,
                      WALK, 4682,
@@ -222,10 +292,97 @@ public class AnimationSet {
                      ATTACK_CRUSH, 7054,
                      DEFEND, 7056
         ));
+
+        animationSets.add(new AnimationSet("boxing gloves", false,
+                STAND, 3677,
+                RUN, 824,
+                WALK, 3680,
+                WALK_BACKWARD, 3680,
+                SHUFFLE_LEFT, 3680,
+                SHUFFLE_RIGHT, 3680,
+                ROTATE, 823,
+                ATTACK_STAB, 3678,
+                ATTACK_SLASH, 3678,
+                DEFEND, 3679
+        ));
+
+        animationSets.add(new AnimationSet("Hand fan", false,
+                STAND, 6297,
+                RUN, 7633,
+                WALK, 7629,
+                WALK_BACKWARD, 7630,
+                SHUFFLE_LEFT, 7631,
+                SHUFFLE_RIGHT, 7632,
+                ROTATE, 6297,
+                DEFEND, 424,
+                ATTACK_CRUSH, 401
+        ));
+
+        animationSets.add(new AnimationSet("Prop sword", false,
+                STAND, 2911,
+                RUN, 824,
+                WALK, 819,
+                WALK_BACKWARD, 820,
+                SHUFFLE_LEFT, 821,
+                SHUFFLE_RIGHT, 822,
+                ROTATE, 823,
+                DEFEND, 378,
+                ATTACK_CRUSH, 7328
+        ));
+
+        animationSets.add(new AnimationSet("staff", false,
+                STAND, 813,
+                RUN, 1210,
+                WALK, 1205,
+                WALK_BACKWARD, 1206,
+                SHUFFLE_LEFT, 1207,
+                SHUFFLE_RIGHT, 1208,
+                ROTATE, 1209,
+                DEFEND, 420,
+                ATTACK_CRUSH, 419
+        ));
+
+        animationSets.add(new AnimationSet("hasta", false,
+                STAND, 813,
+                RUN, 1210,
+                WALK, 1205,
+                WALK_BACKWARD, 1206,
+                SHUFFLE_LEFT, 1207,
+                SHUFFLE_RIGHT, 1208,
+                ROTATE, 1209,
+                ATTACK_STAB, 381,
+                DEFEND, 420,
+                ATTACK_SLASH, 440,
+                ATTACK_CRUSH, 419
+        ));
+
+        animationSets.add(new AnimationSet("hasta (with offhand)", false,
+                STAND, 813,
+                RUN, 1210,
+                WALK, 1205,
+                WALK_BACKWARD, 1206,
+                SHUFFLE_LEFT, 1207,
+                SHUFFLE_RIGHT, 1208,
+                ROTATE, 1209,
+                ATTACK_STAB, 381,
+                DEFEND, 420,
+                ATTACK_SLASH, 440,
+                ATTACK_CRUSH, 393
+        ));
+
+        animationSets.add(new AnimationSet("Falconer's glove", false,
+                STAND, 5160,
+                RUN, 5168,
+                WALK, 5164,
+                WALK_BACKWARD, 5165,
+                SHUFFLE_LEFT, 5166,
+                SHUFFLE_RIGHT, 5167,
+                ROTATE, 5161
+        ));
     }
 
     public String name;
-    public boolean useWalkOrRunForShuffleAndWalkBackwards;
+    public boolean useWalkOrRunForShuffleAndWalkBackwards; // TODO do I need this?
     public final Map<AnimationType, Integer> animations = new HashMap<>();
 
     AnimationSet() {
@@ -335,7 +492,7 @@ public class AnimationSet {
             animations.put(toReplace, animationSet.animations.get(replacement));
         } else {
             for (AnimationType child : toReplace.children) {
-                replaceAnimations(animationSet, child, child);
+                replaceAnimations(animationSet, child, replacement.children.isEmpty() ? replacement : child);
             }
         }
     }
@@ -364,7 +521,7 @@ public class AnimationSet {
             case ATTACK_SPEC:
                 Integer attack = animations.get(type);
                 System.out.println("1");
-                return attack;
+                if (attack != null) return attack;
             case ATTACK:
                 System.out.println("1.1");
                 List<Integer> attacks = animations.entrySet().stream()

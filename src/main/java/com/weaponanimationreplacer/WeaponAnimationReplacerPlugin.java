@@ -54,17 +54,27 @@ import static com.weaponanimationreplacer.AnimationReplacementRule.AnimationType
 
 /* TODO
     for release:
-        prettify the ui so people know the x and + are clickable.
-            Show visually where one rule ends and the other begins.
-
         A simple dropdown menu to change all animations. This would be an easy way for people to test them all out and see what the plugin can do. The advanced stuff should be shown to people via a checkbox for hiding plugin panel.
         rule deletion confirm.
+        Adding a new item restriction should open the search menu immediately.
 
         ranged and magic weapons, and attack animations for existing weapons..
             staff animations.
             https://github.com/equirs/fashionscape-plugin/blob/master/src/main/java/eq/uirs/fashionscape/data/IdleAnimationID.java
         code attribution in readme.
 
+        ask:
+            Should I include a config option that is a dropdown with all animation sets, to let people try out the plugin without having to figure out the config panel?
+            Do I need to direct people to a plugin panel (e.g. via a checkbox that says "show plugin panel" in the config).
+            What should I name this?
+            Good example configs to include as default.
+
+        why can't I use dhl crush with my fake saeldor.
+        godsword running looks weird.
+        what animations does master wand use?
+
+    Fix animation when removing rule.
+    other players.
     custom ids.
     disambiguate walk/run for shuffle animations.
     add back checkboxes? maybe as an option?
@@ -227,7 +237,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
     }
 
     public void addNewRule(int index) {
-        animationReplacementRules.add(index + 1, AnimationReplacementRule.createTemplate(AnimationSet.animationSets.get(0)));
+        animationReplacementRules.add(index, AnimationReplacementRule.createTemplate(AnimationSet.animationSets.get(0)));
         SwingUtilities.invokeLater(() -> pluginPanel.rebuild());
         saveRules();
     }
@@ -300,6 +310,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
     int lastIdlePoseAnimation = -1;
     int lastPoseAnimation = -1;
     int lastAnimation = -1;
+    int lastLogAnimation = -1;
     int poseToUse = -1;
     int animationToUse = -1;
     int animationToDemo = -1;
@@ -310,7 +321,8 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
     public void onClientTick(ClientTick event)
     {
         Player localPlayer = client.getLocalPlayer();
-        logPoseAnimationChanges(localPlayer);
+        Player logPlayer = logName == null ? localPlayer : client.getPlayers().stream().filter(p -> logName.equals(p.getName())).findFirst().orElse(null);
+        logPoseAnimationChanges(logPlayer);
         if (localPlayer.getAnimation() == -1) {
             if (!animationDemod) {
                 demoAnimation = animationToDemo;
@@ -347,13 +359,25 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
                     poseToUse = animationReplace;
                     System.out.println(playerPoseAnimation + " (replaced pose " + playerPoseAnimation + " with " + animationReplace + ")");
                 } else {
-                    System.out.println(playerPoseAnimation);
+                    System.out.println(playerPoseAnimation + " (pose)");
                     poseToUse = -1;
                 }
             }
         }
         lastPoseAnimation = playerPoseAnimation;
         if (poseToUse != -1) localPlayer.setPoseAnimation(poseToUse);
+
+        if (logPlayer != null) {
+            int logPlayerAnimation = logPlayer.getAnimation();
+            if (lastLogAnimation != logPlayerAnimation) {
+                if (log && logPlayerAnimation != -1) {
+                    Integer equippedWeapon = getEquippedWeapon();
+                    System.out.println("zz_" + (equippedWeapon == null ? "null" : itemManager.getItemComposition(equippedWeapon).getName()));
+                    System.out.println("zz_" + "ATTACK_ZZZ, " + logPlayerAnimation + ",");
+                }
+            }
+            lastLogAnimation = logPlayerAnimation;
+        }
 
         int playerAnimation = localPlayer.getAnimation();
         if (lastAnimation != playerAnimation) {
@@ -362,6 +386,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
                 animationToUse = animationReplace;
                 System.out.println("replaced animation " + playerAnimation + " with " + animationReplace);
             } else {
+                System.out.println(playerAnimation + " (animation)");
                 animationToUse = -1;
             }
         }
@@ -373,6 +398,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
     private List<Integer> lastPlayerPoseAnimations = Collections.emptyList();
     private void logPoseAnimationChanges(Player localPlayer) {
+        if (localPlayer == null) return;
         ArrayList<Integer> newPoses = new ArrayList<>();
         newPoses.add(localPlayer.getRunAnimation());
         newPoses.add(localPlayer.getWalkAnimation());
@@ -383,8 +409,34 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
         newPoses.add(localPlayer.getWalkRotateRight());
 
         if (!newPoses.equals(lastPlayerPoseAnimations)) {
-            System.out.println("animation update:");
-            System.out.println(newPoses);
+            Integer equippedWeapon = getEquippedWeapon();
+            if (log) {
+                System.out.println((equippedWeapon == null ? "null" : itemManager.getItemComposition(equippedWeapon).getName()));
+                System.out.println("zz_" + "STAND, " + localPlayer.getIdlePoseAnimation() + ",");
+                System.out.println("zz_" + "RUN, " + localPlayer.getRunAnimation() + ",");
+                System.out.println("zz_" + "WALK, " + localPlayer.getWalkAnimation() + ",");
+                System.out.println("zz_" + "WALK_BACKWARD, " + localPlayer.getWalkRotate180() + ",");
+                System.out.println("zz_" + "SHUFFLE_LEFT, " + localPlayer.getWalkRotateLeft() + ",");
+                System.out.println("zz_" + "SHUFFLE_RIGHT, " + localPlayer.getWalkRotateRight() + ",");
+                System.out.println("zz_" + "ROTATE, " + localPlayer.getIdleRotateLeft() + ",");
+                if (localPlayer.getIdleRotateLeft() != localPlayer.getIdleRotateRight()) {
+                    System.out.println("ALKDJSFLAKJSDL:AKSJD:ALKSJD:LASKJD:LAKSJD");
+                    System.out.println("ALKDJSFLAKJSDL:AKSJD:ALKSJD:LASKJD:LAKSJD");
+                    System.out.println("ALKDJSFLAKJSDL:AKSJD:ALKSJD:LASKJD:LAKSJD");
+                    System.out.println("ALKDJSFLAKJSDL:AKSJD:ALKSJD:LASKJD:LAKSJD");
+                    System.out.println("ALKDJSFLAKJSDL:AKSJD:ALKSJD:LASKJD:LAKSJD");
+                    System.out.println("ALKDJSFLAKJSDL:AKSJD:ALKSJD:LASKJD:LAKSJD");
+                    System.out.println("ALKDJSFLAKJSDL:AKSJD:ALKSJD:LASKJD:LAKSJD");
+                    System.out.println("ALKDJSFLAKJSDL:AKSJD:ALKSJD:LASKJD:LAKSJD");
+                    System.out.println("ALKDJSFLAKJSDL:AKSJD:ALKSJD:LASKJD:LAKSJD");
+                    System.out.println("ALKDJSFLAKJSDL:AKSJD:ALKSJD:LASKJD:LAKSJD");
+                    System.out.println("ALKDJSFLAKJSDL:AKSJD:ALKSJD:LASKJD:LAKSJD");
+                }
+            }
+            for (int i = 0; i < newPoses.size(); i++) {
+
+            }
+//            System.out.println(newPoses);
             lastPlayerPoseAnimations = newPoses;
         }
     }
@@ -426,15 +478,18 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
     private Integer getReplacementAnimation(int playerPoseAnimation) {
         AnimationSet currentAnimationSet = getCurrentAnimationSet();
         if (currentAnimationSet == null) {
+            System.out.println("1");
             return null;
         }
         AnimationType type = getType(playerPoseAnimation);
+        System.out.println("type: " + type);
         if (type != null) {
             return currentAnimationSet.getAnimation(type, isRunning());
         } else {
             for (AnimationSet animationSet : AnimationSet.animationSets) {
                 type = animationSet.getType(playerPoseAnimation);
                 if (type != null) {
+                    System.out.println(playerPoseAnimation + " type " + type + " not null for " + animationSet.name);
                     return currentAnimationSet.getAnimation(type, isRunning());
                 }
             }
@@ -459,11 +514,26 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
         else return null;
     }
 
+    private boolean log = false;
+    private String logName = null;
+
     @Subscribe
     public void onCommandExecuted(CommandExecuted commandExecuted) {
-//            Player swoofii = client.getPlayers().stream().filter(p -> p.getName().equals("swoofii")).findAny().get();
-//            Player localPlayer1 = client.getLocalPlayer();
-//
+        if ("wal".equals(commandExecuted.getCommand())) {
+            String name = "";
+            for (String arg : commandExecuted.getArguments()) {
+                name += arg + " ";
+            }
+            if (commandExecuted.getArguments().length > 0) {
+                name = name.substring(0, name.length() - 1);
+            }
+            System.out.println("name is \"" + name + "\"");
+            System.out.println(Arrays.asList(commandExecuted.getArguments()));
+            System.out.println("arg 0: " + "\"" + commandExecuted.getArguments()[0] + "\"");
+            if (commandExecuted.getArguments().length >= 1) logName = commandExecuted.getArguments()[0];
+            log = !log;
+            System.out.println("log is " + log);
+        }
         if ("dumpanim".equals(commandExecuted.getCommand())) {
             System.out.println(
             client.getLocalPlayer().getRunAnimation() + " " +

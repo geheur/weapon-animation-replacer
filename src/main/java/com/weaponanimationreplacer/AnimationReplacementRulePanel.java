@@ -27,9 +27,11 @@ package com.weaponanimationreplacer;
 
 import com.weaponanimationreplacer.AnimationReplacementRule.AnimationType;
 import net.runelite.api.GameState;
+import net.runelite.client.plugins.screenmarkers.ScreenMarkerPlugin;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.components.FlatTextField;
+import net.runelite.client.util.ImageUtil;
 
 import javax.swing.*;
 import javax.swing.border.Border;
@@ -42,6 +44,8 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.image.BufferedImage;
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 import java.util.stream.Collectors;
@@ -56,83 +60,49 @@ class AnimationReplacementRulePanel extends JPanel
 		BorderFactory.createMatteBorder(0, 0, 1, 0, ColorScheme.DARK_GRAY_COLOR),
 		BorderFactory.createLineBorder(ColorScheme.DARKER_GRAY_COLOR));
 
-//	private static final ImageIcon BORDER_COLOR_ICON;
-//	private static final ImageIcon BORDER_COLOR_HOVER_ICON;
-//	private static final ImageIcon NO_BORDER_COLOR_ICON;
-//	private static final ImageIcon NO_BORDER_COLOR_HOVER_ICON;
-//
-//	private static final ImageIcon FILL_COLOR_ICON;
-//	private static final ImageIcon FILL_COLOR_HOVER_ICON;
-//	private static final ImageIcon NO_FILL_COLOR_ICON;
-//	private static final ImageIcon NO_FILL_COLOR_HOVER_ICON;
-//
-//	private static final ImageIcon FULL_OPACITY_ICON;
-//	private static final ImageIcon FULL_OPACITY_HOVER_ICON;
-//	private static final ImageIcon NO_OPACITY_ICON;
-//	private static final ImageIcon NO_OPACITY_HOVER_ICON;
-//
-//	private static final ImageIcon VISIBLE_ICON;
-//	private static final ImageIcon VISIBLE_HOVER_ICON;
-//	private static final ImageIcon INVISIBLE_ICON;
-//	private static final ImageIcon INVISIBLE_HOVER_ICON;
-//
-//	private static final ImageIcon DELETE_ICON;
-//	private static final ImageIcon DELETE_HOVER_ICON;
-//
+	private static final ImageIcon MOVE_RULE_UP_ICON;
+	private static final ImageIcon MOVE_RULE_UP_ICON_HOVER;
+	private static final ImageIcon MOVE_RULE_DOWN_ICON;
+	private static final ImageIcon MOVE_RULE_DOWN_ICON_HOVER;
+
+	private static final ImageIcon DELETE_RULE_ICON;
+	private static final ImageIcon DELETE_RULE_ICON_HOVER;
+
+	private static final ImageIcon EDIT_ICON;
+	private static final ImageIcon EDIT_ICON_HOVER;
+
+	private static final ImageIcon ADD_ICON;
+	private static final ImageIcon ADD_HOVER_ICON;
+
 	private final WeaponAnimationReplacerPlugin plugin;
 	private final int index;
 	private final AnimationReplacementRule rule;
 
-	private final JLabel borderColorIndicator = new JLabel();
-	private final JLabel fillColorIndicator = new JLabel();
-	private final JLabel opacityIndicator = new JLabel();
-	private final JLabel visibilityLabel = new JLabel();
-	private final JLabel deleteLabel = new JLabel();
-
 	private final FlatTextField nameInput = new FlatTextField();
-	private final JLabel save = new JLabel("Save");
-	private final JLabel cancel = new JLabel("Cancel");
-	private final JLabel rename = new JLabel("Rename");
 
 	private boolean visible;
 
 	static
 	{
-//		final BufferedImage borderImg = ImageUtil.loadImageResource(ScreenMarkerPlugin.class, "border_color_icon.png");
-//		final BufferedImage borderImgHover = ImageUtil.luminanceOffset(borderImg, -150);
-//		BORDER_COLOR_ICON = new ImageIcon(borderImg);
-//		BORDER_COLOR_HOVER_ICON = new ImageIcon(borderImgHover);
-//
-//		NO_BORDER_COLOR_ICON = new ImageIcon(borderImgHover);
-//		NO_BORDER_COLOR_HOVER_ICON = new ImageIcon(ImageUtil.alphaOffset(borderImgHover, -100));
-//
-//		final BufferedImage fillImg = ImageUtil.loadImageResource(ScreenMarkerPlugin.class, "fill_color_icon.png");
-//		final BufferedImage fillImgHover = ImageUtil.luminanceOffset(fillImg, -150);
-//		FILL_COLOR_ICON = new ImageIcon(fillImg);
-//		FILL_COLOR_HOVER_ICON = new ImageIcon(fillImgHover);
-//
-//		NO_FILL_COLOR_ICON = new ImageIcon(fillImgHover);
-//		NO_FILL_COLOR_HOVER_ICON = new ImageIcon(ImageUtil.alphaOffset(fillImgHover, -100));
-//
-//		final BufferedImage opacityImg = ImageUtil.loadImageResource(ScreenMarkerPlugin.class, "opacity_icon.png");
-//		final BufferedImage opacityImgHover = ImageUtil.luminanceOffset(opacityImg, -150);
-//		FULL_OPACITY_ICON = new ImageIcon(opacityImg);
-//		FULL_OPACITY_HOVER_ICON = new ImageIcon(opacityImgHover);
-//
-//		NO_OPACITY_ICON = new ImageIcon(opacityImgHover);
-//		NO_OPACITY_HOVER_ICON = new ImageIcon(ImageUtil.alphaOffset(opacityImgHover, -100));
-//
-//		final BufferedImage visibleImg = ImageUtil.loadImageResource(ScreenMarkerPlugin.class, "visible_icon.png");
-//		VISIBLE_ICON = new ImageIcon(visibleImg);
-//		VISIBLE_HOVER_ICON = new ImageIcon(ImageUtil.alphaOffset(visibleImg, -100));
-//
-//		final BufferedImage invisibleImg = ImageUtil.loadImageResource(ScreenMarkerPlugin.class, "invisible_icon.png");
-//		INVISIBLE_ICON = new ImageIcon(invisibleImg);
-//		INVISIBLE_HOVER_ICON = new ImageIcon(ImageUtil.alphaOffset(invisibleImg, -100));
-//
-//		final BufferedImage deleteImg = ImageUtil.loadImageResource(ScreenMarkerPlugin.class, "delete_icon.png");
-//		DELETE_ICON = new ImageIcon(deleteImg);
-//		DELETE_HOVER_ICON = new ImageIcon(ImageUtil.alphaOffset(deleteImg, -100));
+		final BufferedImage upImg = ImageUtil.loadImageResource(AnimationReplacementRulePanel.class, "up_small.png");
+		MOVE_RULE_UP_ICON = new ImageIcon(upImg);
+		MOVE_RULE_UP_ICON_HOVER = new ImageIcon(ImageUtil.luminanceOffset(upImg, -150));
+
+		final BufferedImage downImg = ImageUtil.loadImageResource(AnimationReplacementRulePanel.class, "down_small.png");
+		MOVE_RULE_DOWN_ICON = new ImageIcon(downImg);
+		MOVE_RULE_DOWN_ICON_HOVER = new ImageIcon(ImageUtil.luminanceOffset(downImg, -150));
+
+		final BufferedImage deleteImg = ImageUtil.loadImageResource(AnimationReplacementRulePanel.class, "delete.png");
+		DELETE_RULE_ICON = new ImageIcon(deleteImg);
+		DELETE_RULE_ICON_HOVER = new ImageIcon(ImageUtil.luminanceOffset(deleteImg, -50));
+
+		final BufferedImage editImg = ImageUtil.loadImageResource(AnimationReplacementRulePanel.class, "edit.png");
+		EDIT_ICON = new ImageIcon(editImg);
+		EDIT_ICON_HOVER = new ImageIcon(ImageUtil.luminanceOffset(editImg, -150));
+
+		final BufferedImage addIcon = ImageUtil.loadImageResource(ScreenMarkerPlugin.class, "add_icon.png");
+		ADD_ICON = new ImageIcon(addIcon);
+		ADD_HOVER_ICON = new ImageIcon(ImageUtil.alphaOffset(addIcon, 0.53f));
 	}
 
 	AnimationReplacementRulePanel(WeaponAnimationReplacerPlugin plugin, AnimationReplacementRule animationReplacementRule, Runnable rebuild, int index)
@@ -148,18 +118,11 @@ class AnimationReplacementRulePanel extends JPanel
 
 		add(createNamePanel(), BorderLayout.NORTH);
 		if (!rule.minimized) add(createBottomPanel(plugin), BorderLayout.CENTER);
-
-//		updateVisibility();
-//		updateFill();
-//		updateBorder();
-//		updateBorder();
-
 	}
 
 	private JPanel createBottomPanel(WeaponAnimationReplacerPlugin plugin) {
 		JPanel bottomContainer = new JPanel();
 		bottomContainer.setLayout(new BoxLayout(bottomContainer, BoxLayout.Y_AXIS));
-//		bottomContainer.setAlignmentX(Component.LEFT_ALIGNMENT);
 		bottomContainer.setBorder(new EmptyBorder(8, 0, 8, 0));
 		bottomContainer.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 
@@ -208,6 +171,40 @@ class AnimationReplacementRulePanel extends JPanel
 
 	private final Runnable rebuild;
 
+	public static class IconLabelButton extends JLabel {
+		private final Icon icon;
+		private final Icon iconMouseovered;
+		private Runnable onClick;
+		public IconLabelButton(Icon icon, Icon iconMouseovered, Runnable onClick, String tooltip) {
+			this.icon = icon;
+			this.iconMouseovered = iconMouseovered;
+			this.onClick = onClick;
+			setIcon(icon);
+			setToolTipText(tooltip);
+
+			addMouseListener(new MouseAdapter()
+			{
+				@Override
+				public void mousePressed(MouseEvent mouseEvent)
+				{
+					IconLabelButton.this.onClick.run();
+				}
+
+				@Override
+				public void mouseEntered(MouseEvent mouseEvent)
+				{
+					setIcon(iconMouseovered);
+				}
+
+				@Override
+				public void mouseExited(MouseEvent mouseEvent)
+				{
+					setIcon(icon);
+				}
+			});
+		}
+	}
+
 	public class EntryPanel extends JPanel {
 		public EntryPanel(boolean checkbox, boolean enabled, boolean x, boolean plus, JPanel panel, Runnable onDelete, Runnable onAdd, Consumer<Boolean> onEnable) {
 			this(checkbox, enabled, false, false, false, false, false, x, plus, panel, onDelete, onAdd, onEnable);
@@ -215,8 +212,10 @@ class AnimationReplacementRulePanel extends JPanel
 
 		public EntryPanel(boolean checkbox, boolean enabled, boolean minimize, boolean minimized, boolean updown, boolean up, boolean down, boolean x, boolean plus, JPanel panel, Runnable onDelete, Runnable onAdd, Consumer<Boolean> onEnable) {
 			setLayout(new BorderLayout());
+			setBackground(ColorScheme.DARKER_GRAY_COLOR);
 			if (checkbox) {
 				JCheckBox enabledCheckbox = new JCheckBox();
+				enabledCheckbox.setToolTipText("Enabled");
 				enabledCheckbox.setSelected(enabled);
 				enabledCheckbox.addActionListener((e) -> {
 					plugin.clientThread.invokeLater(() -> {
@@ -227,6 +226,7 @@ class AnimationReplacementRulePanel extends JPanel
 			}
 			JPanel rightSide = new JPanel();
 			rightSide.setLayout(new BoxLayout(rightSide, BoxLayout.X_AXIS));
+			rightSide.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 			if (minimize) {
 				JLabel xButton = makeButton(minimized ? " + " : " - ", () -> {
 					plugin.clientThread.invokeLater(() -> {
@@ -237,42 +237,26 @@ class AnimationReplacementRulePanel extends JPanel
 				rightSide.add(xButton);
 			}
 			if (updown) {
-				if (up) {
-					JLabel xButton = makeButton(" ^ ", () -> {
-						plugin.clientThread.invokeLater(() -> {
-							plugin.moveRule(index, true);
-							SwingUtilities.invokeLater(rebuild::run);
-							plugin.updateAnimationsAndTransmog();
-						});
+			    rightSide.add(new IconLabelButton(MOVE_RULE_UP_ICON, MOVE_RULE_UP_ICON_HOVER, () -> {
+					plugin.clientThread.invokeLater(() -> {
+						plugin.moveRule(index, true);
+						SwingUtilities.invokeLater(rebuild::run);
+						plugin.updateAnimationsAndTransmog();
 					});
-					rightSide.add(xButton);
-				}
-				if (down) {
-					JLabel xButton = makeButton(" v ", () -> {
-						plugin.clientThread.invokeLater(() -> {
-							plugin.moveRule(index, false);
-							SwingUtilities.invokeLater(rebuild::run);
-							plugin.updateAnimationsAndTransmog();
-						});
+				}, "Move up in list and priority"));
+				rightSide.add(new IconLabelButton(MOVE_RULE_DOWN_ICON, MOVE_RULE_DOWN_ICON_HOVER, () -> {
+					plugin.clientThread.invokeLater(() -> {
+						plugin.moveRule(index, false);
+						SwingUtilities.invokeLater(rebuild::run);
+						plugin.updateAnimationsAndTransmog();
 					});
-					rightSide.add(xButton);
-				}
+				}, "Move down in list and priority"));
 			}
 			if (x) {
-				JLabel xButton = makeButton(" x ", () -> {
-					plugin.clientThread.invokeLater(() -> {
-						onDelete.run();
-					});
-				});
-				rightSide.add(xButton);
+				rightSide.add(new IconLabelButton(DELETE_RULE_ICON, DELETE_RULE_ICON_HOVER, onDelete, "Delete"));
 			}
 			if (plus) {
-				JLabel plusButton = makeButton(" + ", () -> {
-					plugin.clientThread.invokeLater(() -> {
-						onAdd.run();
-					});
-				});
-				rightSide.add(plusButton);
+				rightSide.add(new IconLabelButton(ADD_ICON, ADD_HOVER_ICON, onAdd, "Add another"));
 			}
 			add(rightSide, BorderLayout.EAST);
 
@@ -367,17 +351,19 @@ class AnimationReplacementRulePanel extends JPanel
 			row3.setLayout(new BoxLayout(row3, BoxLayout.X_AXIS));
 			row3.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 			row3.add(new JLabel("attack animation:"));
-			JComboBox<AnimationType> attackToUse = new JComboBox<>(animationReplacement.animationSet.animations.keySet().stream().filter(t -> ATTACK.appliesTo(t)).collect(Collectors.toList()).toArray(new AnimationType[] {})); // TODO remove indenting?
+			List<AnimationType> actions = animationReplacement.animationSet.animations.keySet().stream().filter(t -> ATTACK.appliesTo(t)).collect(Collectors.toList());
+			JComboBox<AnimationType> attackToUse = new JComboBox<>(actions.toArray(new AnimationType[] {})); // TODO remove indenting?
             // TODO add "automatic" option.
 			attackToUse.setRenderer(new DefaultListCellRenderer() {
 				@Override
 				public Component getListCellRendererComponent(JList list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
 					Component rendererComponent = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-					setText(value == null ? "<choose>" : ((AnimationType) value).getComboBoxName());
+					setText((value == null || !actions.contains(value)) ? "<choose>" : ((AnimationType) value).getComboBoxName());
 					return rendererComponent;
 				}
 			});
 			attackToUse.setSelectedItem(animationReplacement.animationtypeReplacement);
+			animationReplacement.animationtypeReplacement = (AnimationType) attackToUse.getSelectedItem(); // Update the rule to reflect the dropdown. This is relevant if the list of items in the dropdown does not contain the original replacement.
 			attackToUse.addActionListener((e) -> {
 				plugin.clientThread.invokeLater(() -> {
 					animationReplacement.animationtypeReplacement = (AnimationType) attackToUse.getSelectedItem();
@@ -517,81 +503,17 @@ class AnimationReplacementRulePanel extends JPanel
 		nameActions.setBorder(new EmptyBorder(-1, 0, 0, 8));
 		nameActions.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 
-		save.setVisible(false);
-		save.setFont(FontManager.getRunescapeSmallFont());
-		save.setForeground(ColorScheme.PROGRESS_COMPLETE_COLOR);
-		save.addMouseListener(new MouseAdapter()
-		{
-			@Override
-			public void mousePressed(MouseEvent mouseEvent)
-			{
-//				save();
-			}
-
-			@Override
-			public void mouseEntered(MouseEvent mouseEvent)
-			{
-				save.setForeground(ColorScheme.PROGRESS_COMPLETE_COLOR.darker());
-			}
-
-			@Override
-			public void mouseExited(MouseEvent mouseEvent)
-			{
-				save.setForeground(ColorScheme.PROGRESS_COMPLETE_COLOR);
-			}
-		});
-
-		cancel.setVisible(false);
-		cancel.setFont(FontManager.getRunescapeSmallFont());
-		cancel.setForeground(ColorScheme.PROGRESS_ERROR_COLOR);
-		cancel.addMouseListener(new MouseAdapter()
-		{
-			@Override
-			public void mousePressed(MouseEvent mouseEvent)
-			{
-//				cancel();
-			}
-
-			@Override
-			public void mouseEntered(MouseEvent mouseEvent)
-			{
-				cancel.setForeground(ColorScheme.PROGRESS_ERROR_COLOR.darker());
-			}
-
-			@Override
-			public void mouseExited(MouseEvent mouseEvent)
-			{
-				cancel.setForeground(ColorScheme.PROGRESS_ERROR_COLOR);
-			}
-		});
-
+		IconLabelButton rename;
+		rename = new IconLabelButton(EDIT_ICON, EDIT_ICON_HOVER, () -> {}, "Edit name");
+		rename.onClick = () -> {
+			nameInput.setEditable(true);
+			rename.setVisible(false);
+			nameInput.getTextField().requestFocus();
+			nameInput.getTextField().selectAll();
+		};
 		rename.setFont(FontManager.getRunescapeSmallFont());
 		rename.setForeground(ColorScheme.LIGHT_GRAY_COLOR.darker());
-		rename.addMouseListener(new MouseAdapter()
-		{
-			@Override
-			public void mousePressed(MouseEvent mouseEvent)
-			{
-				nameInput.setEditable(true);
-				rename.setVisible(false);
-			}
-
-			@Override
-			public void mouseEntered(MouseEvent mouseEvent)
-			{
-				rename.setForeground(ColorScheme.LIGHT_GRAY_COLOR.darker().darker());
-			}
-
-			@Override
-			public void mouseExited(MouseEvent mouseEvent)
-			{
-				rename.setForeground(ColorScheme.LIGHT_GRAY_COLOR.darker());
-			}
-		});
-
-//		nameActions.add(save, BorderLayout.EAST);
-//		nameActions.add(cancel, BorderLayout.WEST);
-		nameActions.add(rename, BorderLayout.CENTER);
+//		nameActions.add(rename, BorderLayout.CENTER);
 
 		nameInput.setText(rule.name);
 		nameInput.setBorder(null);
@@ -633,7 +555,6 @@ class AnimationReplacementRulePanel extends JPanel
 					plugin.saveRules();
 				});
 				nameInput.setEditable(false);
-				plugin.clientUI.requestFocus(); // Necessary to avoid dotted line outline on next thing in the interface.
 				rename.setVisible(true);
 			}
 		});
@@ -664,12 +585,12 @@ class AnimationReplacementRulePanel extends JPanel
 		});
 
 		nameWrapper.add(nameInput, BorderLayout.CENTER);
-		nameWrapper.add(nameActions, BorderLayout.EAST);
+		nameWrapper.add(rename, BorderLayout.EAST);
 		return new EntryPanel(true, rule.enabled, false, rule.minimized, true, true, true, true, false, nameWrapper, () -> {
 			plugin.deleteNewRule(index);
 			plugin.updateAnimationsAndTransmog();
 		}, () -> {
-			plugin.addNewRule(index);
+			plugin.addNewRule(index + 1);
 			plugin.updateAnimationsAndTransmog();
 		}, (b) -> {
 			rule.enabled = b;
