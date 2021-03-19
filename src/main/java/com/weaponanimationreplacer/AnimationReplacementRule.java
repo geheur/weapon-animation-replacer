@@ -71,10 +71,10 @@ public class AnimationReplacementRule {
         boolean enabled;
         public AnimationSet animationSet;
         public AnimationType animationtypeToReplace;
-        public AnimationType animationtypeReplacement;
+        public AnimationSet.Animation animationtypeReplacement;
 
         public AnimationType getAnimationtypeReplacement() {
-            return animationtypeReplacement == null ? getAnimationtypeToReplace() : animationtypeReplacement;
+            return animationtypeReplacement == null ? getAnimationtypeToReplace() : animationtypeReplacement.type;
         }
 
         public AnimationReplacement(AnimationSet animationSet, AnimationType animationtypeToReplace, AnimationType animationtypeReplacement) {
@@ -84,7 +84,13 @@ public class AnimationReplacementRule {
         public AnimationReplacement(AnimationSet animationSet, AnimationType animationtypeToReplace, AnimationType animationtypeReplacement, boolean enabled) {
             this.animationSet = animationSet;
             this.animationtypeToReplace = animationtypeToReplace;
-            this.animationtypeReplacement = animationtypeReplacement;
+            Integer animation = animationSet == null ? -1 : animationSet.getAnimation(animationtypeReplacement, false);
+            if (animation == null) animation = -1;
+            this.animationtypeReplacement = new AnimationSet.Animation(
+                    animationtypeReplacement,
+                    animation,
+                    null
+            );
             this.enabled = enabled;
         }
 
@@ -110,7 +116,9 @@ public class AnimationReplacementRule {
      */
     public enum AnimationType {
         // Order matters - it is used to determine specificity (more specific enums earlier in the list).
-        STAND, WALK, RUN, WALK_BACKWARD, SHUFFLE_LEFT, SHUFFLE_RIGHT, ROTATE, ATTACK_STAB("Stab"), ATTACK_SLASH("Slash"), ATTACK_CRUSH("Crush"), ATTACK_SPEC("Special"), DEFEND,
+        STAND, WALK, RUN, WALK_BACKWARD, SHUFFLE_LEFT, SHUFFLE_RIGHT, ROTATE, ATTACK_STAB("Stab"),
+        ATTACK_SLASH("Slash"), ATTACK_CRUSH("Crush"), ATTACK_SPEC("Special"), DEFEND,
+        ATTACK_CRUSH2("Crush2"),
 
 //        MAGIC_LOW_LEVEL_SPELL_UNARMED, MAGIC_LOW_LEVEL_SPELL_STAFF, // strike,bolt,blast spells.
 //        MAGIC_UNARMED_WAVE_SPELL, MAGIC_STAFF_WAVE_SPELL,
@@ -125,7 +133,7 @@ public class AnimationReplacementRule {
 //        MAGIC_ANCIENT_SINGLE_TARGET,
 //        MAGIC_ANCIENT_MULTI_TARGET,
 
-        ATTACK(ATTACK_STAB, ATTACK_SLASH, ATTACK_CRUSH, ATTACK_SPEC),
+        ATTACK(ATTACK_STAB, ATTACK_SLASH, ATTACK_CRUSH, ATTACK_CRUSH2, ATTACK_SPEC),
         MAGIC(),
         MOVEMENT(WALK, RUN, WALK_BACKWARD, SHUFFLE_LEFT, SHUFFLE_RIGHT, ROTATE),
         STANCE(STAND, MOVEMENT),
@@ -147,7 +155,7 @@ public class AnimationReplacementRule {
         }
 
         public final List<AnimationType> children;
-        private final String prettyName;
+        public final String prettyName;
 
         AnimationType(AnimationType... children) {
             this(null, children);

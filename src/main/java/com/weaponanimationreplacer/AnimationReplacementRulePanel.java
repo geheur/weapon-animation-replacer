@@ -45,7 +45,9 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
+import java.util.AbstractMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 import java.util.stream.Collectors;
@@ -315,6 +317,9 @@ class AnimationReplacementRulePanel extends JPanel
 		animToReplace.addActionListener((e) -> {
 			plugin.clientThread.invokeLater(() -> {
 				animationReplacement.animationtypeToReplace = (AnimationType) animToReplace.getSelectedItem();
+				if (!ATTACK.appliesTo(animationReplacement.animationtypeToReplace)) {
+					animationReplacement.animationtypeReplacement = null;
+				}
 				plugin.updateAnimationsAndTransmog();
 				SwingUtilities.invokeLater(rebuild::run);
 			});
@@ -351,27 +356,36 @@ class AnimationReplacementRulePanel extends JPanel
 			row3.setLayout(new BoxLayout(row3, BoxLayout.X_AXIS));
 			row3.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 			row3.add(new JLabel("attack animation:"));
-			List<AnimationType> actions = animationReplacement.animationSet.animations.keySet().stream().filter(t -> ATTACK.appliesTo(t)).collect(Collectors.toList());
-			JComboBox<AnimationType> attackToUse = new JComboBox<>(actions.toArray(new AnimationType[] {})); // TODO remove indenting?
+			List<AnimationSet.Animation> actions = animationReplacement.animationSet.animations.entries().stream()
+					.filter(t -> ATTACK.appliesTo(t.getKey()))
+					.map(e -> e.getValue())
+					.collect(Collectors.toList());
+			System.out.println("actions is : " + actions);
+			JComboBox<AnimationSet.Animation> attackToUse = new JComboBox<>(actions.toArray(new AnimationSet.Animation[] {})); // TODO remove indenting?
             // TODO add "automatic" option.
 			attackToUse.setRenderer(new DefaultListCellRenderer() {
 				@Override
 				public Component getListCellRendererComponent(JList list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
 					Component rendererComponent = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-					setText((value == null || !actions.contains(value)) ? "<choose>" : ((AnimationType) value).getComboBoxName());
+					if (value == null || !actions.contains(value)) {
+						setText("<choose>");
+					} else {
+						AnimationSet.Animation animation = (AnimationSet.Animation) value;
+						String comboBoxName = animation.type.getComboBoxName();
+						setText(animation.description != null ? animation.description : comboBoxName);
+					}
 					return rendererComponent;
 				}
 			});
 			attackToUse.setSelectedItem(animationReplacement.animationtypeReplacement);
-			animationReplacement.animationtypeReplacement = (AnimationType) attackToUse.getSelectedItem(); // Update the rule to reflect the dropdown. This is relevant if the list of items in the dropdown does not contain the original replacement.
+			// Update the rule to reflect the dropdown. This is relevant if the list of items in the dropdown does not contain the original replacement.
+			animationReplacement.animationtypeReplacement = ((AnimationSet.Animation) attackToUse.getSelectedItem());
 			attackToUse.addActionListener((e) -> {
 				plugin.clientThread.invokeLater(() -> {
-					animationReplacement.animationtypeReplacement = (AnimationType) attackToUse.getSelectedItem();
-//					plugin.clientThread.invoke(() -> {
-//					});
+					animationReplacement.animationtypeReplacement = ((AnimationSet.Animation) attackToUse.getSelectedItem());
 					plugin.updateAnimationsAndTransmog();
 
-					Integer animation = animationReplacement.animationSet.getAnimation(animationReplacement.animationtypeReplacement, false);
+					Integer animation = animationReplacement.animationtypeReplacement.id;
 					if (animation != null) {
 					    plugin.demoAnimation(animation);
 					}
@@ -587,7 +601,7 @@ class AnimationReplacementRulePanel extends JPanel
 		nameWrapper.add(nameInput, BorderLayout.CENTER);
 		nameWrapper.add(rename, BorderLayout.EAST);
 		return new EntryPanel(true, rule.enabled, false, rule.minimized, true, true, true, true, false, nameWrapper, () -> {
-			plugin.deleteNewRule(index);
+			plugin.deleteRule(index);
 			plugin.updateAnimationsAndTransmog();
 		}, () -> {
 			plugin.addNewRule(index + 1);

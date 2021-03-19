@@ -20,6 +20,8 @@ import net.runelite.api.InventoryID;
 import net.runelite.api.Item;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.Player;
+import net.runelite.api.coords.LocalPoint;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.CommandExecuted;
 import net.runelite.api.events.GameStateChanged;
@@ -58,10 +60,16 @@ import static com.weaponanimationreplacer.AnimationReplacementRule.AnimationType
         rule deletion confirm.
         Adding a new item restriction should open the search menu immediately.
 
-        ranged and magic weapons, and attack animations for existing weapons..
+        last-destination isn't swapped in my plugin if there is no set destination.
+
+        magic weapons.
             staff animations.
             https://github.com/equirs/fashionscape-plugin/blob/master/src/main/java/eq/uirs/fashionscape/data/IdleAnimationID.java
         code attribution in readme.
+        tool animations.
+            Mining with something like ancient mage animation would be pretty neat.
+
+        tools.
 
         ask:
             Should I include a config option that is a dropdown with all animation sets, to let people try out the plugin without having to figure out the config panel?
@@ -69,11 +77,11 @@ import static com.weaponanimationreplacer.AnimationReplacementRule.AnimationType
             What should I name this?
             Good example configs to include as default.
 
-        why can't I use dhl crush with my fake saeldor.
         godsword running looks weird.
         what animations does master wand use?
 
     Fix animation when removing rule.
+        Would have to record the players actual pose animations whenever they switch to a weapon, then set those.
     other players.
     custom ids.
     disambiguate walk/run for shuffle animations.
@@ -217,10 +225,11 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
         saveRules();
 
         Player localPlayer = client.getLocalPlayer();
-        if (localPlayer != null) {
-            localPlayer.setIdlePoseAnimation(808);
-            localPlayer.setPoseAnimation(808);
-        }
+        System.out.println("bla");
+//        if (localPlayer != null) {
+//            localPlayer.setIdlePoseAnimation(808);
+//            localPlayer.setPoseAnimation(808);
+//        }
         lastAnimation = -1;
         lastPoseAnimation = -1;
         lastIdlePoseAnimation = -1;
@@ -230,7 +239,12 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
         clientUI.requestFocus();
     }
 
-    public void deleteNewRule(int index) {
+    public void deleteRule(int index) {
+        int delete = JOptionPane.showConfirmDialog(pluginPanel,
+                "Are you sure you want to delete that?",
+                "Delete?", JOptionPane.OK_CANCEL_OPTION);
+        if (delete != JOptionPane.YES_OPTION) return;
+
         animationReplacementRules.remove(index);
         SwingUtilities.invokeLater(() -> pluginPanel.rebuild());
         saveRules();
@@ -310,19 +324,19 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
     int lastIdlePoseAnimation = -1;
     int lastPoseAnimation = -1;
     int lastAnimation = -1;
-    int lastLogAnimation = -1;
     int poseToUse = -1;
     int animationToUse = -1;
+
     int animationToDemo = -1;
     int demoAnimation = -1;
     int lastDemoAnimation = -1;
     boolean animationDemod = false;
+
+    int lastLogAnimation = -1;
     @Subscribe
     public void onClientTick(ClientTick event)
     {
         Player localPlayer = client.getLocalPlayer();
-        Player logPlayer = logName == null ? localPlayer : client.getPlayers().stream().filter(p -> logName.equals(p.getName())).findFirst().orElse(null);
-        logPoseAnimationChanges(logPlayer);
         if (localPlayer.getAnimation() == -1) {
             if (!animationDemod) {
                 demoAnimation = animationToDemo;
@@ -334,6 +348,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
             if (demoAnimation != -1) localPlayer.setAnimation(demoAnimation);
         }
         lastDemoAnimation = localPlayer.getAnimation();
+
         AnimationSet currentAnimationSet = getCurrentAnimationSet();
         if (currentAnimationSet == null) {
             poseToUse = -1;
@@ -367,16 +382,21 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
         lastPoseAnimation = playerPoseAnimation;
         if (poseToUse != -1) localPlayer.setPoseAnimation(poseToUse);
 
+        Player logPlayer = logName == null ? localPlayer : client.getPlayers().stream().filter(p -> logName.equalsIgnoreCase(p.getName())).findFirst().orElse(null);
         if (logPlayer != null) {
+            logPoseAnimationChanges(logPlayer);
             int logPlayerAnimation = logPlayer.getAnimation();
             if (lastLogAnimation != logPlayerAnimation) {
                 if (log && logPlayerAnimation != -1) {
-                    Integer equippedWeapon = getEquippedWeapon();
+                    Integer equippedWeapon = getEquippedWeaponOnLoggedPlayer();
                     System.out.println("zz_" + (equippedWeapon == null ? "null" : itemManager.getItemComposition(equippedWeapon).getName()));
                     System.out.println("zz_" + "ATTACK_ZZZ, " + logPlayerAnimation + ",");
                 }
             }
             lastLogAnimation = logPlayerAnimation;
+        } else {
+            lastPlayerPoseAnimations = null;
+            lastLogAnimation = -2;
         }
 
         int playerAnimation = localPlayer.getAnimation();
@@ -409,9 +429,9 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
         newPoses.add(localPlayer.getWalkRotateRight());
 
         if (!newPoses.equals(lastPlayerPoseAnimations)) {
-            Integer equippedWeapon = getEquippedWeapon();
+            Integer equippedWeapon = getEquippedWeaponOnLoggedPlayer();
             if (log) {
-                System.out.println((equippedWeapon == null ? "null" : itemManager.getItemComposition(equippedWeapon).getName()));
+                System.out.println("zz_" + (equippedWeapon == null ? "no weapon" : itemManager.getItemComposition(equippedWeapon).getName()));
                 System.out.println("zz_" + "STAND, " + localPlayer.getIdlePoseAnimation() + ",");
                 System.out.println("zz_" + "RUN, " + localPlayer.getRunAnimation() + ",");
                 System.out.println("zz_" + "WALK, " + localPlayer.getWalkAnimation() + ",");
@@ -433,9 +453,6 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
                     System.out.println("ALKDJSFLAKJSDL:AKSJD:ALKSJD:LASKJD:LAKSJD");
                 }
             }
-            for (int i = 0; i < newPoses.size(); i++) {
-
-            }
 //            System.out.println(newPoses);
             lastPlayerPoseAnimations = newPoses;
         }
@@ -452,15 +469,18 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
                 .sorted(Comparator.reverseOrder())
                 .collect(Collectors.toList());
 
+//        System.out.println("replacements: " + replacements);
         for (AnimationReplacement replacement : replacements) {
+//            System.out.println("in loop: " + replacement);
             currentSet.applyReplacement(replacement);
             if (replacement.animationtypeToReplace.appliesTo(AnimationType.MOVEMENT)) {
                 currentSet.useWalkOrRunForShuffleAndWalkBackwards = replacement.animationSet.useWalkOrRunForShuffleAndWalkBackwards;
             }
+//            System.out.println("animation set update: " + currentSet + " " + appliedRules + " " + replacements);
         }
 
         if (!currentSet.equals(lastAnimationSet)) {
-            System.out.println("animation set change: " + currentSet + " " + appliedRules + " " + replacements);
+//            System.out.println("animation set change: " + currentSet + " " + appliedRules + " " + replacements);
             lastAnimationSet = currentSet;
         }
         return currentSet;
@@ -471,25 +491,39 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
         if (equipmentContainer == null) return null;
         Item[] equippedItems = equipmentContainer.getItems();
         if (equippedItems.length < EquipmentInventorySlot.WEAPON.getSlotIdx()) return null;
-        int weaponItemId = equippedItems[EquipmentInventorySlot.WEAPON.getSlotIdx()].getId();
+        return equippedItems[EquipmentInventorySlot.WEAPON.getSlotIdx()].getId();
+    }
+
+    private Integer getEquippedWeaponOnLoggedPlayer() {
+        Integer weaponItemId;
+        if (logName != null) {
+            Player logPlayer = client.getPlayers().stream().filter(p -> logName.equalsIgnoreCase(p.getName())).findFirst().orElse(null);
+            weaponItemId = logPlayer != null ? logPlayer.getPlayerComposition().getEquipmentIds()[3] - 512 : -1;
+        } else {
+            ItemContainer equipmentContainer = client.getItemContainer(InventoryID.EQUIPMENT);
+            if (equipmentContainer == null) return null;
+            Item[] equippedItems = equipmentContainer.getItems();
+            if (equippedItems.length < EquipmentInventorySlot.WEAPON.getSlotIdx()) return null;
+            weaponItemId = equippedItems[EquipmentInventorySlot.WEAPON.getSlotIdx()].getId();
+        }
         return weaponItemId;
     }
 
     private Integer getReplacementAnimation(int playerPoseAnimation) {
         AnimationSet currentAnimationSet = getCurrentAnimationSet();
         if (currentAnimationSet == null) {
-            System.out.println("1");
+//            System.out.println("1");
             return null;
         }
         AnimationType type = getType(playerPoseAnimation);
-        System.out.println("type: " + type);
+//        System.out.println("type: " + type);
         if (type != null) {
             return currentAnimationSet.getAnimation(type, isRunning());
         } else {
             for (AnimationSet animationSet : AnimationSet.animationSets) {
                 type = animationSet.getType(playerPoseAnimation);
                 if (type != null) {
-                    System.out.println(playerPoseAnimation + " type " + type + " not null for " + animationSet.name);
+//                    System.out.println(playerPoseAnimation + " type " + type + " not null for " + animationSet.name);
                     return currentAnimationSet.getAnimation(type, isRunning());
                 }
             }
@@ -497,9 +531,11 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
         return null;
     }
 
-    private boolean isRunning() { // TODO.
-        // It appears that, if the player model is rotating, but you are not interacting, walking animations are used. Or, if you are walking one tile at a time, walking animations are of course also used.
-        return client.getVarpValue(173) == 1;
+    /**
+     * @return Whether running animations or walking animations should be used.
+     */
+    private boolean isRunning() {
+        return calculateMovingOneTile() ? false : client.getVarpValue(173) == 1;
     }
 
     private AnimationType getType(int animation) {
@@ -520,19 +556,17 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
     @Subscribe
     public void onCommandExecuted(CommandExecuted commandExecuted) {
         if ("wal".equals(commandExecuted.getCommand())) {
-            String name = "";
-            for (String arg : commandExecuted.getArguments()) {
-                name += arg + " ";
+            if (commandExecuted.getArguments().length >= 1) {
+                log = true;
+                logName = String.join(" ", commandExecuted.getArguments());
+                System.out.println("following " + logName);
+            } else {
+                logName = null;
+                log = !log;
+                System.out.println("logging is now " + (log ? "on" : "off"));
             }
-            if (commandExecuted.getArguments().length > 0) {
-                name = name.substring(0, name.length() - 1);
-            }
-            System.out.println("name is \"" + name + "\"");
-            System.out.println(Arrays.asList(commandExecuted.getArguments()));
-            System.out.println("arg 0: " + "\"" + commandExecuted.getArguments()[0] + "\"");
-            if (commandExecuted.getArguments().length >= 1) logName = commandExecuted.getArguments()[0];
-            log = !log;
-            System.out.println("log is " + log);
+            lastPlayerPoseAnimations = null;
+            lastLogAnimation = -2;
         }
         if ("dumpanim".equals(commandExecuted.getCommand())) {
             System.out.println(
@@ -550,6 +584,8 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
     @Inject
     private TransmogrificationManager transmogManager;
 
+    private boolean isMovingOneTile = false;
+
     @Subscribe
     public void onGameTick(GameTick e)
     {
@@ -558,12 +594,30 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
             return;
         }
 
+//        isMovingOneTile = calculateMovingOneTile();
+//        System.out.println("moving one tile: " + isMovingOneTile);
+//
         // On most teleports, the player kits are reset. This will reapply the transmog if needed.
         final int currentHash = Arrays.hashCode(client.getLocalPlayer().getPlayerComposition().getEquipmentIds());
         if (currentHash != transmogManager.getTransmogHash())
         {
             transmogManager.reapplyTransmog();
         }
+    }
+
+    private boolean calculateMovingOneTile() {
+        LocalPoint destination = client.getLocalDestinationLocation();
+        WorldPoint playerPos = client.getLocalPlayer().getWorldLocation();
+        System.out.println(destination + " " + playerPos);
+        if (destination == null) return false;
+        if (playerPos == null) return false;
+        LocalPoint playerPosLocal = LocalPoint.fromWorld(client, playerPos);
+        System.out.println(playerPosLocal);
+        if (playerPosLocal == null) return false;
+        int xDiff = Math.abs(playerPosLocal.getSceneX() - destination.getSceneX());
+        int yDiff = Math.abs(playerPosLocal.getSceneY() - destination.getSceneY());
+        System.out.println(xDiff + " " + yDiff + " " + !(xDiff > 1 || yDiff > 1 || (xDiff == 0 && yDiff == 0)));
+        return !(xDiff > 1 || yDiff > 1 || (xDiff == 0 && yDiff == 0));
     }
 
     public void doItemSearch(AnimationReplacementRulePanel.ItemSelectionButton button, Consumer<Integer> onItemChosen) {
