@@ -331,7 +331,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
                         itemComposition.getColorToReplaceWith(), itemComposition.getTextureToReplaceWith());
                 if (itemIcons.contains(itemIcon))
                 {
-                    continue;
+//                    continue;
                 }
 
                 itemIcons.add(itemIcon);
