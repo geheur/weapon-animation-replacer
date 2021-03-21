@@ -23,9 +23,11 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 package com.weaponanimationreplacer;
 
 import com.weaponanimationreplacer.AnimationReplacementRule.AnimationType;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.GameState;
 import net.runelite.client.plugins.screenmarkers.ScreenMarkerPlugin;
 import net.runelite.client.ui.ColorScheme;
@@ -54,6 +56,7 @@ import java.util.stream.Collectors;
 
 import static com.weaponanimationreplacer.AnimationReplacementRule.AnimationType.ATTACK;
 
+@Slf4j
 class AnimationReplacementRulePanel extends JPanel
 {
 	private static final int DEFAULT_FILL_OPACITY = 75;
@@ -75,6 +78,9 @@ class AnimationReplacementRulePanel extends JPanel
 
 	private static final ImageIcon ADD_ICON;
 	private static final ImageIcon ADD_HOVER_ICON;
+
+	private static final ImageIcon VISIBLE_ICON;
+	private static final ImageIcon INVISIBLE_ICON;
 
 	private final WeaponAnimationReplacerPlugin plugin;
 	private final int index;
@@ -102,9 +108,15 @@ class AnimationReplacementRulePanel extends JPanel
 		EDIT_ICON = new ImageIcon(editImg);
 		EDIT_ICON_HOVER = new ImageIcon(ImageUtil.luminanceOffset(editImg, -150));
 
-		final BufferedImage addIcon = ImageUtil.loadImageResource(ScreenMarkerPlugin.class, "add_icon.png");
+		final BufferedImage addIcon = ImageUtil.loadImageResource(AnimationReplacementRulePanel.class, "add_icon.png");
 		ADD_ICON = new ImageIcon(addIcon);
 		ADD_HOVER_ICON = new ImageIcon(ImageUtil.alphaOffset(addIcon, 0.53f));
+
+		final BufferedImage visibleIcon = ImageUtil.loadImageResource(AnimationReplacementRulePanel.class, "visible_icon.png");
+		VISIBLE_ICON = new ImageIcon(visibleIcon);
+
+		final BufferedImage invisibleIcon = ImageUtil.loadImageResource(AnimationReplacementRulePanel.class, "invisible_icon.png");
+		INVISIBLE_ICON = new ImageIcon(invisibleIcon);
 	}
 
 	AnimationReplacementRulePanel(WeaponAnimationReplacerPlugin plugin, AnimationReplacementRule animationReplacementRule, Runnable rebuild, int index)
@@ -134,7 +146,7 @@ class AnimationReplacementRulePanel extends JPanel
 				bottomContainer.add(createItemRestrictionPanel(itemRestriction, index++, rule.itemRestrictions.size()));
 			}
 		} else {
-			JButton button = new JButton("Enable only for specific item(s)");
+			JButton button = new JButton("Enable only for specific weapons(s)");
 			button.addActionListener((e) -> {
 				rule.itemRestrictions.add(new AnimationReplacementRule.ItemRestriction(-1));
 				plugin.updateAnimationsAndTransmog();
@@ -217,12 +229,14 @@ class AnimationReplacementRulePanel extends JPanel
 			setBackground(ColorScheme.DARKER_GRAY_COLOR);
 			if (checkbox) {
 				JCheckBox enabledCheckbox = new JCheckBox();
-				enabledCheckbox.setToolTipText("Enabled");
+//				enabledCheckbox.setToolTipText("Enabled");
 				enabledCheckbox.setSelected(enabled);
+				enabledCheckbox.setIcon(enabled ? VISIBLE_ICON : INVISIBLE_ICON);
 				enabledCheckbox.addActionListener((e) -> {
 					plugin.clientThread.invokeLater(() -> {
 						onEnable.accept(enabledCheckbox.isSelected());
 					});
+					enabledCheckbox.setIcon(enabledCheckbox.isSelected() ? VISIBLE_ICON : INVISIBLE_ICON);
 				});
 				add(enabledCheckbox, BorderLayout.WEST);
 			}
@@ -360,7 +374,7 @@ class AnimationReplacementRulePanel extends JPanel
 					.filter(t -> ATTACK.appliesTo(t.getKey()))
 					.map(e -> e.getValue())
 					.collect(Collectors.toList());
-			System.out.println("actions is : " + actions);
+			log.debug("actions is : " + actions);
 			JComboBox<AnimationSet.Animation> attackToUse = new JComboBox<>(actions.toArray(new AnimationSet.Animation[] {})); // TODO remove indenting?
             // TODO add "automatic" option.
 			attackToUse.setRenderer(new DefaultListCellRenderer() {

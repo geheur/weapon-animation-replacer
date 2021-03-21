@@ -22,8 +22,9 @@ public class AnimationSet implements Comparable<AnimationSet> {
 
     @Override
     public int compareTo(AnimationSet o) {
-        int typeComparison = animationSetType.compareTo(o.animationSetType);
-        return typeComparison == 0 ? name.compareTo(o.name) : typeComparison;
+//        int typeComparison = animationSetType.compareTo(o.animationSetType);
+//        return typeComparison == 0 ? name.compareTo(o.name) : typeComparison;
+        return name.compareTo(o.name);
     }
 
     // used for ordering, so declaration order matters.
@@ -355,8 +356,7 @@ public class AnimationSet implements Comparable<AnimationSet> {
                 ATTACK_STAB, 386,
                 DEFEND, 388,
                 ATTACK_SLASH, 390,
-                ATTACK_SPEC, 1872, "spec (dscim)", // dragon scim
-                ATTACK_SPEC, 7393, "spec (d harpoon)" // dragon harpoon
+                ATTACK_SPEC, 1872
         ));
 
         animationSets.add(new AnimationSet("Ghrazi rapier", false, AnimationSetType.MELEE_SPECIFIC,
@@ -704,7 +704,7 @@ public class AnimationSet implements Comparable<AnimationSet> {
                 ATTACK_SLASH, 1658
         ));
 
-        animationSets.add(new AnimationSet("Mace", false, AnimationSetType.MELEE_GENERIC,
+        animationSets.add(new AnimationSet("Dragon mace", false, AnimationSetType.MELEE_GENERIC,
                 STAND, 808,
                 RUN, 824,
                 WALK, 819,
@@ -715,12 +715,38 @@ public class AnimationSet implements Comparable<AnimationSet> {
                 DEFEND, 403,
                 ATTACK_STAB, 400,
                 ATTACK_CRUSH, 401,
-                ATTACK_SPEC, 1060, "spec (d mace)", // d mace
-                ATTACK_SPEC, 6147, "spec (ancient mace)", // ancient mace
-                ATTACK_SPEC, 1378, "spec (dwh)" // dwh spec
+                ATTACK_SPEC, 1060
         ));
 
-        animationSets.add(new AnimationSet("axe, battleaxe", false, AnimationSetType.MELEE_GENERIC,
+        animationSets.add(new AnimationSet("Ancient mace", false, AnimationSetType.MELEE_GENERIC,
+                STAND, 808,
+                RUN, 824,
+                WALK, 819,
+                WALK_BACKWARD, 820,
+                SHUFFLE_LEFT, 821,
+                SHUFFLE_RIGHT, 822,
+                ROTATE, 823,
+                DEFEND, 403,
+                ATTACK_STAB, 400,
+                ATTACK_CRUSH, 401,
+                ATTACK_SPEC, 6147
+        ));
+
+        animationSets.add(new AnimationSet("Dragon warhammer", false, AnimationSetType.MELEE_GENERIC,
+                STAND, 808,
+                RUN, 824,
+                WALK, 819,
+                WALK_BACKWARD, 820,
+                SHUFFLE_LEFT, 821,
+                SHUFFLE_RIGHT, 822,
+                ROTATE, 823,
+                DEFEND, 403,
+                ATTACK_STAB, 400,
+                ATTACK_CRUSH, 401,
+                ATTACK_SPEC, 1378
+        ));
+
+        animationSets.add(new AnimationSet("Dragon axe", false, AnimationSetType.MELEE_GENERIC,
                 STAND, 808,
                 RUN, 824,
                 WALK, 819,
@@ -732,9 +758,22 @@ public class AnimationSet implements Comparable<AnimationSet> {
                 ATTACK_CRUSH, 401,
                 DEFEND, 397,
                 ATTACK_SLASH, 395,
-                ATTACK_SPEC, 2876, "spec (d axe)", // dragon axe
-                ATTACK_SPEC, 8781, "spec (d pick)", // dragon pickaxe
-                ATTACK_SPEC, 1056, "spec (d baxe)" // dragon battleaxe
+                ATTACK_SPEC, 2876
+        ));
+
+        animationSets.add(new AnimationSet("Dragon battleaxe", false, AnimationSetType.MELEE_GENERIC,
+                STAND, 808,
+                RUN, 824,
+                WALK, 819,
+                WALK_BACKWARD, 820,
+                SHUFFLE_LEFT, 821,
+                SHUFFLE_RIGHT, 822,
+                ROTATE, 823,
+                ATTACK_STAB, 400,
+                ATTACK_CRUSH, 401,
+                DEFEND, 397,
+                ATTACK_SLASH, 395,
+                ATTACK_SPEC, 1056
         ));
 
         animationSets.add(new AnimationSet("Spear", false, AnimationSetType.MELEE_GENERIC,
@@ -880,7 +919,7 @@ public class AnimationSet implements Comparable<AnimationSet> {
                 ATTACK_SLASH, 7004
         ));
 
-        animationSets.add(new AnimationSet("sword/dagger", false, AnimationSetType.MELEE_GENERIC,
+        animationSets.add(new AnimationSet("Dragon sword", false, AnimationSetType.MELEE_GENERIC,
                 STAND, 808,
                 RUN, 824,
                 WALK, 819,
@@ -891,8 +930,21 @@ public class AnimationSet implements Comparable<AnimationSet> {
                 ATTACK_STAB, 386,
                 DEFEND, 388,
                 ATTACK_SLASH, 390,
-                ATTACK_SPEC, 2890, "spec (arclight)",
-                ATTACK_SPEC, 7515, "spec (d sword)"
+                ATTACK_SPEC, 7515
+        ));
+
+        animationSets.add(new AnimationSet("Arclight", false, AnimationSetType.MELEE_GENERIC,
+                STAND, 808,
+                RUN, 824,
+                WALK, 819,
+                WALK_BACKWARD, 820,
+                SHUFFLE_LEFT, 821,
+                SHUFFLE_RIGHT, 822,
+                ROTATE, 823,
+                ATTACK_STAB, 386,
+                DEFEND, 388,
+                ATTACK_SLASH, 390,
+                ATTACK_SPEC, 2890
         ));
 
         animationSets.add(new AnimationSet("Dragon dagger", false, AnimationSetType.MELEE_SPECIFIC,

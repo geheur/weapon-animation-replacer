@@ -25,7 +25,6 @@
 package com.weaponanimationreplacer;
 
 import lombok.Getter;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
@@ -61,14 +60,8 @@ public class TransmogrificationManager
     @Inject
     private ChatMessageManager chatMessageManager;
 
-//    @Getter
-//    private List<TransmogPreset> presets = initialisePresetStorage();
-//
     @Inject
     WeaponAnimationReplacerPlugin plugin;
-
-    @Setter
-    private int[] emptyState;
 
     @Getter
     private int[] currentActualState;
@@ -78,11 +71,8 @@ public class TransmogrificationManager
 
     public void shutDown()
     {
-//        save();
         removeTransmog();
         currentActualState = null;
-        emptyState = null;
-//        presets = initialisePresetStorage();
     }
 
     /**
@@ -91,17 +81,7 @@ public class TransmogrificationManager
     public void reapplyTransmog()
     {
         clearUserActualState();
-
-//        if (config.transmogActive())
-//        {
-            applyTransmog();
-//        }
-    }
-
-    public void clearUserStates()
-    {
-        currentActualState = null;
-        emptyState = null;
+        applyTransmog();
     }
 
     public void clearUserActualState()
@@ -116,35 +96,21 @@ public class TransmogrificationManager
             return;
         }
 
-//        if (!isDefaultStateSet())
-//        {
-//            hintDefaultState();
-//            return;
-//        }
-//
-//        TransmogPreset preset = getCurrentPreset();
-//
         Player player = client.getLocalPlayer();
         int[] kits = player.getPlayerComposition().getEquipmentIds();
-        System.out.print("kit is:");
-        for (int kit : kits) {
-
-            System.out.print(" " + kit);
-        }
-        System.out.println();
         if (currentActualState == null)
         {
             currentActualState = kits.clone();
         }
         List<AnimationReplacementRule> applicableAnimationReplacementRules = plugin.getApplicableAnimationReplacementRules();
-        System.out.println(applicableAnimationReplacementRules.size() + " rules " + applicableAnimationReplacementRules);
+        log.debug(applicableAnimationReplacementRules.size() + " rules " + applicableAnimationReplacementRules);
         List<AnimationReplacementRule> collect = applicableAnimationReplacementRules.stream().filter(rule -> rule.isModelSwapEnabled()).collect(Collectors.toList());
         if (collect.isEmpty() || collect.get(collect.size() - 1).modelSwap == -1) {
-            System.out.println("removing transmog");
+//            log.debug("removing transmog");
             removeTransmog();
         } else {
             AnimationReplacementRule animationReplacementRule = collect.get(collect.size() - 1);
-            System.out.println("model is " + animationReplacementRule.modelSwap);
+//            System.out.println("model is " + animationReplacementRule.modelSwap);
             kits[3] = animationReplacementRule.modelSwap + 512;
             player.getPlayerComposition().setHash();
         }
@@ -161,87 +127,5 @@ public class TransmogrificationManager
         int[] kits = comp.getEquipmentIds();
         System.arraycopy(currentActualState, 0, kits, 0, kits.length);
         comp.setHash();
-    }
-
-    void saveCurrent()
-    {
-        currentActualState = client.getLocalPlayer().getPlayerComposition().getEquipmentIds().clone();
-    }
-
-//    public void updateDefault(int opClicked)
-//    {
-//        if (plugin.isEmptyEquipment() || opClicked == 2)
-//        {
-//            chatMessageManager.queue(QueuedMessage.builder()
-//                    .type(ChatMessageType.ENGINE)
-//                    .value("Saved your default outfit")
-//                    .build());
-//            emptyState = client.getLocalPlayer().getPlayerComposition().getEquipmentIds();
-//            config.saveDefault(emptyState);
-//            getUIManager().getSaveDefaultStateButton().setIconSprite(115);
-//            getUIManager().getBlockerBox().setHidden(true);
-//        }
-//        else
-//        {
-//            chatMessageManager.queue(QueuedMessage.builder()
-//                    .type(ChatMessageType.ENGINE)
-//                    .value("<col=dd0000>Remove your armour before setting a default state.</col> Right click to override.")
-//                    .build());
-//        }
-//    }
-//
-//    /**
-//     * Get a preset by index, handling the fact that the preset list has the -1 offset
-//     */
-//    public TransmogPreset getPreset(int index)
-//    {
-//        return presets.get(index - 1);
-//    }
-//
-//    /**
-//     * Set a preset by index, handling the fact that the preset list has the -1 offset
-//     */
-//    public void setPreset(int index, TransmogPreset preset)
-//    {
-//        presets.set(index - 1, preset);
-//    }
-//
-//    /**
-//     * Helper function to copy the current preset to another index
-//     */
-//    public void copyCurrentPresetTo(int index)
-//    {
-//        setPreset(index, getCurrentPreset());
-//    }
-//
-    public boolean isDefaultStateSet()
-    {
-        return emptyState != null && emptyState.length > 0;
-    }
-
-//    public void save()
-//    {
-//        config.savePresets();
-//    }
-//
-//    private UIManager getUIManager()
-//    {
-//        return uiManager.get();
-//    }
-//
-//    void loadData()
-//    {
-//        config.loadDefault();
-//        config.loadPresets();
-//        clientThread.invoke(() -> presets.stream().filter(Objects::nonNull).forEach(e -> e.loadNames(itemManager)));
-//    }
-//
-    public void hintDefaultState()
-    {
-//        notifier.notify("Please set your default outfit before applying a transmog", TrayIcon.MessageType.WARNING);
-//        chatMessageManager.queue(QueuedMessage.builder()
-//                .type(ChatMessageType.ENGINE)
-//                .value("<col=dd0000>Please set your default outfit before applying a transmog</col>")
-//                .build());
     }
 }

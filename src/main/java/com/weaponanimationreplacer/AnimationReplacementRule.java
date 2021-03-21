@@ -134,18 +134,18 @@ public class AnimationReplacementRule {
 //        MAGIC_ANCIENT_MULTI_TARGET,
 
         ATTACK(ATTACK_STAB, ATTACK_SLASH, ATTACK_CRUSH, ATTACK_CRUSH2, ATTACK_SPEC),
-        MAGIC(),
+//        MAGIC(),
         MOVEMENT(WALK, RUN, WALK_BACKWARD, SHUFFLE_LEFT, SHUFFLE_RIGHT, ROTATE),
-        STANCE(STAND, MOVEMENT),
-        ALL(ATTACK, STANCE);
+        STAND_PLUS_MOVEMENT("Stand/Move", STAND, MOVEMENT),
+        ALL(ATTACK, STAND_PLUS_MOVEMENT);
 
         public static final List<AnimationType> comboBoxOrder = new ArrayList<>();
         static {
             comboBoxOrder.add(ALL);
-            comboBoxOrder.add(STANCE);
+            comboBoxOrder.add(STAND_PLUS_MOVEMENT);
             comboBoxOrder.add(STAND);
             comboBoxOrder.add(MOVEMENT);
-            addItems(MOVEMENT, comboBoxOrder);
+//            addItems(MOVEMENT, comboBoxOrder);
             comboBoxOrder.add(ATTACK);
             addItems(ATTACK, comboBoxOrder);
         }
@@ -180,15 +180,15 @@ public class AnimationReplacementRule {
             if (ATTACK.hasChild(this)) {
                 depth = 2;
             } else if (MOVEMENT.hasChild(this)) {
-                depth = 3;
-            } else if (STANCE.hasChild(this)) {
+                depth = 4;
+            } else if (STAND_PLUS_MOVEMENT.hasChild(this)) {
                 depth = 3;
             } else if (ALL.hasChild(this)) {
                 depth = 1;
             }
             String s = prettyName;
             for (int i = 0; i < depth; i++) {
-                s = " " + s;
+                s = "  " + s;
             }
             return s;
         }
