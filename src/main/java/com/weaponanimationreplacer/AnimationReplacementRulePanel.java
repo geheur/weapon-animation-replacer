@@ -29,7 +29,6 @@ package com.weaponanimationreplacer;
 import com.weaponanimationreplacer.AnimationReplacementRule.AnimationType;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.GameState;
-import net.runelite.client.plugins.screenmarkers.ScreenMarkerPlugin;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.components.FlatTextField;
@@ -47,9 +46,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
-import java.util.AbstractMap;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 import java.util.stream.Collectors;
@@ -146,7 +143,7 @@ class AnimationReplacementRulePanel extends JPanel
 				bottomContainer.add(createItemRestrictionPanel(itemRestriction, index++, rule.itemRestrictions.size()));
 			}
 		} else {
-			JButton button = new JButton("Enable only for specific weapons(s)");
+			JButton button = new JButton("Enable only for specific weapon(s)");
 			button.addActionListener((e) -> {
 				rule.itemRestrictions.add(new AnimationReplacementRule.ItemRestriction(-1));
 				plugin.updateAnimationsAndTransmog();
