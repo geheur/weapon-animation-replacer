@@ -210,7 +210,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
     public List<AnimationReplacementRule> getRulesFromConfig() {
         String configuration = configManager.getConfiguration("WeaponAnimationReplacer", "rules");
-        if (true || configuration == null) return getDefaultAnimationReplacementRules();
+        if (configuration == null) return getDefaultAnimationReplacementRules();
         return customGson.fromJson(configuration, new TypeToken<ArrayList<AnimationReplacementRule>>() {}.getType());
     }
 
