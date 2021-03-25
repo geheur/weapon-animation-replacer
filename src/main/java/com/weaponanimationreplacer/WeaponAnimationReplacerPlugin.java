@@ -102,7 +102,7 @@ import static com.weaponanimationreplacer.AnimationReplacementRule.AnimationType
 @Slf4j
 @PluginDescriptor(
         name = "Weapon Animation Replacer",
-        description = "replace weapon animations (stand,walk,run,attack) with other ones",
+        description = "replace weapon animations (stand,walk,run,attack) with other ones. Config is in a plugin panel.",
         tags = {"transmog", "fashionscape"},
         loadWhenOutdated = true
 )
@@ -185,7 +185,12 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
             @Override
             public AnimationSet deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext jsonDeserializationContext) throws JsonParseException {
                 if (jsonElement instanceof JsonPrimitive && ((JsonPrimitive) jsonElement).isString()) {
-                    AnimationSet animationSet = getAnimationSet(jsonElement.getAsString());
+                    String s = jsonElement.getAsString();
+                    if ("Godsword".equals(s)) {
+                        log.debug("updating \"Godsword\" to \"Godsword (Armadyl)\"");
+                        s = "Godsword (Armadyl)";
+                    }
+                    AnimationSet animationSet = getAnimationSet(s);
                     if (animationSet == null) return AnimationSet.animationSets.get(0);
                     return animationSet;
                 } else {
@@ -527,6 +532,9 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
         return calculateMovingOneTile() ? false : client.getVarpValue(173) == 1;
     }
 
+    /**
+     * Gets the type of animation. Only usable on movement/idle animations that the local player is currently using.
+     */
     private AnimationType getType(int animation) {
         Player localPlayer = client.getLocalPlayer();
         if (localPlayer.getRunAnimation() == animation) return RUN;

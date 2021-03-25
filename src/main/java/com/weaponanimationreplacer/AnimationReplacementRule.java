@@ -118,7 +118,7 @@ public class AnimationReplacementRule {
         // Order matters - it is used to determine specificity (more specific enums earlier in the list).
         STAND, WALK, RUN, WALK_BACKWARD, SHUFFLE_LEFT, SHUFFLE_RIGHT, ROTATE, ATTACK_STAB("Stab"),
         ATTACK_SLASH("Slash"), ATTACK_CRUSH("Crush"), ATTACK_SPEC("Special"), DEFEND,
-        ATTACK_CRUSH2("Crush2"),
+        ATTACK_SLASH2("Slash2"), ATTACK_CRUSH2("Crush2"),
 
 //        MAGIC_LOW_LEVEL_SPELL_UNARMED, MAGIC_LOW_LEVEL_SPELL_STAFF, // strike,bolt,blast spells.
 //        MAGIC_UNARMED_WAVE_SPELL, MAGIC_STAFF_WAVE_SPELL,
@@ -133,7 +133,7 @@ public class AnimationReplacementRule {
 //        MAGIC_ANCIENT_SINGLE_TARGET,
 //        MAGIC_ANCIENT_MULTI_TARGET,
 
-        ATTACK(ATTACK_STAB, ATTACK_SLASH, ATTACK_CRUSH, ATTACK_CRUSH2, ATTACK_SPEC),
+        ATTACK(ATTACK_STAB, ATTACK_SLASH, ATTACK_SLASH2, ATTACK_CRUSH, ATTACK_CRUSH2, ATTACK_SPEC),
 //        MAGIC(),
         MOVEMENT(WALK, RUN, WALK_BACKWARD, SHUFFLE_LEFT, SHUFFLE_RIGHT, ROTATE),
         STAND_PLUS_MOVEMENT("Stand/Move", STAND, MOVEMENT),

@@ -88,8 +88,38 @@ public class AnimationSet implements Comparable<AnimationSet> {
                      ATTACK_CRUSH, 8290
         ));
 
-        animationSets.add(new AnimationSet("Godsword",false, AnimationSetType.MELEE_SPECIFIC,
-                     // TODO what is 7055?
+        animationSets.add(new AnimationSet("Flying Carpet",false, AnimationSetType.FUN,
+                STAND, 6936,
+                WALK, 6936,
+                WALK_BACKWARD, 6936,
+                SHUFFLE_LEFT, 6936,
+                SHUFFLE_RIGHT, 6936,
+                ROTATE, 6936,
+                RUN, 6936
+        ));
+
+        animationSets.add(new AnimationSet("Levitate",false, AnimationSetType.FUN,
+                STAND, 8070,
+                WALK, 8070,
+                WALK_BACKWARD, 8070,
+                SHUFFLE_LEFT, 8070,
+                SHUFFLE_RIGHT, 8070,
+                ROTATE, 8070,
+                RUN, 8070
+        ));
+
+        animationSets.add(new AnimationSet("Clueless Scroll",false, AnimationSetType.FUN,
+                STAND, 7271,
+                RUN, 7273,
+                WALK, 7272,
+                WALK_BACKWARD, 820,
+                SHUFFLE_LEFT, 821,
+                SHUFFLE_RIGHT, 822,
+                ROTATE, 823,
+                ATTACK_CRUSH, 406
+        ));
+
+        animationSets.add(new AnimationSet("Godsword (Saradomin)",false, AnimationSetType.MELEE_SPECIFIC,
                 STAND, 7053,
                 RUN, 7043,
                 WALK, 7052,
@@ -97,13 +127,56 @@ public class AnimationSet implements Comparable<AnimationSet> {
                 SHUFFLE_LEFT, 7048,
                 SHUFFLE_RIGHT, 7047,
                 ROTATE, 7044,
-//                zz_ATTACK_ZZZ, 7054,
-//                zz_ATTACK_ZZZ, 7055,
-//                zz_ATTACK_ZZZ, 7056,
-                     ATTACK_SLASH, 7045, // should this be 7054?
-                     ATTACK_CRUSH, 7054,
-                     DEFEND, 7056
-                // TODO add specs.
+                ATTACK_SLASH, 7045,
+                ATTACK_SLASH2, 7055,
+                ATTACK_CRUSH, 7054,
+                ATTACK_SPEC, 7640,
+                DEFEND, 7056
+        ));
+
+        animationSets.add(new AnimationSet("Godsword (Bandos)",false, AnimationSetType.MELEE_SPECIFIC,
+                STAND, 7053,
+                RUN, 7043,
+                WALK, 7052,
+                WALK_BACKWARD, 7052,
+                SHUFFLE_LEFT, 7048,
+                SHUFFLE_RIGHT, 7047,
+                ROTATE, 7044,
+                ATTACK_SLASH, 7045,
+                ATTACK_SLASH2, 7055,
+                ATTACK_CRUSH, 7054,
+                ATTACK_SPEC, 7642,
+                DEFEND, 7056
+        ));
+
+        animationSets.add(new AnimationSet("Godsword (Armadyl)",false, AnimationSetType.MELEE_SPECIFIC,
+                STAND, 7053,
+                RUN, 7043,
+                WALK, 7052,
+                WALK_BACKWARD, 7052,
+                SHUFFLE_LEFT, 7048,
+                SHUFFLE_RIGHT, 7047,
+                ROTATE, 7044,
+                ATTACK_SLASH, 7045,
+                ATTACK_SLASH2, 7055,
+                ATTACK_CRUSH, 7054,
+                ATTACK_SPEC, 7644,
+                DEFEND, 7056
+        ));
+
+        animationSets.add(new AnimationSet("Godsword (Zamorak)",false, AnimationSetType.MELEE_SPECIFIC,
+                STAND, 7053,
+                RUN, 7043,
+                WALK, 7052,
+                WALK_BACKWARD, 7052,
+                SHUFFLE_LEFT, 7048,
+                SHUFFLE_RIGHT, 7047,
+                ROTATE, 7044,
+                ATTACK_SLASH, 7045,
+                ATTACK_SLASH2, 7055,
+                ATTACK_CRUSH, 7054,
+                ATTACK_SPEC, 7638,
+                DEFEND, 7056
         ));
 
         animationSets.add(new AnimationSet("Boxing gloves", false, AnimationSetType.FUN,
