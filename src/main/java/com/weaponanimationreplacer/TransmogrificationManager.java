@@ -24,22 +24,17 @@
  */
 package com.weaponanimationreplacer;
 
+import java.util.Arrays;
+import java.util.Map;
+import javax.inject.Inject;
+import javax.inject.Singleton;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.Player;
 import net.runelite.api.PlayerComposition;
-import net.runelite.client.Notifier;
-import net.runelite.client.callback.ClientThread;
-import net.runelite.client.chat.ChatMessageManager;
-import net.runelite.client.game.ItemManager;
-
-import javax.inject.Inject;
-import javax.inject.Singleton;
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
+import net.runelite.api.kit.KitType;
 
 @Singleton
 @Slf4j
@@ -47,18 +42,6 @@ public class TransmogrificationManager
 {
     @Inject
     private Client client;
-
-    @Inject
-    private ClientThread clientThread;
-
-    @Inject
-    private Notifier notifier;
-
-    @Inject
-    private ItemManager itemManager;
-
-    @Inject
-    private ChatMessageManager chatMessageManager;
 
     @Inject
     WeaponAnimationReplacerPlugin plugin;
@@ -80,16 +63,15 @@ public class TransmogrificationManager
      */
     public void reapplyTransmog()
     {
-        clearUserActualState();
-        applyTransmog();
+		currentActualState = null;
+		applyTransmog();
     }
 
-    public void clearUserActualState()
-    {
-        currentActualState = null;
-    }
+    public static int baseArmsKit = -1;
+	public static int baseHairKit = -1;
+	public static int baseJawKit = -1;
 
-    void applyTransmog()
+	void applyTransmog()
     {
         if (client.getGameState() != GameState.LOGGED_IN || client.getLocalPlayer() == null)
         {
@@ -98,23 +80,35 @@ public class TransmogrificationManager
 
         Player player = client.getLocalPlayer();
         int[] kits = player.getPlayerComposition().getEquipmentIds();
-        if (currentActualState == null)
+        if (currentActualState != null)
         {
-            currentActualState = kits.clone();
-        }
-        List<AnimationReplacementRule> applicableAnimationReplacementRules = plugin.getApplicableAnimationReplacementRules();
-        log.debug(applicableAnimationReplacementRules.size() + " rules " + applicableAnimationReplacementRules);
-        List<AnimationReplacementRule> collect = applicableAnimationReplacementRules.stream().filter(rule -> rule.isModelSwapEnabled()).collect(Collectors.toList());
-        if (collect.isEmpty() || collect.get(collect.size() - 1).modelSwap == -1) {
-//            log.debug("removing transmog");
-            removeTransmog();
-        } else {
-            AnimationReplacementRule animationReplacementRule = collect.get(collect.size() - 1);
-//            System.out.println("model is " + animationReplacementRule.modelSwap);
-            kits[3] = animationReplacementRule.modelSwap + 512;
-            player.getPlayerComposition().setHash();
-        }
-        transmogHash = Arrays.hashCode(kits);
+			System.arraycopy(currentActualState, 0, kits, 0, kits.length);
+		}
+        else
+		{
+			if (kits[KitType.ARMS.getIndex()] != 0) {
+				baseArmsKit = kits[KitType.ARMS.getIndex()];
+			}
+			if (kits[KitType.HAIR.getIndex()] != 0) {
+				baseHairKit = kits[KitType.HAIR.getIndex()];
+			}
+			if (kits[KitType.JAW.getIndex()] != 0) {
+				baseJawKit = kits[KitType.JAW.getIndex()];
+			}
+			currentActualState = kits.clone();
+		}
+
+		Map<Integer, Integer> applicableSwaps = plugin.getApplicableModelSwaps();
+        log.debug(applicableSwaps.size() + " rules " + applicableSwaps);
+
+		for (Map.Entry<Integer, Integer> swap : applicableSwaps.entrySet())
+		{
+			kits[swap.getKey()] = swap.getValue() + 512;
+		}
+
+		player.getPlayerComposition().setHash();
+
+		transmogHash = Arrays.hashCode(kits);
     }
 
     void removeTransmog()

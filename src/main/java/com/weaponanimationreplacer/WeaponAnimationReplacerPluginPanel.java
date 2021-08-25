@@ -1,18 +1,24 @@
 package com.weaponanimationreplacer;
 
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.image.BufferedImage;
+import javax.swing.Box;
+import javax.swing.ImageIcon;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.border.EmptyBorder;
 import lombok.Getter;
 import net.runelite.client.plugins.screenmarkers.ScreenMarkerPlugin;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.PluginErrorPanel;
 import net.runelite.client.util.ImageUtil;
-
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.awt.image.BufferedImage;
 
 public class WeaponAnimationReplacerPluginPanel extends PluginPanel {
     private static final ImageIcon ADD_ICON;
@@ -56,7 +62,7 @@ public class WeaponAnimationReplacerPluginPanel extends PluginPanel {
         JPanel northPanel = new JPanel(new BorderLayout());
         northPanel.setBorder(new EmptyBorder(1, 0, 10, 0));
 
-        title.setText("Animation Replacements");
+        title.setText("Transmog sets");
         title.setBackground(ColorScheme.DARK_GRAY_COLOR);
         title.setForeground(Color.WHITE);
 
@@ -74,20 +80,19 @@ public class WeaponAnimationReplacerPluginPanel extends PluginPanel {
         constraints.gridx = 0;
         constraints.gridy = 0;
 
-        noMarkersPanel.setContent("fixme", "fixme");
+        noMarkersPanel.setContent("There's nothing interesting here.", "Click the green \"+\" button.");
         noMarkersPanel.setVisible(false);
 
         markerView.add(noMarkersPanel, constraints);
         constraints.gridy++;
 
-        addMarker.setToolTipText("Add a new animation replacement replacement.");
+        addMarker.setToolTipText("Add a new transmog set.");
         addMarker.addMouseListener(new MouseAdapter()
         {
             @Override
             public void mousePressed(MouseEvent mouseEvent)
             {
-                plugin.addNewRule(0);
-//                setCreation(true);
+                plugin.addNewTransmogSet(0);
             }
 
             @Override
@@ -120,9 +125,9 @@ public class WeaponAnimationReplacerPluginPanel extends PluginPanel {
         markerView.removeAll();
 
         int index = 0;
-        for (AnimationReplacementRule animationReplacementRule : ((plugin == null) ? plugin.getAnimationReplacementRules() : plugin.getAnimationReplacementRules()))
+        for (TransmogSet transmogSet : plugin.getTransmogSets())
         {
-            markerView.add(new AnimationReplacementRulePanel(plugin, animationReplacementRule, () -> rebuild(), index++), constraints);
+            markerView.add(new TransmogSetPanel(plugin, transmogSet, () -> rebuild(), index++), constraints);
             constraints.gridy++;
 
             markerView.add(Box.createRigidArea(new Dimension(0, 10)), constraints);

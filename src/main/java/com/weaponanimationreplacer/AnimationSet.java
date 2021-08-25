@@ -2,26 +2,27 @@ package com.weaponanimationreplacer;
 
 import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
-import com.weaponanimationreplacer.AnimationReplacementRule.AnimationType;
-import lombok.Data;
-
+import com.weaponanimationreplacer.Swap.AnimationType;
+import static com.weaponanimationreplacer.Swap.AnimationType.*;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
-
-import static com.weaponanimationreplacer.AnimationReplacementRule.AnimationType.*;
+import lombok.Data;
 
 public class AnimationSet implements Comparable<AnimationSet> {
     public static final List<AnimationSet> animationSets = new ArrayList<>();
     private final AnimationSetType animationSetType;
 
-    @Override
-    public int compareTo(AnimationSet o) {
+	public static AnimationSet getAnimationSet(String name) {
+		return animationSets.stream().filter(a -> name.equals(a.name)).findAny().orElse(null);
+	}
+
+	@Override
+	public int compareTo(AnimationSet o) {
 //        int typeComparison = animationSetType.compareTo(o.animationSetType);
 //        return typeComparison == 0 ? name.compareTo(o.name) : typeComparison;
         return name.compareTo(o.name);
@@ -36,8 +37,14 @@ public class AnimationSet implements Comparable<AnimationSet> {
         animationSets.add(new AnimationSet("Scythe of Vitur",false, AnimationSetType.MELEE_SPECIFIC,
                      // TODO get actual data.
                      STAND, 8057,
-                     ATTACK_SLASH, 8056,
-                     ATTACK_CRUSH, 8056
+					RUN, 824,
+					WALK, 819,
+					WALK_BACKWARD, 820,
+					SHUFFLE_LEFT, 821,
+					SHUFFLE_RIGHT, 822,
+					ROTATE, 823,
+					ATTACK_SLASH, 8056,
+					ATTACK_CRUSH, 8056
         ));
 
         animationSets.add(new AnimationSet("Nightmare Staff",false, AnimationSetType.MAGIC,
@@ -1052,7 +1059,7 @@ public class AnimationSet implements Comparable<AnimationSet> {
     public static final class Animation {
         public final AnimationType type;
         public final int id;
-        public final String description;
+        public final transient String description;
 
 //        public String getDescription() {
 //            return description == null ? type.prettyName : description;
@@ -1085,42 +1092,12 @@ public class AnimationSet implements Comparable<AnimationSet> {
         return anims.isEmpty() ? null : anims.iterator().next().id;
     }
 
-    private Integer getWalkBackwards(boolean isRunning) {
-        if (useWalkOrRunForShuffleAndWalkBackwards) {
-            if (getInt(RUN) == null) {
-                return getInt(WALK);
-            }
-            return isRunning ? getInt(RUN) : getInt(WALK);
-        }
-        return getInt(WALK_BACKWARD);
-    }
-
-    private Integer getShuffleLeft(boolean isRunning) {
-        if (useWalkOrRunForShuffleAndWalkBackwards) {
-            if (getInt(RUN) == null) {
-                return getInt(WALK);
-            }
-            return isRunning ? getInt(RUN) : getInt(WALK);
-        }
-        return getInt(SHUFFLE_LEFT);
-    }
-
-    private Integer getShuffleRight(boolean isRunning) {
-        if (useWalkOrRunForShuffleAndWalkBackwards) {
-            if (getInt(RUN) == null) {
-                return getInt(WALK);
-            }
-            return isRunning ? getInt(RUN) : getInt(WALK);
-        }
-        return getInt(SHUFFLE_RIGHT);
-    }
-
-    public void copy(AnimationSet currentAnimationSet) {
+	public void copy(AnimationSet currentAnimationSet) {
         animations.putAll(currentAnimationSet.animations);
         this.useWalkOrRunForShuffleAndWalkBackwards = currentAnimationSet.useWalkOrRunForShuffleAndWalkBackwards;
     }
 
-    public void applyReplacement(AnimationReplacementRule.AnimationReplacement replacement) {
+    public void applyReplacement(Swap.AnimationReplacement replacement) {
         replaceAnimations(
                 replacement.getAnimationSet(),
                 replacement.getAnimationtypeToReplace(),
@@ -1128,60 +1105,72 @@ public class AnimationSet implements Comparable<AnimationSet> {
         );
     }
 
-    public void replaceAnimations(AnimationSet animationSet, AnimationType toReplace, Animation replacement) {
+    private void replaceAnimations(AnimationSet animationSet, AnimationType toReplace, Animation replacement) {
         AnimationType type = replacement == null ? toReplace : replacement.type;
-//        System.out.println("toReplace: " + toReplace);
         if (toReplace.children == null || toReplace.children.isEmpty()) {
             animations.removeAll(toReplace);
             if (replacement != null) {
                 animations.put(toReplace, replacement);
             } else {
-                Iterator<Animation> iter = animationSet.animations.get(type).iterator();
-                if (iter.hasNext()) {
-                    animations.put(toReplace, iter.next());
+				Integer id = animationSet.getAnimation(type);
+				if (id != null) {
+                    animations.put(toReplace, new Animation(type, id, null));
                 }
             }
         } else {
-//            System.out.println("2");
             for (AnimationType child : toReplace.children) {
-//                System.out.println("child: " + child);
-//                System.out.println("replacement: " + replacement);
                 replaceAnimations(animationSet, child, replacement);
             }
         }
     }
 
-    public Integer getAnimation(AnimationType type, boolean isRunning) {
-        switch (type) {
-            case STAND:
-            case WALK:
-            case ROTATE:
-            case RUN:
-            case DEFEND:
-                return getInt(type);
-            case WALK_BACKWARD:
-                return getWalkBackwards(false);
-            case SHUFFLE_LEFT:
-                return getShuffleLeft(isRunning);
-            case SHUFFLE_RIGHT:
-                return getShuffleRight(isRunning);
-            case ATTACK_STAB:
-            case ATTACK_SLASH:
-            case ATTACK_CRUSH:
-            case ATTACK_SPEC:
-                Integer attack = getInt(type);
-                if (attack != null) return attack;
-            case ATTACK:
-                List<Integer> attacks = animations.entries().stream()
-                        .filter(entry -> ATTACK.appliesTo(entry.getKey()) && entry.getValue() != null) // TODO why is the value sometimes null?
-                        .map(entry -> entry.getValue().id).collect(Collectors.toList());
-                if (attacks.isEmpty()) {
-                    return null;
-                } else {
-                    return attacks.get(0);
-                }
+	public Integer getAnimation(AnimationType type) {
+		switch (type) {
+			case STAND:
+			case WALK:
+			case ROTATE:
+			case RUN:
+			case DEFEND:
+			case WALK_BACKWARD:
+			case SHUFFLE_LEFT:
+			case SHUFFLE_RIGHT:
+				return getInt(type);
+			default:
+				if (ATTACK.appliesTo(type)) {
+					if (type != ATTACK)
+					{
+						Integer attack = getInt(type);
+						if (attack != null) return attack;
+					}
+
+					List<Integer> attacks = animations.entries().stream()
+						.filter(entry -> ATTACK.appliesTo(entry.getKey()) && entry.getValue() != null) // TODO why is the value sometimes null?
+						.map(entry -> entry.getValue().id).collect(Collectors.toList());
+					if (attacks.isEmpty()) {
+						return null;
+					} else {
+						return attacks.get(0);
+					}
+				}
+		}
+		return null;
+	}
+
+	public Integer getAnimation(AnimationType type, boolean isRunning) {
+		switch (type) {
+			case WALK_BACKWARD:
+			case SHUFFLE_LEFT:
+			case SHUFFLE_RIGHT:
+				if (useWalkOrRunForShuffleAndWalkBackwards) {
+					if (getInt(RUN) == null) {
+						return getInt(WALK);
+					}
+					return (type != WALK_BACKWARD && isRunning) ? getInt(RUN) : getInt(WALK);
+				}
+				return getInt(type);
+			default:
+				return getAnimation(type);
         }
-        return null;
     }
 
     public AnimationType getType(int animationId) {
