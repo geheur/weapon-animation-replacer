@@ -109,20 +109,12 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	@Getter
 	private List<TransmogSet> transmogSets;
 
-    private Devtools devtools;
-
 	@Inject
 	private TransmogrificationManager transmogManager;
 
 	@Override
     protected void startUp()
     {
-    	if (System.getProperty("weaponanimationreplacerdevtools") != null) {
-    		if (devtools != null) eventBus.unregister(devtools);
-    		devtools = new Devtools(this);
-    		eventBus.register(devtools);
-		}
-
 		migrate();
 
         try {
@@ -184,7 +176,6 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	@Override
 	protected void shutDown() {
         pluginPanel = null;
-        if (devtools != null) eventBus.unregister(devtools);
 
         transmogManager.shutDown();
 
@@ -490,7 +481,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		// TODO I bet this could also trigger the player disappearing because frame counter is too high.
 
 		Player player = client.getLocalPlayer();
-		System.out.println("player is " + player);
+		if (player == null) return;
 
 		Widget equipmentStatsWidget = client.getWidget(84, 0);
 		if (equipmentStatsWidget == null || equipmentStatsWidget.isHidden())
@@ -726,17 +717,6 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		for (Map.Entry<Integer, Integer> entry : specificTransmog.entrySet())
 		{
 			genericTransmog.put(entry.getKey(), entry.getValue());
-		}
-
-		if (devtools != null)
-		{
-			for (int i = 0; i < devtools.kitForce.size(); i++)
-			{
-				if (devtools.kitForce.get(i) != -1)
-				{
-					genericTransmog.put(i, devtools.kitForce.get(i));
-				}
-			}
 		}
 
 		return genericTransmog;
