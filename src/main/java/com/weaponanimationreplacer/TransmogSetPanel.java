@@ -587,7 +587,8 @@ class TransmogSetPanel extends JPanel
 						.filter(t -> ATTACK.appliesTo(t.getKey()))
 						.map(entry -> entry.getValue())
 						.collect(Collectors.toList());
-					Optional<AnimationSet.Animation> match = actions.stream().filter(action -> action.type.equals(animationReplacement.animationtypeReplacement.type)).findAny();
+					AnimationType currentAttackStyle = animationReplacement.animationtypeReplacement == null ? null : animationReplacement.animationtypeReplacement.type;
+					Optional<AnimationSet.Animation> match = actions.stream().filter(action -> action.type.equals(currentAttackStyle)).findAny();
 					if (match.isPresent()) {
 						animationReplacement.animationtypeReplacement = match.get();
 					} else if (!actions.isEmpty()) {

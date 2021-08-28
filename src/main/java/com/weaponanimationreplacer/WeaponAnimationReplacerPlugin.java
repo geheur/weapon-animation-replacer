@@ -393,7 +393,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		runeLiteObject.setActive(true);
 	}
 
-	private AnimationSet currentAnimationSet = null;
+	private AnimationSet currentAnimationSet = new AnimationSet();
 	private GraphicEffect currentScytheGraphicEffect = null;
     private boolean updateCurrentAnimationSet() { // TODO cache maybe based on the current gear.
         AnimationSet currentSet = new AnimationSet();
