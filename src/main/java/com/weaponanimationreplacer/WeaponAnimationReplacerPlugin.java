@@ -266,9 +266,12 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
                 "Delete?", JOptionPane.OK_CANCEL_OPTION);
         if (delete != JOptionPane.YES_OPTION) return;
 
-        transmogSets.remove(index);
-        SwingUtilities.invokeLater(() -> pluginPanel.rebuild());
-        saveTransmogSets();
+		clientThread.invokeLater(() -> {
+			transmogSets.remove(index);
+			SwingUtilities.invokeLater(() -> pluginPanel.rebuild());
+			saveTransmogSets();
+			updateAnimationsAndTransmog();
+		});
     }
 
     public void addNewTransmogSet(int index) {
@@ -415,6 +418,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
 		List<AnimationReplacement> replacements = matchingSwaps.stream()
 			.flatMap(swap -> swap.animationReplacements.stream())
+			.filter(replacement -> replacement.animationSet != null && replacement.animationtypeToReplace != null)
 			.sorted()
 			.collect(Collectors.toList());
 
@@ -580,7 +584,10 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
             transmogManager.reapplyTransmog();
         }
 
-        // Is calling this every game tick bad, due to its pose animation forcing? This forcing was only mean for animation set changes.
+		if (naturalPlayerPoseAnimations.isEmpty()) { // required for when the player logs in.
+			recordNaturalPlayerPoseAnimations();
+		}
+		// Is calling this every game tick bad, due to its pose animation forcing? This forcing was only mean for animation set changes.
 		// Answer: No, nothing bad happens, it's just a waste of processing power.
 		setPlayerPoseAnimations();
     }
@@ -621,8 +628,11 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
         if (event.getGameState() == GameState.LOGIN_SCREEN) {
             if (!clientLoaded) SwingUtilities.invokeLater(pluginPanel::rebuild);
             clientLoaded = true;
-        }
-    }
+        } else if (event.getGameState() == GameState.LOGGED_IN) {
+        	updateCurrentAnimationSet();
+			naturalPlayerPoseAnimations.clear();
+		}
+	}
 
 	public void demoAnimation(Integer animation) {
 		Player player = client.getLocalPlayer();

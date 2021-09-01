@@ -368,9 +368,11 @@ class TransmogSetPanel extends JPanel
 
 	private void addAnimationReplacement(Swap swap)
 	{
-		swap.addNewAnimationReplacement();
-		plugin.clientThread.invokeLater(plugin::updateAnimationsAndTransmog);
-		SwingUtilities.invokeLater(rebuild::run);
+		plugin.clientThread.invokeLater(() -> {
+			swap.addNewAnimationReplacement();
+			plugin.updateAnimationsAndTransmog();
+			SwingUtilities.invokeLater(rebuild::run);
+		});
 	}
 
 	private void addGraphicEffect(Swap swap)
@@ -932,13 +934,16 @@ class TransmogSetPanel extends JPanel
 		nameWrapper.add(rename, BorderLayout.EAST);
 		return new EntryPanel(true, transmogSet.isEnabled(), false, transmogSet.isMinimized(), true, true, true, true, false, nameWrapper, () -> {
 			plugin.deleteTransmogSet(index);
-			plugin.updateAnimationsAndTransmog();
 		}, () -> {
-			plugin.addNewTransmogSet(index + 1);
-			plugin.updateAnimationsAndTransmog();
+			plugin.clientThread.invokeLater(() -> {
+				plugin.addNewTransmogSet(index + 1);
+				plugin.updateAnimationsAndTransmog();
+			});
 		}, (b) -> {
-			transmogSet.setEnabled(b);
-			plugin.updateAnimationsAndTransmog();
+			plugin.clientThread.invokeLater(() -> {
+				transmogSet.setEnabled(b);
+				plugin.updateAnimationsAndTransmog();
+			});
 		});
 	}
 

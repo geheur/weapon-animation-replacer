@@ -199,17 +199,19 @@ public class Swap
 		public AnimationReplacement(AnimationSet animationSet, AnimationType animationtypeToReplace, AnimationType animationtypeReplacement) {
             this.animationSet = animationSet;
             this.animationtypeToReplace = animationtypeToReplace;
-            if (animationSet == null) return;
-			Integer animation1 = animationSet.getAnimation(animationtypeReplacement, false);
-			if (animation1 != null)
+            if (animationSet != null && animationtypeToReplace != null && animationtypeReplacement != null)
 			{
-				Integer animation = animationSet == null ? -1 : animation1;
-				if (animation == null) animation = -1;
-				this.animationtypeReplacement = new AnimationSet.Animation(
-					animationtypeReplacement,
-					animation,
-					null
-				);
+				Integer animation1 = animationSet.getAnimation(animationtypeReplacement, false);
+				if (animation1 != null)
+				{
+					Integer animation = animationSet == null ? -1 : animation1;
+					if (animation == null) animation = -1;
+					this.animationtypeReplacement = new AnimationSet.Animation(
+						animationtypeReplacement,
+						animation,
+						null
+					);
+				}
 			}
         }
 
