@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import javax.inject.Inject;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
@@ -34,9 +35,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
-import net.runelite.api.InventoryID;
-import net.runelite.api.Item;
-import net.runelite.api.ItemContainer;
 import net.runelite.api.JagexColor;
 import net.runelite.api.NPC;
 import net.runelite.api.Player;
@@ -46,10 +44,8 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.GameStateChanged;
-import net.runelite.api.events.GameTick;
-import net.runelite.api.events.ItemContainerChanged;
+import net.runelite.api.events.PlayerChanged;
 import net.runelite.api.kit.KitType;
-import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
@@ -408,12 +404,10 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			return true;
 		}
 
-		ItemContainer itemContainer = client.getItemContainer(InventoryID.EQUIPMENT);
-		List<Integer> equippedItemIds = itemContainer == null ? Collections.emptyList() : Arrays.stream(itemContainer.getItems()).filter(item -> item.getId() >= 0).map(Item::getId).collect(Collectors.toList());
 		List<Swap> matchingSwaps = transmogSets.stream()
 			.filter(TransmogSet::isEnabled)
 			.flatMap(set -> set.getSwaps().stream())
-			.filter(swap -> swap.appliesToGear(equippedItemIds, getSlot))
+			.filter(swap -> swap.appliesToGear(equippedItemsFromKit, getSlot))
 			.collect(Collectors.toList());
 
 		List<AnimationReplacement> replacements = matchingSwaps.stream()
@@ -464,45 +458,13 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
     	updateAnimationsAndTransmog();
 	}
 
-	private final List<Integer> naturalPlayerPoseAnimations = new ArrayList<>();
-
-	private void recordNaturalPlayerPoseAnimations()
-	{
-		naturalPlayerPoseAnimations.clear();
-		Player player = client.getLocalPlayer();
-		for (Constants.ActorAnimation animation : Constants.ActorAnimation.values())
-		{
-			naturalPlayerPoseAnimations.add(animation.getAnimation(player));
-		}
-	}
-
 	/**
-	 * Sets the player's pose animations (idle/walk/run/etc.). Also sets the player's current pose animation.
+	 * Sets the player's pose animations (idle/walk/run/etc.).
 	 */
 	private void setPlayerPoseAnimations()
 	{
-		// TODO setting pose animations on equipment swap, if the equipment swap does not trigger new animations, will reset the animation frame. This is a minor graphical bug. It would require additional API from RuneLite to fix.
-		// TODO I bet this could also trigger the player disappearing because frame counter is too high.
-
 		Player player = client.getLocalPlayer();
 		if (player == null) return;
-
-		Widget equipmentStatsWidget = client.getWidget(84, 0);
-		if (equipmentStatsWidget == null || equipmentStatsWidget.isHidden())
-		{
-			// Doing this while the equipment stats window is open can cause a game crash.
-			// TODO confirm that this is true and the bug is fixed.
-
-			// It is necessary to update the player animation via Actor#setPoseAnimation, since the animations set by setPlayerPoseAnimations won't take effect for 1 client tick.
-			AnimationType type = getPoseAnimationType(player.getPoseAnimation());
-			if (type == null)
-			{
-				log.debug("null type for " + player.getPoseAnimation() + ", is this animation not recorded in AnimationSet?");
-				return;
-			}
-			Integer poseAnimationId = currentAnimationSet.getAnimation(type, client.getVarpValue(173) == 1);
-			if (poseAnimationId != null) player.setPoseAnimation(poseAnimationId);
-		}
 
 		for (Constants.ActorAnimation animation : Constants.ActorAnimation.values())
 		{
@@ -524,73 +486,57 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
         return null;
     }
 
-    /**
-     * Gets the type of animation. Only usable on movement/idle animations that the local player is currently using.
-     */
-	// TODO ask abex for API that does this. The way this method currently works, there are issues when certain animation sets don't have unique animations for certain animation types, resulting in the wrong animation being used for one client tick after swapping gear (haven't seen this, just assuming it would happen).
-	private AnimationType getPoseAnimationType(int animationId) {
-        Player localPlayer = client.getLocalPlayer();
-		for (Constants.ActorAnimation animation : Constants.ActorAnimation.values())
-		{
-			if (animation.getAnimation(localPlayer) == animationId) return animation.getType();
-		}
-        return null;
-    }
-
-	@Subscribe
+	@Subscribe(priority = -1000.0f) // I want to run late, so that plugins that need animation changes don't see my changed animation ids, since mine are cosmetic and don't give information on what the player is actually doing.
 	public void onAnimationChanged(AnimationChanged e)
 	{
 		Player player = client.getLocalPlayer();
 		if (!e.getActor().equals(player)) return;
 
-		handleAnimationChangedInGameTick = client.getTickCount();
+		swapPlayerAnimation();
 	}
 
-	@Subscribe
-	public void onItemContainerChanged(ItemContainerChanged e)
-	{
-		if (e.getContainerId() != InventoryID.EQUIPMENT.getId()) return;
+	/**
+	 * This is updated earlier than the player's equipment inventory. It uses the kit data, so it will have some negative numbers in it if there is no gear in that slot, or it is a jaw/hair/arms or something like that.
+	 */
+	private List<Integer> equippedItemsFromKit = new ArrayList<>();
+	private final List<Integer> naturalPlayerPoseAnimations = new ArrayList<>();
 
+	@Subscribe(priority = 1) // I need kit data to determine what the player is wearing (equipment inventory does not update fast enough to avoid flickering), so I need this information before other plugins might change it.
+	public void onPlayerChanged(PlayerChanged playerChanged) {
+		if (playerChanged.getPlayer() != client.getLocalPlayer()) return;
+
+		equippedItemsFromKit = IntStream.of(client.getLocalPlayer().getPlayerComposition().getEquipmentIds()).map(i -> i - 512).boxed().collect(Collectors.toList());
 		recordNaturalPlayerPoseAnimations();
-		handleEquipmentChangeInGameTick = client.getTickCount();
+
+		updateTransmog();
+		updateAnimations();
 	}
 
-	private int handleAnimationChangedInGameTick = -1;
-	private int handleEquipmentChangeInGameTick = -1;
-
-	@Subscribe(priority = -1000.0f) // I want to run late, so that plugins that need animation changes don't see my changed animation ids, since mine are cosmetic and don't give information on what the player is actually doing.
-    public void onGameTick(GameTick e)
-    {
-        if (client.getLocalPlayer() == null)
-        {
-            return;
-        }
-
-        /*
-         * The normal order onAnimationChanged, then onItemContainerChanged. I need the reverse order.
-         * onGameTick runs after both of these, and runs every game tick, so this is the ideal time to handle both.
-         */
-		if (handleEquipmentChangeInGameTick == client.getTickCount()) {
-			updateCurrentAnimationSet();
+	private void recordNaturalPlayerPoseAnimations()
+	{
+		naturalPlayerPoseAnimations.clear();
+		Player player = client.getLocalPlayer();
+		for (Constants.ActorAnimation animation : Constants.ActorAnimation.values())
+		{
+			naturalPlayerPoseAnimations.add(animation.getAnimation(player));
 		}
-        if (handleAnimationChangedInGameTick == client.getTickCount()) {
-			swapPlayerAnimation();
-		}
+	}
 
-		// On most teleports, the player kits and animations are reset. So, set the correct value.
-        final int currentHash = Arrays.hashCode(client.getLocalPlayer().getPlayerComposition().getEquipmentIds());
-        if (currentHash != transmogManager.getTransmogHash())
-        {
-            transmogManager.reapplyTransmog();
-        }
-
-		if (naturalPlayerPoseAnimations.isEmpty()) { // required for when the player logs in.
-			recordNaturalPlayerPoseAnimations();
+	private void updateTransmog()
+	{
+		final int currentHash = Arrays.hashCode(client.getLocalPlayer().getPlayerComposition().getEquipmentIds());
+		if (currentHash != transmogManager.getTransmogHash())
+		{
+			transmogManager.reapplyTransmog();
 		}
-		// Is calling this every game tick bad, due to its pose animation forcing? This forcing was only mean for animation set changes.
-		// Answer: No, nothing bad happens, it's just a waste of processing power.
+	}
+
+	private void updateAnimations()
+	{
+		updateCurrentAnimationSet();
+
 		setPlayerPoseAnimations();
-    }
+	}
 
     public void doItemSearch(TransmogSetPanel.ItemSelectionButton button, Consumer<Integer> onItemChosen) {
         if (client.getGameState() != GameState.LOGGED_IN)
@@ -629,8 +575,8 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
             if (!clientLoaded) SwingUtilities.invokeLater(pluginPanel::rebuild);
             clientLoaded = true;
         } else if (event.getGameState() == GameState.LOGGED_IN) {
-        	updateCurrentAnimationSet();
-			naturalPlayerPoseAnimations.clear();
+        	// This is necessary for transmog to show up on teleports.
+        	if (client.getLocalPlayer().getPlayerComposition() != null) updateTransmog();
 		}
 	}
 
@@ -661,19 +607,17 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	{
 		if (recordingOwnGearSlotOverrides) return new HashMap<>();
 
-		ItemContainer itemContainer = client.getItemContainer(InventoryID.EQUIPMENT);
-		List<Integer> equippedItemIds = itemContainer == null ? Collections.emptyList() : Arrays.stream(itemContainer.getItems()).filter(item -> item.getId() >= 0).map(Item::getId).collect(Collectors.toList());
 		List<Swap> swaps = transmogSets.stream()
 			.filter(TransmogSet::isEnabled)
 			.flatMap(set -> set.getSwaps().stream())
-			.filter(swap -> swap.appliesToGear(equippedItemIds, getSlot))
+			.filter(swap -> swap.appliesToGear(equippedItemsFromKit, getSlot))
 			.collect(Collectors.toList());
 
 		Map<Integer, Integer> genericTransmog = new HashMap<>();
 		Map<Integer, Integer> specificTransmog = new HashMap<>();
 		for (Swap swap : swaps)
 		{
-			Map<Integer, Integer> transmogMap = swap.appliesSpecificallyToGear(equippedItemIds, getSlot) ? specificTransmog : genericTransmog;
+			Map<Integer, Integer> transmogMap = swap.appliesSpecificallyToGear(equippedItemsFromKit, getSlot) ? specificTransmog : genericTransmog;
 			for (Integer modelSwap : swap.getModelSwaps())
 			{
 				int slot;
