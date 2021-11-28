@@ -656,9 +656,21 @@ public class AnimationSet implements Comparable<AnimationSet> {
                 ATTACK_CRUSH, 8010
         ));
 
-        animationSets.add(new AnimationSet("Skeleton lantern", false, AnimationSetType.FUN,
-                STAND, 8521,
-                RUN, 8492,
+		animationSets.add(new AnimationSet("Viggora's chainmace", false, AnimationSetType.MELEE_SPECIFIC,
+				STAND, 244,
+				RUN, 248,
+				WALK, 247,
+				WALK_BACKWARD, 247,
+				SHUFFLE_LEFT, 247,
+				SHUFFLE_RIGHT, 247,
+				ROTATE, 823,
+				DEFEND, 4177,
+				ATTACK_CRUSH, 245
+		));
+
+		animationSets.add(new AnimationSet("Skeleton lantern", false, AnimationSetType.FUN,
+				STAND, 8521,
+				RUN, 8492,
                 WALK, 8492,
                 WALK_BACKWARD, 8492,
                 SHUFFLE_LEFT, 8492,
