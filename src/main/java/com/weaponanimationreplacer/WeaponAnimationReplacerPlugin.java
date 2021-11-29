@@ -411,9 +411,8 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			.collect(Collectors.toList());
 
 		List<AnimationReplacement> replacements = matchingSwaps.stream()
-			.flatMap(swap -> swap.animationReplacements.stream())
+			.flatMap(swap -> swap.animationReplacements.stream().sorted())
 			.filter(replacement -> replacement.animationSet != null && replacement.animationtypeToReplace != null)
-			.sorted()
 			.collect(Collectors.toList());
 
 		for (int i = replacements.size() - 1; i >= 0; i--)
