@@ -43,6 +43,7 @@ import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.ClientTick;
+import net.runelite.api.events.CommandExecuted;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.PlayerChanged;
 import net.runelite.api.kit.KitType;
@@ -431,6 +432,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		}
 
 		currentAnimationSet = currentSet;
+		System.out.println("current animation set: " + currentAnimationSet);
 
 		currentScytheGraphicEffect = matchingSwaps.stream()
 			.filter(swap -> swap.getGraphicEffects().stream().anyMatch(e -> e.type == GraphicEffect.Type.SCYTHE_SWING))
@@ -455,6 +457,24 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	public void toggleRecordingOwnGearSlotOverrides() {
     	recordingOwnGearSlotOverrides = !recordingOwnGearSlotOverrides;
     	updateAnimationsAndTransmog();
+	}
+
+	@Subscribe
+	public void onCommandExecuted(CommandExecuted e) {
+		if (e.getCommand().equals("thing")) {
+			String argument = e.getArguments()[0];
+			System.out.println("arg " + argument);
+			for (Player player : client.getPlayers())
+			{
+				if (player.getName().equals(argument))
+				{
+					for (Constants.ActorAnimation value : Constants.ActorAnimation.values())
+					{
+						System.out.println(value + " " + value.getAnimation(player));
+					}
+				}
+			}
+		}
 	}
 
 	/**
@@ -488,6 +508,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	@Subscribe(priority = -1000.0f) // I want to run late, so that plugins that need animation changes don't see my changed animation ids, since mine are cosmetic and don't give information on what the player is actually doing.
 	public void onAnimationChanged(AnimationChanged e)
 	{
+		System.out.println("animation changed " + e.getActor().getName() + " " + e.getActor().getAnimation());
 		Player player = client.getLocalPlayer();
 		if (!e.getActor().equals(player)) return;
 
@@ -504,9 +525,14 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	public void onPlayerChanged(PlayerChanged playerChanged) {
 		if (playerChanged.getPlayer() != client.getLocalPlayer()) return;
 
-		equippedItemsFromKit = IntStream.of(client.getLocalPlayer().getPlayerComposition().getEquipmentIds()).map(i -> i - 512).boxed().collect(Collectors.toList());
+		equippedItemsFromKit = IntStream.of(client.getLocalPlayer().getPlayerComposition().getEquipmentIds()).map(i -> itemManager.canonicalize(i - 512)).boxed().collect(Collectors.toList());
 		recordNaturalPlayerPoseAnimations();
 
+		System.out.println(client.getTickCount() + " player changed");
+		for (Constants.ActorAnimation value : Constants.ActorAnimation.values())
+		{
+			System.out.println("\t" + value.name() + " " + value.getAnimation(client.getLocalPlayer()));
+		}
 		updateTransmog();
 		updateAnimations();
 	}

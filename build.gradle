@@ -10,7 +10,7 @@ repositories {
 	mavenCentral()
 }
 
-def runeLiteVersion = '1.8.4'
+def runeLiteVersion = '1.8.5'
 
 dependencies {
 	compileOnly group: 'net.runelite', name:'client', version: runeLiteVersion
@@ -23,7 +23,7 @@ dependencies {
 }
 
 group = 'com.weaponanimationreplacer'
-version = '2.0.3'
+version = '2.0.4'
 sourceCompatibility = '1.8'
 
 tasks.withType(JavaCompile) {
