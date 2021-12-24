@@ -27,18 +27,18 @@ package com.weaponanimationreplacer;
 
 import com.google.common.primitives.Ints;
 import com.google.inject.Inject;
+import static com.weaponanimationreplacer.Constants.EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT_NAMES;
 import static com.weaponanimationreplacer.Constants.HiddenSlot;
 import static com.weaponanimationreplacer.Constants.NegativeId;
 import static com.weaponanimationreplacer.Constants.NegativeIdsMap;
 import static com.weaponanimationreplacer.Constants.ShownSlot;
+import static com.weaponanimationreplacer.Constants.EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT;
 import static com.weaponanimationreplacer.Constants.mapNegativeId;
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Consumer;
 import javax.inject.Singleton;
 import lombok.Getter;
@@ -133,9 +133,18 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 		{
 			for (ItemComposition itemComposition : results.values())
 			{
-				addItemWidget(itemComposition.getId(), itemComposition.getName(), container, x, y, () ->
+				int itemId = itemComposition.getId();
+				KitType kitType = EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT.get(itemId);
+				String name;
+				if (kitType != null) {
+					Constants.NameAndIconId nameAndIconId = EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT_NAMES.get(itemId);
+					name = (nameAndIconId == null ? itemComposition.getName() : nameAndIconId.name(itemComposition.getName())).toLowerCase();
+				} else {
+					name = itemComposition.getName();
+				}
+				addItemWidget(itemId, name, container, x, y, () ->
 				{
-					onItemSelected.accept(itemComposition.getId());
+					onItemSelected.accept(itemId);
 					chatboxPanelManager.close();
 				}, idx);
 
@@ -440,7 +449,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
             return;
         }
 
-        Set<ItemIcon> itemIcons = new HashSet<>();
+//        Set<ItemIcon> itemIcons = new HashSet<>();
         // For finding members items in f2p.
 		Integer integer = -1;
 		try
@@ -453,26 +462,29 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
         {
 			ItemComposition itemComposition = itemManager.getItemComposition(itemManager.canonicalize(i));
             ItemStats itemStats = itemManager.getItemStats(itemComposition.getId(), false);
-            if (Constants.equippableItemsNotMarkedAsEquipment.containsKey(i)) {
-            	// don't need to check anything else.
-			}
-            else if (itemStats == null || !itemStats.isEquipable())
+            String name;
+            if (itemStats == null || !itemStats.isEquipable())
             {
-                continue;
+				KitType kitType = EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT.get(i);
+				if (kitType == null) {
+					continue;
+				}
+				Constants.NameAndIconId nameAndIconId = EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT_NAMES.get(i);
+				name = (nameAndIconId == null ? itemComposition.getName() : nameAndIconId.name(itemComposition.getName())).toLowerCase();
             } else {
 				int slot = itemStats.getEquipment().getSlot();
 				if (slot == EquipmentInventorySlot.RING.getSlotIdx() || slot == EquipmentInventorySlot.AMMO.getSlotIdx()) {
 					continue;
 				}
+				name = itemComposition.getName().toLowerCase();
 			}
 
-			String name = itemComposition.getName().toLowerCase();
 			if ((name.contains(search) || i == integer) && !results.containsKey(itemComposition.getId()))
             {
                 ItemIcon itemIcon = new ItemIcon(itemComposition.getInventoryModel(),
                         itemComposition.getColorToReplaceWith(), itemComposition.getTextureToReplaceWith());
 
-                itemIcons.add(itemIcon);
+//                itemIcons.add(itemIcon);
                 results.put(itemComposition.getId(), itemComposition);
             }
         }

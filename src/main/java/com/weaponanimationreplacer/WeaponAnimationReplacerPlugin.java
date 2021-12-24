@@ -464,18 +464,18 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	@Subscribe
 	public void onCommandExecuted(CommandExecuted e) {
 		if (e.getCommand().equals("thing")) {
-			String argument = e.getArguments()[0];
-			System.out.println("arg " + argument);
-			for (Player player : client.getPlayers())
-			{
-				if (player.getName().equals(argument))
-				{
-					for (Constants.ActorAnimation value : Constants.ActorAnimation.values())
-					{
-						System.out.println(value + " " + value.getAnimation(player));
-					}
-				}
-			}
+//			String argument = e.getArguments()[0];
+//			System.out.println("arg " + argument);
+//			for (Player player : client.getPlayers())
+//			{
+//				if (player.getName().equals(argument))
+//				{
+//					for (Constants.ActorAnimation value : Constants.ActorAnimation.values())
+//					{
+//						System.out.println(value + " " + value.getAnimation(player));
+//					}
+//				}
+//			}
 		}
 	}
 
@@ -673,8 +673,8 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 					ItemStats itemStats = itemManager.getItemStats(modelSwap, false);
 					if (itemStats == null || !itemStats.isEquipable())
 					{
-						if (Constants.equippableItemsNotMarkedAsEquipment.containsKey(modelSwap)) {
-							slot = Constants.equippableItemsNotMarkedAsEquipment.get(modelSwap);
+						if (Constants.EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT.containsKey(modelSwap)) {
+							slot = Constants.EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT.get(modelSwap).getIndex();
 						} else {
 							continue;
 						}
