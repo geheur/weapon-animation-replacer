@@ -217,6 +217,11 @@ public class Swap
 
         @Override
         public int compareTo(AnimationReplacement o) {
+			boolean isNull = animationtypeToReplace == null;
+			boolean oIsNull = o.animationtypeToReplace == null;
+			if (isNull && oIsNull) return 0;
+			if (isNull) return -1;
+			if (oIsNull) return 1;
             return animationtypeToReplace.compareTo(o.animationtypeToReplace);
         }
 
