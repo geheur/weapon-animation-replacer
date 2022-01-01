@@ -22,9 +22,16 @@ public class Swap
     private final List<Integer> itemRestrictions;
 	private final List<Integer> modelSwaps;
 	public final List<AnimationReplacement> animationReplacements;
+	private List<ProjectileSwap> projectileSwaps;
 	private List<GraphicEffect> graphicEffects;
 
-    public Swap(List<Integer> itemRestrictions, List<Integer> modelSwaps, List<AnimationReplacement> animationReplacements, List<GraphicEffect> graphicEffects) {
+    public Swap(
+    	List<Integer> itemRestrictions,
+		List<Integer> modelSwaps,
+		List<AnimationReplacement> animationReplacements,
+		List<ProjectileSwap> projectileSwaps,
+		List<GraphicEffect> graphicEffects
+	) {
 		if (itemRestrictions.isEmpty()) {
         	this.itemRestrictions = new ArrayList<>();
         	this.itemRestrictions.add(-1);
@@ -38,6 +45,7 @@ public class Swap
 			this.modelSwaps = new ArrayList<>(modelSwaps);
 		}
 		this.animationReplacements = new ArrayList<>(animationReplacements);
+		this.projectileSwaps = new ArrayList<>(projectileSwaps);
 		this.graphicEffects = new ArrayList<>(graphicEffects);
     }
 
@@ -57,6 +65,11 @@ public class Swap
 	public void setModelSwap(int index, int itemId)
 	{
 		setItem(index, itemId, modelSwaps);
+	}
+
+	public List<ProjectileSwap> getProjectileSwaps() {
+		if (projectileSwaps == null) projectileSwaps = new ArrayList<>(); // idk, gson overrides the default value if there's not value for it in the json.
+		return projectileSwaps;
 	}
 
 	public List<GraphicEffect> getGraphicEffects() {
@@ -98,12 +111,18 @@ public class Swap
 	}
 
 	public static Swap createTemplate() {
-        List<Integer> itemRestrictions = new ArrayList<>();
-        List<AnimationReplacement> animationReplacements = new ArrayList<>();
-		List<GraphicEffect> graphicEffects = new ArrayList<>();
-		Swap swap = new Swap(itemRestrictions, new ArrayList<>(), animationReplacements, graphicEffects);
-        return swap;
+		return new Swap(Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
     }
+
+	public void addNewTriggerItem(Integer itemId)
+	{
+		setItemRestriction(itemRestrictions.size(), itemId);
+	}
+
+	public void addNewModelSwap(Integer itemId)
+	{
+		setModelSwap(modelSwaps.size(), itemId);
+	}
 
 	public void addNewAnimationReplacement()
 	{
@@ -113,16 +132,6 @@ public class Swap
 	public void addNewGraphicEffect()
 	{
 		graphicEffects.add(GraphicEffect.createTemplate());
-	}
-
-	public void addNewModelSwap(Integer itemId)
-	{
-		setModelSwap(modelSwaps.size(), itemId);
-	}
-
-	public void addNewTriggerItem(Integer itemId)
-	{
-		setItemRestriction(itemRestrictions.size(), itemId);
 	}
 
 	public boolean appliesToGear(List<Integer> equippedItemIds, Function<Integer, Integer> getSlot)
@@ -179,6 +188,11 @@ public class Swap
 	public int hashCode()
 	{
 		return Objects.hash(itemRestrictions, modelSwaps, animationReplacements, graphicEffects);
+	}
+
+	public void addNewProjectileSwap()
+	{
+		projectileSwaps.add(ProjectileSwap.createTemplate());
 	}
 
 	@Data

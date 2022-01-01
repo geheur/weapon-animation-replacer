@@ -27,13 +27,14 @@ package com.weaponanimationreplacer;
 
 import com.google.common.primitives.Ints;
 import com.google.inject.Inject;
+import static com.weaponanimationreplacer.Constants.EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT;
 import static com.weaponanimationreplacer.Constants.EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT_NAMES;
 import static com.weaponanimationreplacer.Constants.HiddenSlot;
 import static com.weaponanimationreplacer.Constants.NegativeId;
 import static com.weaponanimationreplacer.Constants.NegativeIdsMap;
 import static com.weaponanimationreplacer.Constants.ShownSlot;
-import static com.weaponanimationreplacer.Constants.EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT;
 import static com.weaponanimationreplacer.Constants.mapNegativeId;
+import com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.ItemSearchType;
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -77,7 +78,8 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
     private final Client client;
 
     private final Map<Integer, ItemComposition> results = new LinkedHashMap<>();
-    private String tooltipText;
+	private final List<String> spells = new ArrayList<>();
+	private String tooltipText;
     private int index = -1;
 
     @Getter
@@ -129,70 +131,112 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 		int x = PADDING;
 		int y = PADDING * 3;
 		int idx = 0;
-		if (mode == 0) // items
+		if (type == ItemSearchType.SPELL_L || type == ItemSearchType.SPELL_R) {
+			for (String spell : spells)
+			{
+				for (int i = 0; i < ProjectileCast.projectiles.size(); i++)
+				{
+					ProjectileCast projectile = ProjectileCast.projectiles.get(i);
+
+					if (projectile.getName(itemManager).equals(spell)) {
+						int finalI = i;
+						addItemWidget(projectile.getItemIdIcon(), projectile.getSpriteIdIcon(), projectile.getName(itemManager), container, x, y, () ->
+						{
+							onItemSelected.accept(finalI);
+							chatboxPanelManager.close();
+						}, idx);
+
+						x += ICON_WIDTH + PADDING;
+						if (x + ICON_WIDTH >= container.getWidth())
+						{
+							y += ICON_HEIGHT + PADDING;
+							x = PADDING;
+						}
+
+						++idx;
+						break;
+					}
+				}
+			}
+		}
+		else
 		{
-			for (ItemComposition itemComposition : results.values())
+			if (mode == 0) // items
 			{
-				int itemId = itemComposition.getId();
-				KitType kitType = EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT.get(itemId);
-				String name;
-				if (kitType != null) {
-					Constants.NameAndIconId nameAndIconId = EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT_NAMES.get(itemId);
-					name = (nameAndIconId == null ? itemComposition.getName() : nameAndIconId.name(itemComposition.getName())).toLowerCase();
-				} else {
-					name = itemComposition.getName();
-				}
-				addItemWidget(itemId, name, container, x, y, () ->
+				for (ItemComposition itemComposition : results.values())
 				{
-					onItemSelected.accept(itemId);
-					chatboxPanelManager.close();
-				}, idx);
+					int itemId = itemComposition.getId();
+					KitType kitType = EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT.get(itemId);
+					String name;
+					if (kitType != null)
+					{
+						Constants.NameAndIconId nameAndIconId = EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT_NAMES.get(itemId);
+						name = (nameAndIconId == null ? itemComposition.getName() : nameAndIconId.name(itemComposition.getName())).toLowerCase();
+					}
+					else
+					{
+						name = itemComposition.getName();
+					}
+					addItemWidget(itemId, -1, name, container, x, y, () ->
+					{
+						onItemSelected.accept(itemId);
+						chatboxPanelManager.close();
+					}, idx);
 
-				x += ICON_WIDTH + PADDING;
-				if (x + ICON_WIDTH >= container.getWidth())
-				{
-					y += ICON_HEIGHT + PADDING;
-					x = PADDING;
+					x += ICON_WIDTH + PADDING;
+					if (x + ICON_WIDTH >= container.getWidth())
+					{
+						y += ICON_HEIGHT + PADDING;
+						x = PADDING;
+					}
+
+					++idx;
 				}
-
-				++idx;
 			}
-		} else if (mode == 1) { // hide slots.
-			List<Integer> iconIds = new ArrayList<>();
-			List<String> names = new ArrayList<>();
-			List<Integer> hideSlotIds = new ArrayList<>();
-			for (HiddenSlot hiddenSlot : HiddenSlot.values())
-			{
-				iconIds.add(hiddenSlot.iconIdToShow);
-				names.add(hiddenSlot.actionName);
-				hideSlotIds.add(mapNegativeId(new NegativeId(NegativeIdsMap.HIDE_SLOT, hiddenSlot.ordinal())));
-			}
-
-			iconIds.add(ShownSlot.ARMS.iconIdToShow); names.add("Show arms"); hideSlotIds.add(mapNegativeId(new NegativeId(NegativeIdsMap.SHOW_SLOT, KitType.ARMS.getIndex())));
-			iconIds.add(ShownSlot.HAIR.iconIdToShow); names.add("Show hair"); hideSlotIds.add(mapNegativeId(new NegativeId(NegativeIdsMap.SHOW_SLOT, KitType.HAIR.getIndex())));
-			iconIds.add(ShownSlot.JAW.iconIdToShow); names.add("Show jaw"); hideSlotIds.add(mapNegativeId(new NegativeId(NegativeIdsMap.SHOW_SLOT, KitType.JAW.getIndex())));
-			for (int i = 0; i < iconIds.size(); i++)
-			{
-				final int finalI = i;
-				addItemWidget(iconIds.get(i), names.get(i), container, x, y, () ->
+			else if (mode == 1)
+			{ // hide slots.
+				List<Integer> iconIds = new ArrayList<>();
+				List<String> names = new ArrayList<>();
+				List<Integer> hideSlotIds = new ArrayList<>();
+				for (HiddenSlot hiddenSlot : HiddenSlot.values())
 				{
-					onItemSelected.accept(hideSlotIds.get(finalI));
-					chatboxPanelManager.close();
-				}, idx);
-
-				x += ICON_WIDTH + PADDING;
-				if (x + ICON_WIDTH >= container.getWidth())
-				{
-					y += ICON_HEIGHT + PADDING;
-					x = PADDING;
+					iconIds.add(hiddenSlot.iconIdToShow);
+					names.add(hiddenSlot.actionName);
+					hideSlotIds.add(mapNegativeId(new NegativeId(NegativeIdsMap.HIDE_SLOT, hiddenSlot.ordinal())));
 				}
 
-				++idx;
+				iconIds.add(ShownSlot.ARMS.iconIdToShow);
+				names.add("Show arms");
+				hideSlotIds.add(mapNegativeId(new NegativeId(NegativeIdsMap.SHOW_SLOT, KitType.ARMS.getIndex())));
+				iconIds.add(ShownSlot.HAIR.iconIdToShow);
+				names.add("Show hair");
+				hideSlotIds.add(mapNegativeId(new NegativeId(NegativeIdsMap.SHOW_SLOT, KitType.HAIR.getIndex())));
+				iconIds.add(ShownSlot.JAW.iconIdToShow);
+				names.add("Show jaw");
+				hideSlotIds.add(mapNegativeId(new NegativeId(NegativeIdsMap.SHOW_SLOT, KitType.JAW.getIndex())));
+				for (int i = 0; i < iconIds.size(); i++)
+				{
+					final int finalI = i;
+					addItemWidget(iconIds.get(i), -1, names.get(i), container, x, y, () ->
+					{
+						onItemSelected.accept(hideSlotIds.get(finalI));
+						chatboxPanelManager.close();
+					}, idx);
+
+					x += ICON_WIDTH + PADDING;
+					if (x + ICON_WIDTH >= container.getWidth())
+					{
+						y += ICON_HEIGHT + PADDING;
+						x = PADDING;
+					}
+
+					++idx;
+				}
 			}
 		}
 	}
 
-	private void addItemWidget(int id, String name,  Widget container, int x, int y, Runnable runnable, int idx)
+	private void addItemWidget(int id, int spriteId, String name,  Widget container, int x, int y, Runnable runnable, int idx)
 	{
 		Widget item = container.createChild(-1, WidgetType.GRAPHIC);
 		item.setXPositionMode(WidgetPositionMode.ABSOLUTE_LEFT);
@@ -202,7 +246,8 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 		item.setOriginalHeight(ICON_HEIGHT);
 		item.setOriginalWidth(ICON_WIDTH);
 		item.setName(JagexColors.MENU_TARGET_TAG + name);
-		item.setItemId(id);
+		if (id != -1) item.setItemId(id);
+		else if (spriteId != -1) item.setSpriteId(spriteId);
 		item.setItemQuantity(10000);
 		item.setItemQuantityMode(ItemQuantityMode.NEVER);
 		item.setBorderType(1);
@@ -426,6 +471,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
         // Clear search string when closed
         value("");
         results.clear();
+        spells.clear();
         index = -1;
         mode = 0;
         super.close();
@@ -441,6 +487,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
     private void filterResults()
     {
         results.clear();
+        spells.clear();
         index = -1;
 
         String search = getValue().toLowerCase();
@@ -449,45 +496,68 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
             return;
         }
 
-//        Set<ItemIcon> itemIcons = new HashSet<>();
-        // For finding members items in f2p.
-		Integer integer = -1;
-		try
-		{
-			integer = Integer.valueOf(search);
-		} catch (NumberFormatException e) {
-			// that's fine.
-		}
-		for (int i = 0; i < client.getItemCount() && results.size() < MAX_RESULTS; i++)
-        {
-			ItemComposition itemComposition = itemManager.getItemComposition(itemManager.canonicalize(i));
-            ItemStats itemStats = itemManager.getItemStats(itemComposition.getId(), false);
-            String name;
-            if (itemStats == null || !itemStats.isEquipable())
-            {
-				KitType kitType = EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT.get(i);
-				if (kitType == null) {
-					continue;
-				}
-				Constants.NameAndIconId nameAndIconId = EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT_NAMES.get(i);
-				name = (nameAndIconId == null ? itemComposition.getName() : nameAndIconId.name(itemComposition.getName())).toLowerCase();
-            } else {
-				int slot = itemStats.getEquipment().getSlot();
-				if (slot == EquipmentInventorySlot.RING.getSlotIdx() || slot == EquipmentInventorySlot.AMMO.getSlotIdx()) {
-					continue;
-				}
-				name = itemComposition.getName().toLowerCase();
-			}
+        if (type == ItemSearchType.SPELL_L || type == ItemSearchType.SPELL_R) {
+			for (ProjectileCast projectile : ProjectileCast.projectiles)
+			{
+				String projectileName = projectile.getName(itemManager);
+				if (projectileName.toLowerCase().contains(search) && !spells.contains(projectileName)) {
+					spells.add(projectileName);
 
-			if ((name.contains(search) || i == integer) && !results.containsKey(itemComposition.getId()))
-            {
-                ItemIcon itemIcon = new ItemIcon(itemComposition.getInventoryModel(),
-                        itemComposition.getColorToReplaceWith(), itemComposition.getTextureToReplaceWith());
+					if (spells.size() >= MAX_RESULTS) {
+						break;
+					}
+				}
+			}
+		}
+        else
+		{
+
+//        Set<ItemIcon> itemIcons = new HashSet<>();
+			// For finding members items in f2p.
+			Integer integer = -1;
+			try
+			{
+				integer = Integer.valueOf(search);
+			}
+			catch (NumberFormatException e)
+			{
+				// that's fine.
+			}
+			for (int i = 0; i < client.getItemCount() && results.size() < MAX_RESULTS; i++)
+			{
+				ItemComposition itemComposition = itemManager.getItemComposition(itemManager.canonicalize(i));
+				ItemStats itemStats = itemManager.getItemStats(itemComposition.getId(), false);
+				String name;
+				if (itemStats == null || !itemStats.isEquipable())
+				{
+					KitType kitType = EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT.get(i);
+					if (kitType == null)
+					{
+						continue;
+					}
+					Constants.NameAndIconId nameAndIconId = EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT_NAMES.get(i);
+					name = (nameAndIconId == null ? itemComposition.getName() : nameAndIconId.name(itemComposition.getName())).toLowerCase();
+				}
+				else
+				{
+					int slot = itemStats.getEquipment().getSlot();
+					if (slot == EquipmentInventorySlot.RING.getSlotIdx() || slot == EquipmentInventorySlot.AMMO.getSlotIdx())
+					{
+						continue;
+					}
+					name = itemComposition.getName().toLowerCase();
+				}
+
+				if ((name.contains(search) || i == integer) && !results.containsKey(itemComposition.getId()))
+				{
+					ItemIcon itemIcon = new ItemIcon(itemComposition.getInventoryModel(),
+						itemComposition.getColorToReplaceWith(), itemComposition.getTextureToReplaceWith());
 
 //                itemIcons.add(itemIcon);
-                results.put(itemComposition.getId(), itemComposition);
-            }
-        }
+					results.put(itemComposition.getId(), itemComposition);
+				}
+			}
+		}
     }
 
     public ChatBoxFilterableSearch onItemSelected(Consumer<Integer> onItemSelected)
@@ -496,9 +566,17 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
         return this;
     }
 
-    public ChatBoxFilterableSearch tooltipText(final String text)
+    public ChatBoxFilterableSearch tooltipText(String text)
     {
         tooltipText = text;
         return this;
     }
+
+    private ItemSearchType type;
+
+	public ChatBoxFilterableSearch searchType(ItemSearchType type)
+	{
+		this.type = type;
+		return this;
+	}
 }

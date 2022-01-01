@@ -29,7 +29,7 @@ public class TransmogSet
 
 	public static TransmogSet createTemplate()
 	{
-		return new TransmogSet(Collections.singletonList(new Swap(Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList())));
+		return new TransmogSet(Collections.singletonList(new Swap(Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList())));
 	}
 
 	public void addNewSwap()

@@ -33,6 +33,7 @@ import static com.weaponanimationreplacer.Constants.ShownSlot;
 import static com.weaponanimationreplacer.Constants.mapNegativeId;
 import com.weaponanimationreplacer.Swap.AnimationType;
 import static com.weaponanimationreplacer.Swap.AnimationType.ATTACK;
+import com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.ItemSearchType;
 import java.awt.AlphaComposite;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -190,8 +191,48 @@ class TransmogSetPanel extends JPanel
 		JPanel panel = new JPanel();
 		panel.setLayout(new BorderLayout());
 
-		// What in the absolute fuck. FlowLayout claims to use multiple rows but apparently it give not a single shit that more than the first row is visible. What the fuck. What a fucking waste of my fucking time. Gaslightning documentation, fuck you.
-		/* :MonkaChrist: */
+		JPanel restrictionAndModelSwapPanel = getRestrictionAndModelSwapPanel();
+		restrictionAndModelSwapPanel.add(createSwapOptionsPanel(transmogSet, swap, index != 0, index != total - 1));
+		for (int i = 0; i < swap.getItemRestrictions().size(); i++)
+		{
+			restrictionAndModelSwapPanel.add(createItemRestrictionButton(swap, i));
+		}
+		restrictionAndModelSwapPanel.add(new JLabel("->"));
+		for (int i = 0; i < swap.getModelSwaps().size(); i++)
+		{
+			restrictionAndModelSwapPanel.add(createModelSwapButton(swap, i));
+		}
+		panel.add(restrictionAndModelSwapPanel, BorderLayout.NORTH);
+
+		JPanel animationSwapsPanel = new JPanel();
+		animationSwapsPanel.setLayout(new BoxLayout(animationSwapsPanel, BoxLayout.Y_AXIS));
+		if (!swap.animationReplacements.isEmpty()) {
+			for (int i = 0; i < swap.animationReplacements.size(); i++)
+			{
+				animationSwapsPanel.add(createAnimationReplacementPanel(swap, i, swap.animationReplacements.size()));
+			}
+		}
+		if (!swap.getProjectileSwaps().isEmpty()) {
+			for (int i = 0; i < swap.getProjectileSwaps().size(); i++)
+			{
+				animationSwapsPanel.add(createProjectileSwapPanel(swap, i, swap.getProjectileSwaps().size()));
+			}
+		}
+		if (!swap.getGraphicEffects().isEmpty()) {
+			for (int i = 0; i < swap.getGraphicEffects().size(); i++)
+			{
+				animationSwapsPanel.add(createGraphicsEffectPanel(swap, i, swap.getGraphicEffects().size()));
+			}
+		}
+		panel.add(animationSwapsPanel, BorderLayout.CENTER);
+
+		return panel;
+	}
+
+	// What in the absolute fuck. FlowLayout claims to use multiple rows but apparently it give not a single shit that more than the first row is visible. What the fuck. What a fucking waste of my fucking time. Gaslightning documentation, fuck you.
+	/* :MonkaChrist: */
+	private JPanel getRestrictionAndModelSwapPanel()
+	{
 		JPanel restrictionAndModelSwapPanel = new JPanel(new FlowLayout(FlowLayout.LEFT) {
 			@Override
 			public Dimension minimumLayoutSize(Container target)
@@ -227,45 +268,13 @@ class TransmogSetPanel extends JPanel
 //				return getPreferredSize();
 //			}
 		};
-		restrictionAndModelSwapPanel.add(createSwapOptionsPanel(transmogSet, swap, index != 0, index != total - 1));
-		for (int i = 0; i < swap.getItemRestrictions().size(); i++)
-		{
-			restrictionAndModelSwapPanel.add(createItemRestrictionButton(swap, i));
-		}
-		restrictionAndModelSwapPanel.add(new JLabel("->"));
-		for (int i = 0; i < swap.getModelSwaps().size(); i++)
-		{
-			restrictionAndModelSwapPanel.add(createModelSwapButton(swap, i));
-		}
-		panel.add(restrictionAndModelSwapPanel, BorderLayout.NORTH);
-
-		JPanel animationSwapsPanel = new JPanel();
-		animationSwapsPanel.setLayout(new BoxLayout(animationSwapsPanel, BoxLayout.Y_AXIS));
-		if (!swap.animationReplacements.isEmpty()) {
-			for (int i = 0; i < swap.animationReplacements.size(); i++)
-			{
-				animationSwapsPanel.add(createAnimationReplacementPanel(swap, i, swap.animationReplacements.size()));
-			}
-		}
-		if (!swap.getGraphicEffects().isEmpty()) {
-			for (int i = 0; i < swap.getGraphicEffects().size(); i++)
-			{
-				animationSwapsPanel.add(createGraphicsEffectPanel(swap, i, swap.getGraphicEffects().size()));
-			}
-		}
-		panel.add(animationSwapsPanel, BorderLayout.CENTER);
-
-		return panel;
+		return restrictionAndModelSwapPanel;
 	}
 
 	private Component createModelSwapButton(Swap swap, int index)
 	{
-		ItemSelectionButton weaponIdInput = new ItemSelectionButton();
-		weaponIdInput.isTriggerItem = false;
+		ItemSelectionButton weaponIdInput = new ItemSelectionButton(ItemSearchType.MODEL_SWAP);
 		weaponIdInput.setItem(swap.getModelSwaps().get(index));
-		weaponIdInput.setPreferredSize(new Dimension(35, 35));
-		weaponIdInput.setMaximumSize(new Dimension(35, 35));
-		weaponIdInput.setMinimumSize(new Dimension((int) 30, 30));
 		weaponIdInput.setOnItemChanged((itemId) -> {
 			plugin.clientThread.invokeLater(() -> {
 				swap.setModelSwap(index, itemId);
@@ -280,15 +289,44 @@ class TransmogSetPanel extends JPanel
 
 	private Component createItemRestrictionButton(Swap swap, int index)
 	{
-		ItemSelectionButton weaponIdInput = new ItemSelectionButton();
-		weaponIdInput.isTriggerItem = true;
-		weaponIdInput.setPreferredSize(new Dimension(35, 35));
-		weaponIdInput.setMaximumSize(new Dimension(35, 35));
-		weaponIdInput.setMinimumSize(new Dimension((int) 30, 30));
+		ItemSelectionButton weaponIdInput = new ItemSelectionButton(ItemSearchType.ITEM_RESTRICTION);
+		weaponIdInput.nameWhenEmpty = "Any";
 		weaponIdInput.setItem(swap.getItemRestrictions().get(index));
 		weaponIdInput.setOnItemChanged((itemId) -> {
 			plugin.clientThread.invokeLater(() -> {
 				swap.setItemRestriction(index, itemId);
+				plugin.updateAnimationsAndTransmog();
+
+				SwingUtilities.invokeLater(rebuild::run);
+			});
+		});
+
+		return weaponIdInput;
+	}
+
+	private Component createSpellSwapLButton(ProjectileSwap projectileSwap)
+	{
+		ItemSelectionButton weaponIdInput = new ItemSelectionButton(ItemSearchType.SPELL_L);
+		weaponIdInput.setSpell(projectileSwap.toReplace);
+		weaponIdInput.setOnItemChanged((itemId) -> {
+			plugin.clientThread.invokeLater(() -> {
+				projectileSwap.toReplace = itemId;
+				plugin.updateAnimationsAndTransmog();
+
+				SwingUtilities.invokeLater(rebuild::run);
+			});
+		});
+
+		return weaponIdInput;
+	}
+
+	private Component createSpellSwapRButton(ProjectileSwap projectileSwap)
+	{
+		ItemSelectionButton weaponIdInput = new ItemSelectionButton(ItemSearchType.SPELL_R);
+		weaponIdInput.setSpell(projectileSwap.toReplaceWith);
+		weaponIdInput.setOnItemChanged((itemId) -> {
+			plugin.clientThread.invokeLater(() -> {
+				projectileSwap.toReplaceWith = itemId;
 				plugin.updateAnimationsAndTransmog();
 
 				SwingUtilities.invokeLater(rebuild::run);
@@ -309,6 +347,7 @@ class TransmogSetPanel extends JPanel
 		addMenuItem(menu, "Add trigger item", e -> addTriggerItem(swap));
 		addMenuItem(menu, "Add model swap", e -> addModelSwap(swap));
 		addMenuItem(menu, "Add animation swap", e -> addAnimationReplacement(swap));
+		addMenuItem(menu, "Add projectile swap", e -> addProjectileSwap(swap));
 		addMenuItem(menu, "Add graphic effect", e -> addGraphicEffect(swap));
 
 		if (moveUp) addMenuItem(menu, "Move up", e -> moveSwap(transmogSet, swap, -1));
@@ -375,6 +414,13 @@ class TransmogSetPanel extends JPanel
 		});
 	}
 
+	private void addProjectileSwap(Swap swap)
+	{
+		swap.addNewProjectileSwap();
+		plugin.clientThread.invokeLater(plugin::updateAnimationsAndTransmog);
+		SwingUtilities.invokeLater(rebuild::run);
+	}
+
 	private void addGraphicEffect(Swap swap)
 	{
 		swap.addNewGraphicEffect();
@@ -385,7 +431,7 @@ class TransmogSetPanel extends JPanel
 	// TODO threading, memory consistency? on which threads am I doing what. I want swaps to be modified on the client thread only, I think.
 	private void addModelSwap(Swap swap)
 	{
-		plugin.doItemSearch(null, itemId -> {
+		plugin.doItemSearch(ItemSearchType.MODEL_SWAP, null, itemId -> {
 			swap.addNewModelSwap(itemId);
 			plugin.updateAnimationsAndTransmog();
 			SwingUtilities.invokeLater(rebuild::run);
@@ -394,7 +440,7 @@ class TransmogSetPanel extends JPanel
 
 	private void addTriggerItem(Swap swap)
 	{
-		plugin.doItemSearch(null, itemId -> {
+		plugin.doItemSearch(ItemSearchType.ITEM_RESTRICTION, null, itemId -> {
 			swap.addNewTriggerItem(itemId);
 			plugin.updateAnimationsAndTransmog();
 			SwingUtilities.invokeLater(rebuild::run);
@@ -664,6 +710,43 @@ class TransmogSetPanel extends JPanel
 		});
 	}
 
+	private Component createProjectileSwapPanel(Swap swap, int i, int size)
+	{
+		ProjectileSwap projectileSwap = swap.getProjectileSwaps().get(i);
+
+		JPanel animationReplacementPanel = new JPanel();
+		animationReplacementPanel.setBorder(new EmptyBorder(5, 0, 0, 0));
+		animationReplacementPanel.setLayout(new BoxLayout(animationReplacementPanel, BoxLayout.Y_AXIS));
+		animationReplacementPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+
+		JPanel row1 = new JPanel();
+		row1.setLayout(new BoxLayout(row1, BoxLayout.X_AXIS));
+		row1.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		row1.add(new JLabel("Projectile "));
+
+		JPanel projectileSwapPanel = getRestrictionAndModelSwapPanel();
+		projectileSwapPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		projectileSwapPanel.add(createSpellSwapLButton(projectileSwap));
+		projectileSwapPanel.add(new JLabel("->"));
+		projectileSwapPanel.add(createSpellSwapRButton(projectileSwap));
+		row1.add(projectileSwapPanel);
+		animationReplacementPanel.add(row1);
+
+		return new EntryPanel(false, true, true, i == size - 1, animationReplacementPanel, () -> {
+			swap.getProjectileSwaps().remove(i);
+			plugin.clientThread.invoke(plugin::updateAnimationsAndTransmog);
+			SwingUtilities.invokeLater(() -> rebuild.run());
+		}, () -> {
+			plugin.clientThread.invokeLater(() -> {
+				swap.addNewProjectileSwap();
+				plugin.updateAnimationsAndTransmog();
+				SwingUtilities.invokeLater(() -> rebuild.run());
+			});
+		}, (enabled) -> {
+			plugin.clientThread.invoke(plugin::updateAnimationsAndTransmog);
+		});
+	}
+
 	private Component createGraphicsEffectPanel(Swap swap, int i, int size)
 	{
 		GraphicEffect graphicEffect = swap.getGraphicEffects().get(i);
@@ -766,11 +849,15 @@ class TransmogSetPanel extends JPanel
 	}
 
 	public class ItemSelectionButton extends JButton {
-		boolean isTriggerItem = false;
+		String nameWhenEmpty = "None";
+		public ItemSelectionButton(ItemSearchType type)
 		{
+			setPreferredSize(new Dimension(35, 35));
+			setMaximumSize(new Dimension(35, 35));
+			setMinimumSize(new Dimension( 30, 30));
 			addActionListener((e) -> {
 //				if (plugin.client.getGameState() == GameState.LOGGED_IN) setItemInternal(-1);
-				plugin.doItemSearch(this, (itemId) -> {
+				plugin.doItemSearch(type, this, (itemId) -> {
 					setItemInternal(itemId);
 				});
 			});
@@ -787,7 +874,7 @@ class TransmogSetPanel extends JPanel
 			if (itemId == -1)
 			{
 				setIcon(null);
-				setText(isTriggerItem ? "Any" : "None");
+				setText(nameWhenEmpty);
 				setBorder(null);
 			} else if (itemId < 0) {
 				NegativeId negativeId = mapNegativeId(itemId);
@@ -828,6 +915,30 @@ class TransmogSetPanel extends JPanel
 				plugin.clientThread.invoke(() -> {
 					String name = itemName(itemId);
 					SwingUtilities.invokeLater(() -> {
+						setToolTipText(name);
+					});
+				});
+			}
+		}
+
+		public void setSpell(int spellIndex)
+		{
+			if (spellIndex == -1)
+			{
+				setIcon(null);
+				setText(nameWhenEmpty);
+				setBorder(null);
+			} else {
+				if (spellIndex >= ProjectileCast.projectiles.size()) return;
+
+				ProjectileCast projectileCast = ProjectileCast.projectiles.get(spellIndex);
+				setText(null);
+
+				plugin.clientThread.invoke(() -> {
+					setIcon(new ImageIcon(plugin.getSpellImage(projectileCast)));
+					String name = projectileCast.getName(plugin.itemManager);
+					SwingUtilities.invokeLater(() ->
+					{
 						setToolTipText(name);
 					});
 				});
