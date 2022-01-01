@@ -33,11 +33,14 @@ import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
 import net.runelite.api.Client;
+import net.runelite.api.EquipmentInventorySlot;
 import net.runelite.api.GameState;
+import net.runelite.api.InventoryID;
 import net.runelite.api.JagexColor;
 import net.runelite.api.Model;
 import net.runelite.api.NPC;
 import net.runelite.api.Player;
+import net.runelite.api.Projectile;
 import net.runelite.api.RuneLiteObject;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
@@ -45,12 +48,14 @@ import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.PlayerChanged;
+import net.runelite.api.events.ProjectileMoved;
 import net.runelite.api.kit.KitType;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
+import net.runelite.client.game.SpriteManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
@@ -80,6 +85,9 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
     @Inject
     ItemManager itemManager;
+
+    @Inject
+	private SpriteManager spriteManager;
 
     @Inject
     public ClientThread clientThread;
@@ -116,6 +124,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	private AnimationSet currentAnimationSet = new AnimationSet();
 	private GraphicEffect currentScytheGraphicEffect = null;
 	int scytheSwingCountdown = -1;
+	private List<ProjectileSwap> projectileSwaps = Collections.emptyList();
 
 	int previewItem = -1;
 
@@ -189,7 +198,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 						rule.itemRestrictions.stream().map(r -> r.itemId).collect(Collectors.toList()),
 						Collections.singletonList(rule.modelSwap),
 						rule.animationReplacements,
-						Collections.emptyList())));
+						Collections.emptyList(), Collections.emptyList())));
 			transmogSet.setName(rule.name);
 			transmogSets.add(transmogSet);
 		}
@@ -351,6 +360,98 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		}
     }
 
+	int delayedGfxToApply = -1;
+	Actor actorToApplyDelayedGfxTo = null;
+	int timeToApplyDelayedGfx = -1;
+
+	@Subscribe
+	public void onProjectileMoved(ProjectileMoved projectileMoved) {
+		Projectile projectile = projectileMoved.getProjectile();
+
+		// skip already seen projectiles.
+		if (client.getGameCycle() >= projectile.getStartMovementCycle()) {
+			return;
+		}
+
+		// This is the player's actual location which is what projectiles use as their start position. Player#getX, #getSceneX, etc., do not work here.
+		Player player = client.getLocalPlayer();
+		final WorldPoint playerPos = player.getWorldLocation();
+		if (playerPos == null)
+		{
+			return;
+		}
+
+		final LocalPoint playerPosLocal = LocalPoint.fromWorld(client, playerPos);
+		if (playerPosLocal == null)
+		{
+			return;
+		}
+
+		if (projectile.getX1() == playerPosLocal.getX() && projectile.getY1() == playerPosLocal.getY()) {
+			System.out.println(itemManager.getItemComposition(client.getItemContainer(InventoryID.EQUIPMENT).getItem(EquipmentInventorySlot.WEAPON.getSlotIdx()).getId()).getName());
+			System.out.println(
+					lastRealAnimation + ", " +
+					player.getGraphic() + ", " +
+					projectile.getId() + ", " +
+					lastCastedOnActorToTransmogHitSplashOn.getGraphic() + ", " +
+					(projectile.getStartMovementCycle() - client.getGameCycle()) + ", " +
+					projectile.getStartHeight() + ", " +
+					projectile.getEndHeight() + ", " +
+					projectile.getSlope()
+			);
+			for (ProjectileSwap projectileSwap : projectileSwaps)
+			{
+				ProjectileCast toReplace = projectileSwap.getToReplace();
+				if (
+					toReplace.getCastAnimation() == lastRealAnimation && player.getAnimation() != -1 &&
+					toReplace.getProjectileId() == projectile.getId() &&
+					(toReplace.getCastGfx() == -1 || toReplace.getCastGfx() == player.getGraphic())
+				) {
+					ProjectileCast toReplaceWith = projectileSwap.getToReplaceWith();
+					player.setAnimation(toReplaceWith.getCastAnimation());
+					setField(projectile, "c", toReplaceWith.getProjectileId(), 516746677); // id.
+					setField(projectile, "j", client.getGameCycle() + toReplaceWith.getStartMovement(), -1732438681); // id.
+					setField(projectile, "n", toReplaceWith.getSlope(), -1213196577); // slope.
+					setField(projectile, "r", toReplaceWith.getStartHeight(), -1313399339); // start height.
+					setField(projectile, "s", toReplaceWith.getEndHeight(), 950754567); // end height.
+					player.setGraphic(toReplaceWith.getCastGfx());
+
+					if (lastCastedOnActorToTransmogHitSplashOn != null)
+					{
+						if (toReplace.getHitGfx() != -1)
+						{
+							if (lastCastedOnActorToTransmogHitSplashOn.getGraphic() == toReplace.getHitGfx())
+							{
+								lastCastedOnActorToTransmogHitSplashOn.setGraphic(toReplaceWith.getHitGfx());
+							}
+						}
+						else
+						{
+							delayedGfxToApply = toReplaceWith.getHitGfx();
+							actorToApplyDelayedGfxTo = lastCastedOnActorToTransmogHitSplashOn;
+							timeToApplyDelayedGfx = projectile.getEndCycle();
+						}
+					}
+					break;
+				}
+			}
+		}
+	}
+
+	private void setField(Projectile projectile, String n, int i, int i1)
+	{
+		try
+		{
+			java.lang.reflect.Field field = projectile.getClass().getDeclaredField(n);
+			field.setAccessible(true);
+			field.set(projectile, i * i1);
+		}
+		catch (IllegalAccessException | NoSuchFieldException e)
+		{
+			e.printStackTrace();
+		}
+	}
+
 	private void createScytheSwing()
 	{
 		scytheSwingCountdown = -1;
@@ -457,6 +558,8 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		currentAnimationSet = currentSet;
 		setPlayerPoseAnimations();
 
+		projectileSwaps = matchingSwaps.stream().flatMap(swap -> swap.getProjectileSwaps().stream()).collect(Collectors.toList());
+
 		currentScytheGraphicEffect = matchingSwaps.stream()
 			.filter(swap -> swap.getGraphicEffects().stream().anyMatch(e -> e.type == GraphicEffect.Type.SCYTHE_SWING))
 			.flatMap(swap -> swap.getGraphicEffects().stream())
@@ -505,11 +608,25 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
         return null;
     }
 
+	public BufferedImage getSpellImage(ProjectileCast projectileCast)
+	{
+		return projectileCast.getSpriteIdIcon() != -1 ?
+			spriteManager.getSprite(projectileCast.getSpriteIdIcon(), 0) :
+			itemManager.getImage(projectileCast.getItemIdIcon())
+			;
+	}
+
+	private Actor lastCastedOnActorToTransmogHitSplashOn = null;
+	private int lastRealAnimation = -1;
+
 	@Subscribe(priority = -1000.0f) // I want to run late, so that plugins that need animation changes don't see my changed animation ids, since mine are cosmetic and don't give information on what the player is actually doing.
 	public void onAnimationChanged(AnimationChanged e)
 	{
 		Player player = client.getLocalPlayer();
 		if (!e.getActor().equals(player)) return;
+
+		lastRealAnimation = player.getAnimation();
+		lastCastedOnActorToTransmogHitSplashOn = player.getInteracting();
 
 		swapPlayerAnimation();
 	}
@@ -535,7 +652,14 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		}
 	}
 
-    public void doItemSearch(TransmogSetPanel.ItemSelectionButton button, Consumer<Integer> onItemChosen) {
+	public enum ItemSearchType {
+		ITEM_RESTRICTION,
+		MODEL_SWAP,
+		SPELL_L,
+		SPELL_R,
+	}
+
+	public void doItemSearch(ItemSearchType type, TransmogSetPanel.ItemSelectionButton button, Consumer<Integer> onItemChosen) {
         if (client.getGameState() != GameState.LOGGED_IN)
         {
             JOptionPane.showMessageDialog(pluginPanel,
@@ -546,6 +670,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
         }
 
         itemSearch
+			.searchType(type)
                 .tooltipText("select")
                 .onItemSelected((itemId) -> {
                         clientThread.invokeLater(() ->

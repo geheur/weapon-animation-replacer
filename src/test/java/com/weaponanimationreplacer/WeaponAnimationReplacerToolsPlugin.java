@@ -57,8 +57,9 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 
 		if (command.equals("reload")) {
 			AnimationSet.loadAnimationSets();
+			ProjectileCast.initializeSpells();
 			SwingUtilities.invokeLater(plugin.pluginPanel::rebuild);
-			System.out.println("reloaded animations sets");
+			System.out.println("reloaded animations sets and projectiles");
 		}
 
 		if (command.equals("listweapons")) {
