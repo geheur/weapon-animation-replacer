@@ -2,8 +2,11 @@ package com.weaponanimationreplacer;
 
 import com.google.gson.reflect.TypeToken;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 public class MigrationTest
@@ -29,6 +32,25 @@ public class MigrationTest
 		List<TransmogSet> expectedTransmogSets =WeaponAnimationReplacerPlugin.customGson.fromJson(expectedConfigString, new TypeToken<ArrayList<TransmogSet>>() {}.getType());
 
 		assertEquals(migratedTransmogSets, expectedTransmogSets);
+	}
+
+	@Test
+	public void testRenameAnimationSet() {
+		for (Map.Entry<String, String> stringStringEntry : WeaponAnimationReplacerPlugin.renames.entrySet())
+		{
+			boolean found = false;
+			for (AnimationSet animationSet : AnimationSet.animationSets) {
+				if (animationSet.name.equals(stringStringEntry.getValue())) {
+					found = true;
+					break;
+				}
+			}
+			assertTrue("couldn't find " + stringStringEntry.getValue(), found);
+		}
+		String config = WeaponAnimationReplacerPlugin.customGson.toJson(Collections.singletonList(new TransmogSet(Collections.singletonList(new Swap(Collections.emptyList(), Collections.emptyList(), Collections.singletonList(new Swap.AnimationReplacement(new AnimationSet("Godsword", AnimationSet.AnimationSetType.MELEE_SPECIFIC), Swap.AnimationType.ALL, null)), Collections.emptyList())))));
+		System.out.println(config);
+		List<TransmogSet> transmogSets = WeaponAnimationReplacerPlugin.customGson.fromJson(config, new TypeToken<ArrayList<TransmogSet>>() {}.getType());
+		assertEquals("Godsword (Armadyl)", transmogSets.get(0).getSwaps().get(0).animationReplacements.get(0).animationSet.name);
 	}
 
 }

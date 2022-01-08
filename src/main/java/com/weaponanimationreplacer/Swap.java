@@ -201,7 +201,7 @@ public class Swap
             this.animationtypeToReplace = animationtypeToReplace;
             if (animationSet != null && animationtypeToReplace != null && animationtypeReplacement != null)
 			{
-				Integer animation1 = animationSet.getAnimation(animationtypeReplacement, false);
+				Integer animation1 = animationSet.getAnimation(animationtypeReplacement);
 				if (animation1 != null)
 				{
 					Integer animation = animationSet == null ? -1 : animation1;

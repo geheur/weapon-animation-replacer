@@ -63,15 +63,21 @@ public class TransmogrificationManager
      */
     public void reapplyTransmog()
     {
+		final int currentHash = Arrays.hashCode(client.getLocalPlayer().getPlayerComposition().getEquipmentIds());
+		if (currentHash == transmogHash)
+		{
+			return;
+		}
+
 		currentActualState = null;
-		applyTransmog();
+		changeTransmog();
     }
 
     public static int baseArmsKit = -1;
 	public static int baseHairKit = -1;
 	public static int baseJawKit = -1;
 
-	void applyTransmog()
+	void changeTransmog()
     {
         if (client.getGameState() != GameState.LOGGED_IN || client.getLocalPlayer() == null)
         {

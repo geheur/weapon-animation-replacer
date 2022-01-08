@@ -13,12 +13,10 @@ import com.google.gson.reflect.TypeToken;
 import static com.weaponanimationreplacer.Constants.mapNegativeId;
 import com.weaponanimationreplacer.Swap.AnimationReplacement;
 import com.weaponanimationreplacer.Swap.AnimationType;
-import static com.weaponanimationreplacer.Swap.AnimationType.MOVEMENT;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -43,7 +41,6 @@ import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.ClientTick;
-import net.runelite.api.events.CommandExecuted;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.PlayerChanged;
 import net.runelite.api.kit.KitType;
@@ -176,13 +173,24 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
         transmogManager.shutDown();
 
-		for (Constants.ActorAnimation animation : Constants.ActorAnimation.values())
+        if (!naturalPlayerPoseAnimations.isEmpty())
 		{
-			animation.setAnimation(client.getLocalPlayer(), naturalPlayerPoseAnimations.get(animation.ordinal()));
+			for (Constants.ActorAnimation animation : Constants.ActorAnimation.values())
+			{
+				animation.setAnimation(client.getLocalPlayer(), naturalPlayerPoseAnimations.get(animation.ordinal()));
+			}
 		}
 
         clientToolbar.removeNavigation(navigationButton);
     }
+
+    static final Map<String, String> renames = new HashMap<>();
+	static {
+		renames.put("Godsword", "Godsword (Armadyl)");
+		renames.put("unarmed", "Unarmed");
+		renames.put("shortsword/scim/saeldor", "Dragon longsword/Saeldor");
+		renames.put("staff2/wand", "Staff2/Wand");
+	}
 
     static Gson customGson;
     static Gson customGsonPretty;
@@ -202,11 +210,12 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
             public AnimationSet deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext jsonDeserializationContext) throws JsonParseException {
                 if (jsonElement instanceof JsonPrimitive && ((JsonPrimitive) jsonElement).isString()) {
                     String s = jsonElement.getAsString();
-                    if ("Godsword".equals(s)) {
-                        log.debug("updating \"Godsword\" to \"Godsword (Armadyl)\"");
-                        s = "Godsword (Armadyl)";
-                    }
-                    AnimationSet animationSet = AnimationSet.getAnimationSet(s);
+					String newS = renames.get(s);
+					if (newS != null) {
+						log.debug("updating \"" + s + "\" to \"" + newS + "\"");
+						s = newS;
+					}
+					AnimationSet animationSet = AnimationSet.getAnimationSet(s);
                     if (animationSet == null) return AnimationSet.animationSets.get(0);
                     return animationSet;
                 } else {
@@ -242,17 +251,13 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
     }
 
 	/**
-	 * Saves transmog sets to config and reapplies transmog and animations.
+	 * Saves transmog sets to config, reapplies transmog and pose animations.
 	 */
-	public void updateAnimationsAndTransmog() {
+	public void handleTransmogSetChange() {
         saveTransmogSets();
 
-        transmogManager.applyTransmog();
-
-		boolean animationSetChanged = updateCurrentAnimationSet();
-		if (animationSetChanged) {
-			setPlayerPoseAnimations();
-		}
+        transmogManager.changeTransmog();
+		updateAnimations();
 
         clientUI.requestFocus();
     }
@@ -267,7 +272,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			transmogSets.remove(index);
 			SwingUtilities.invokeLater(() -> pluginPanel.rebuild());
 			saveTransmogSets();
-			updateAnimationsAndTransmog();
+			handleTransmogSetChange();
 		});
     }
 
@@ -295,9 +300,9 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		Player player = client.getLocalPlayer();
 		int playerAnimation = player.getAnimation();
 		AnimationSet.Animation animationReplacement = getReplacementAttackAnimation(playerAnimation);
+		log.debug("replacing animation {} with {}", playerAnimation, animationReplacement);
 		if (animationReplacement != null)
 		{
-			log.debug("replaced animation " + playerAnimation + " with " + animationReplacement);
 			player.setAnimation(animationReplacement.id);
 
 			if (AnimationType.ATTACK.appliesTo(animationReplacement.type) && currentScytheGraphicEffect != null)
@@ -310,7 +315,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	int scytheSwingCountdown = -1;
 	@Subscribe
     public void onClientTick(ClientTick event)
-    {
+	{
 		if (scytheSwingCountdown == 0) {
 			createScytheSwing();
 		} else {
@@ -395,15 +400,8 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
 	private AnimationSet currentAnimationSet = new AnimationSet();
 	private GraphicEffect currentScytheGraphicEffect = null;
-    private boolean updateCurrentAnimationSet() { // TODO cache maybe based on the current gear.
+    private void updateAnimations() { // TODO cache maybe based on the current gear.
         AnimationSet currentSet = new AnimationSet();
-
-        if (recordingOwnGearSlotOverrides)
-		{
-			currentAnimationSet = currentSet;
-			currentScytheGraphicEffect = null;
-			return true;
-		}
 
 		List<Swap> matchingSwaps = transmogSets.stream()
 			.filter(TransmogSet::isEnabled)
@@ -420,28 +418,21 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
 		for (int i = replacements.size() - 1; i >= 0; i--)
 		{
-			AnimationReplacement replacement = replacements.get(i);
-			currentSet.applyReplacement(replacement);
-			if (replacement.animationtypeToReplace.appliesTo(MOVEMENT)) {
-				currentSet.useWalkOrRunForShuffleAndWalkBackwards = replacement.animationSet.useWalkOrRunForShuffleAndWalkBackwards;
-			}
+			currentSet.applyReplacement(replacements.get(i));
 		}
 
-		boolean animationSetChanged = !currentSet.equals(currentAnimationSet);
-		if (animationSetChanged)
-		{
-			log.debug("animation set change: " + currentSet + " " + currentAnimationSet + " " + replacements);
-		}
+//		if (!currentSet.equals(currentAnimationSet))
+//		{
+//			log.debug("animation set change: {} {} {}", currentSet, currentAnimationSet, replacements);
+//		}
 
 		currentAnimationSet = currentSet;
-		System.out.println("current animation set: " + currentAnimationSet);
+		setPlayerPoseAnimations();
 
 		currentScytheGraphicEffect = matchingSwaps.stream()
 			.filter(swap -> swap.getGraphicEffects().stream().anyMatch(e -> e.type == GraphicEffect.Type.SCYTHE_SWING))
 			.flatMap(swap -> swap.getGraphicEffects().stream())
 			.findAny().orElse(null);
-
-		return animationSetChanged;
     }
 
 	public String itemName(Integer itemId)
@@ -452,31 +443,6 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			s = Integer.toString(itemId);
 		}
 		return s;
-	}
-
-	@Getter
-	private boolean recordingOwnGearSlotOverrides = false;
-	public void toggleRecordingOwnGearSlotOverrides() {
-    	recordingOwnGearSlotOverrides = !recordingOwnGearSlotOverrides;
-    	updateAnimationsAndTransmog();
-	}
-
-	@Subscribe
-	public void onCommandExecuted(CommandExecuted e) {
-		if (e.getCommand().equals("thing")) {
-			String argument = e.getArguments()[0];
-			System.out.println("arg " + argument);
-			for (Player player : client.getPlayers())
-			{
-				if (player.getName().equals(argument))
-				{
-					for (Constants.ActorAnimation value : Constants.ActorAnimation.values())
-					{
-						System.out.println(value + " " + value.getAnimation(player));
-					}
-				}
-			}
-		}
 	}
 
 	/**
@@ -496,6 +462,8 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	}
 
 	private AnimationSet.Animation getReplacementAttackAnimation(int animation) {
+		if (animation == -1) return null;
+
 		for (AnimationSet animationSet : AnimationSet.animationSets) {
 			AnimationType type = animationSet.getType(animation);
 			if (type != null) {
@@ -510,7 +478,6 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	@Subscribe(priority = -1000.0f) // I want to run late, so that plugins that need animation changes don't see my changed animation ids, since mine are cosmetic and don't give information on what the player is actually doing.
 	public void onAnimationChanged(AnimationChanged e)
 	{
-		System.out.println("animation changed " + e.getActor().getName() + " " + e.getActor().getAnimation());
 		Player player = client.getLocalPlayer();
 		if (!e.getActor().equals(player)) return;
 
@@ -530,12 +497,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		equippedItemsFromKit = IntStream.of(client.getLocalPlayer().getPlayerComposition().getEquipmentIds()).map(i -> itemManager.canonicalize(i - 512)).boxed().collect(Collectors.toList());
 		recordNaturalPlayerPoseAnimations();
 
-		System.out.println(client.getTickCount() + " player changed");
-		for (Constants.ActorAnimation value : Constants.ActorAnimation.values())
-		{
-			System.out.println("\t" + value.name() + " " + value.getAnimation(client.getLocalPlayer()));
-		}
-		updateTransmog();
+		transmogManager.reapplyTransmog();
 		updateAnimations();
 	}
 
@@ -547,22 +509,6 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		{
 			naturalPlayerPoseAnimations.add(animation.getAnimation(player));
 		}
-	}
-
-	private void updateTransmog()
-	{
-		final int currentHash = Arrays.hashCode(client.getLocalPlayer().getPlayerComposition().getEquipmentIds());
-		if (currentHash != transmogManager.getTransmogHash())
-		{
-			transmogManager.reapplyTransmog();
-		}
-	}
-
-	private void updateAnimations()
-	{
-		updateCurrentAnimationSet();
-
-		setPlayerPoseAnimations();
 	}
 
     public void doItemSearch(TransmogSetPanel.ItemSelectionButton button, Consumer<Integer> onItemChosen) {
@@ -603,7 +549,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
             clientLoaded = true;
         } else if (event.getGameState() == GameState.LOGGED_IN) {
         	// This is necessary for transmog to show up on teleports.
-        	if (client.getLocalPlayer().getPlayerComposition() != null) updateTransmog();
+        	if (client.getLocalPlayer().getPlayerComposition() != null) transmogManager.reapplyTransmog();
 		}
 	}
 
@@ -632,8 +578,6 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
 	public Map<Integer, Integer> getApplicableModelSwaps()
 	{
-		if (recordingOwnGearSlotOverrides) return new HashMap<>();
-
 		List<Swap> swaps = transmogSets.stream()
 			.filter(TransmogSet::isEnabled)
 			.flatMap(set -> set.getSwaps().stream())
@@ -673,8 +617,8 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 					ItemStats itemStats = itemManager.getItemStats(modelSwap, false);
 					if (itemStats == null || !itemStats.isEquipable())
 					{
-						if (Constants.equippableItemsNotMarkedAsEquipment.containsKey(modelSwap)) {
-							slot = Constants.equippableItemsNotMarkedAsEquipment.get(modelSwap);
+						if (Constants.EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPPABLE.containsKey(modelSwap)) {
+							slot = Constants.EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPPABLE.get(modelSwap);
 						} else {
 							continue;
 						}

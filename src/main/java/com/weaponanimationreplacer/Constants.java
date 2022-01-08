@@ -21,10 +21,10 @@ public class Constants
 	public static final Set<Integer> JAW_SLOT = ImmutableSet.of(10556, 10557, 10558, 10559, 10567, 20802, 22308, 22309, 22310, 22311, 22312, 22313, 22314, 22315, 22337, 22338, 22339, 22340, 22341, 22342, 22343, 22344, 22345, 22346, 22347, 22348, 22349, 22721, 22722, 22723, 22724, 22725, 22726, 22727, 22728, 22729, 22730, 23460, 23461, 23462, 23463, 23464, 23465, 23466, 23467, 23468, 23469, 23470, 23471, 23472, 23473, 23474, 23475, 23476, 23477, 23478, 23479, 23480, 23481, 23482, 23483, 23484, 23485, 23486, 25228, 25229, 25230, 25231, 25232, 25233, 25234, 25235, 25236, 25237, 25238, 25239, 25240, 25241, 25242, 25243, 25212, 25213, 25214, 25215, 25216, 25217, 25218, 25219, 25220, 25221, 25222, 25223, 25224, 25225, 25226, 25227);
 
 	// key is item id, value is the slot id it should go in.
-	public static final Map<Integer, Integer> equippableItemsNotMarkedAsEquipment = new HashMap<>();
+	public static final Map<Integer, Integer> EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPPABLE = new HashMap<>();
 	static {
-		equippableItemsNotMarkedAsEquipment.put(1963, KitType.WEAPON.getIndex());
-		equippableItemsNotMarkedAsEquipment.put(3177, KitType.SHIELD.getIndex());
+		EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPPABLE.put(1963, KitType.WEAPON.getIndex());
+		EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPPABLE.put(3177, KitType.SHIELD.getIndex());
 	}
 
 	public static final Set<Integer> showSleeves = new HashSet<>();

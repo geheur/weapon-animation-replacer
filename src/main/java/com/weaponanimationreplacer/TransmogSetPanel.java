@@ -190,8 +190,42 @@ class TransmogSetPanel extends JPanel
 		JPanel panel = new JPanel();
 		panel.setLayout(new BorderLayout());
 
-		// What in the absolute fuck. FlowLayout claims to use multiple rows but apparently it give not a single shit that more than the first row is visible. What the fuck. What a fucking waste of my fucking time. Gaslightning documentation, fuck you.
-		/* :MonkaChrist: */
+		JPanel restrictionAndModelSwapPanel = getRestrictionAndModelSwapPanel();
+		restrictionAndModelSwapPanel.add(createSwapOptionsPanel(transmogSet, swap, index != 0, index != total - 1));
+		for (int i = 0; i < swap.getItemRestrictions().size(); i++)
+		{
+			restrictionAndModelSwapPanel.add(createItemRestrictionButton(swap, i));
+		}
+		restrictionAndModelSwapPanel.add(new JLabel("->"));
+		for (int i = 0; i < swap.getModelSwaps().size(); i++)
+		{
+			restrictionAndModelSwapPanel.add(createModelSwapButton(swap, i));
+		}
+		panel.add(restrictionAndModelSwapPanel, BorderLayout.NORTH);
+
+		JPanel animationSwapsPanel = new JPanel();
+		animationSwapsPanel.setLayout(new BoxLayout(animationSwapsPanel, BoxLayout.Y_AXIS));
+		if (!swap.animationReplacements.isEmpty()) {
+			for (int i = 0; i < swap.animationReplacements.size(); i++)
+			{
+				animationSwapsPanel.add(createAnimationReplacementPanel(swap, i, swap.animationReplacements.size()));
+			}
+		}
+		if (!swap.getGraphicEffects().isEmpty()) {
+			for (int i = 0; i < swap.getGraphicEffects().size(); i++)
+			{
+				animationSwapsPanel.add(createGraphicsEffectPanel(swap, i, swap.getGraphicEffects().size()));
+			}
+		}
+		panel.add(animationSwapsPanel, BorderLayout.CENTER);
+
+		return panel;
+	}
+
+	// What in the absolute fuck. FlowLayout claims to use multiple rows but apparently it give not a single shit that more than the first row is visible. What the fuck. What a fucking waste of my fucking time. Gaslightning documentation, fuck you.
+	/* :MonkaChrist: */
+	private JPanel getRestrictionAndModelSwapPanel()
+	{
 		JPanel restrictionAndModelSwapPanel = new JPanel(new FlowLayout(FlowLayout.LEFT) {
 			@Override
 			public Dimension minimumLayoutSize(Container target)
@@ -227,49 +261,17 @@ class TransmogSetPanel extends JPanel
 //				return getPreferredSize();
 //			}
 		};
-		restrictionAndModelSwapPanel.add(createSwapOptionsPanel(transmogSet, swap, index != 0, index != total - 1));
-		for (int i = 0; i < swap.getItemRestrictions().size(); i++)
-		{
-			restrictionAndModelSwapPanel.add(createItemRestrictionButton(swap, i));
-		}
-		restrictionAndModelSwapPanel.add(new JLabel("->"));
-		for (int i = 0; i < swap.getModelSwaps().size(); i++)
-		{
-			restrictionAndModelSwapPanel.add(createModelSwapButton(swap, i));
-		}
-		panel.add(restrictionAndModelSwapPanel, BorderLayout.NORTH);
-
-		JPanel animationSwapsPanel = new JPanel();
-		animationSwapsPanel.setLayout(new BoxLayout(animationSwapsPanel, BoxLayout.Y_AXIS));
-		if (!swap.animationReplacements.isEmpty()) {
-			for (int i = 0; i < swap.animationReplacements.size(); i++)
-			{
-				animationSwapsPanel.add(createAnimationReplacementPanel(swap, i, swap.animationReplacements.size()));
-			}
-		}
-		if (!swap.getGraphicEffects().isEmpty()) {
-			for (int i = 0; i < swap.getGraphicEffects().size(); i++)
-			{
-				animationSwapsPanel.add(createGraphicsEffectPanel(swap, i, swap.getGraphicEffects().size()));
-			}
-		}
-		panel.add(animationSwapsPanel, BorderLayout.CENTER);
-
-		return panel;
+		return restrictionAndModelSwapPanel;
 	}
 
 	private Component createModelSwapButton(Swap swap, int index)
 	{
 		ItemSelectionButton weaponIdInput = new ItemSelectionButton();
-		weaponIdInput.isTriggerItem = false;
 		weaponIdInput.setItem(swap.getModelSwaps().get(index));
-		weaponIdInput.setPreferredSize(new Dimension(35, 35));
-		weaponIdInput.setMaximumSize(new Dimension(35, 35));
-		weaponIdInput.setMinimumSize(new Dimension((int) 30, 30));
 		weaponIdInput.setOnItemChanged((itemId) -> {
 			plugin.clientThread.invokeLater(() -> {
 				swap.setModelSwap(index, itemId);
-				plugin.updateAnimationsAndTransmog();
+				plugin.handleTransmogSetChange();
 
 				SwingUtilities.invokeLater(rebuild::run);
 			});
@@ -281,15 +283,12 @@ class TransmogSetPanel extends JPanel
 	private Component createItemRestrictionButton(Swap swap, int index)
 	{
 		ItemSelectionButton weaponIdInput = new ItemSelectionButton();
-		weaponIdInput.isTriggerItem = true;
-		weaponIdInput.setPreferredSize(new Dimension(35, 35));
-		weaponIdInput.setMaximumSize(new Dimension(35, 35));
-		weaponIdInput.setMinimumSize(new Dimension((int) 30, 30));
+		weaponIdInput.nameWhenEmpty = "Any";
 		weaponIdInput.setItem(swap.getItemRestrictions().get(index));
 		weaponIdInput.setOnItemChanged((itemId) -> {
 			plugin.clientThread.invokeLater(() -> {
 				swap.setItemRestriction(index, itemId);
-				plugin.updateAnimationsAndTransmog();
+				plugin.handleTransmogSetChange();
 
 				SwingUtilities.invokeLater(rebuild::run);
 			});
@@ -355,14 +354,14 @@ class TransmogSetPanel extends JPanel
 	private void removeSwap(TransmogSet transmogSet, Swap swap)
 	{
 		transmogSet.removeSwap(swap);
-		plugin.clientThread.invokeLater(plugin::updateAnimationsAndTransmog);
+		plugin.clientThread.invokeLater(plugin::handleTransmogSetChange);
 		SwingUtilities.invokeLater(rebuild::run);
 	}
 
 	private void moveSwap(TransmogSet transmogSet, Swap swap, int i)
 	{
 		transmogSet.moveSwap(swap, i);
-		plugin.clientThread.invokeLater(plugin::updateAnimationsAndTransmog);
+		plugin.clientThread.invokeLater(plugin::handleTransmogSetChange);
 		SwingUtilities.invokeLater(rebuild::run);
 	}
 
@@ -370,7 +369,7 @@ class TransmogSetPanel extends JPanel
 	{
 		plugin.clientThread.invokeLater(() -> {
 			swap.addNewAnimationReplacement();
-			plugin.updateAnimationsAndTransmog();
+			plugin.handleTransmogSetChange();
 			SwingUtilities.invokeLater(rebuild::run);
 		});
 	}
@@ -378,7 +377,7 @@ class TransmogSetPanel extends JPanel
 	private void addGraphicEffect(Swap swap)
 	{
 		swap.addNewGraphicEffect();
-		plugin.clientThread.invokeLater(plugin::updateAnimationsAndTransmog);
+		plugin.clientThread.invokeLater(plugin::handleTransmogSetChange);
 		SwingUtilities.invokeLater(rebuild::run);
 	}
 
@@ -387,7 +386,7 @@ class TransmogSetPanel extends JPanel
 	{
 		plugin.doItemSearch(null, itemId -> {
 			swap.addNewModelSwap(itemId);
-			plugin.updateAnimationsAndTransmog();
+			plugin.handleTransmogSetChange();
 			SwingUtilities.invokeLater(rebuild::run);
 		});
 	}
@@ -396,7 +395,7 @@ class TransmogSetPanel extends JPanel
 	{
 		plugin.doItemSearch(null, itemId -> {
 			swap.addNewTriggerItem(itemId);
-			plugin.updateAnimationsAndTransmog();
+			plugin.handleTransmogSetChange();
 			SwingUtilities.invokeLater(rebuild::run);
 		});
 	}
@@ -480,14 +479,14 @@ class TransmogSetPanel extends JPanel
 					plugin.clientThread.invokeLater(() -> {
 						plugin.moveTransmogSet(index, true);
 						SwingUtilities.invokeLater(rebuild::run);
-						plugin.updateAnimationsAndTransmog();
+						plugin.handleTransmogSetChange();
 					});
 				}, "Move up in list and priority"));
 				rightSide.add(new IconLabelButton(MOVE_RULE_DOWN_ICON, MOVE_RULE_DOWN_ICON_HOVER, () -> {
 					plugin.clientThread.invokeLater(() -> {
 						plugin.moveTransmogSet(index, false);
 						SwingUtilities.invokeLater(rebuild::run);
-						plugin.updateAnimationsAndTransmog();
+						plugin.handleTransmogSetChange();
 					});
 				}, "Move down in list and priority"));
 			}
@@ -559,7 +558,7 @@ class TransmogSetPanel extends JPanel
 				if (!ATTACK.appliesTo(animationReplacement.animationtypeToReplace)) {
 					animationReplacement.animationtypeReplacement = null;
 				}
-				plugin.updateAnimationsAndTransmog();
+				plugin.handleTransmogSetChange();
 				SwingUtilities.invokeLater(rebuild::run);
 			});
 		});
@@ -597,7 +596,7 @@ class TransmogSetPanel extends JPanel
 						animationReplacement.animationtypeReplacement = actions.get(0);
 					}
 				}
-				plugin.updateAnimationsAndTransmog();
+				plugin.handleTransmogSetChange();
 				SwingUtilities.invokeLater(rebuild::run);
 			});
 		});
@@ -636,7 +635,7 @@ class TransmogSetPanel extends JPanel
 			attackToUse.addActionListener((e) -> {
 				plugin.clientThread.invokeLater(() -> {
 					animationReplacement.animationtypeReplacement = ((AnimationSet.Animation) attackToUse.getSelectedItem());
-					plugin.updateAnimationsAndTransmog();
+					plugin.handleTransmogSetChange();
 
 					Integer animation = animationReplacement.animationtypeReplacement.id;
 					if (animation != null) {
@@ -651,16 +650,16 @@ class TransmogSetPanel extends JPanel
 
 		return new EntryPanel(false, true, true, i == size - 1, animationReplacementPanel, () -> {
 			swap.animationReplacements.remove(i);
-			plugin.clientThread.invoke(plugin::updateAnimationsAndTransmog);
+			plugin.clientThread.invoke(plugin::handleTransmogSetChange);
 			SwingUtilities.invokeLater(() -> rebuild.run());
 		}, () -> {
 			plugin.clientThread.invokeLater(() -> {
 				swap.addNewAnimationReplacement();
-				plugin.updateAnimationsAndTransmog();
+				plugin.handleTransmogSetChange();
 				SwingUtilities.invokeLater(() -> rebuild.run());
 			});
 		}, (enabled) -> {
-			plugin.clientThread.invoke(plugin::updateAnimationsAndTransmog);
+			plugin.clientThread.invoke(plugin::handleTransmogSetChange);
 		});
 	}
 
@@ -692,7 +691,7 @@ class TransmogSetPanel extends JPanel
 		graphicEffectTypeComboBox.addActionListener((e) -> {
 			plugin.clientThread.invokeLater(() -> {
 				graphicEffect.type = (GraphicEffect.Type) graphicEffectTypeComboBox.getSelectedItem();
-				plugin.updateAnimationsAndTransmog();
+				plugin.handleTransmogSetChange();
 				SwingUtilities.invokeLater(rebuild::run);
 			});
 		});
@@ -741,7 +740,7 @@ class TransmogSetPanel extends JPanel
 					});
 					colorPicker.setOnClose(c -> plugin.clientThread.invokeLater(() -> {
 						graphicEffect.color = c;
-						plugin.updateAnimationsAndTransmog();
+						plugin.handleTransmogSetChange();
 						SwingUtilities.invokeLater(rebuild::run);
 					}));
 					colorPicker.setVisible(true);
@@ -753,12 +752,12 @@ class TransmogSetPanel extends JPanel
 
 		return new EntryPanel(false, false, true, i == size - 1, animationReplacementPanel, () -> {
 			swap.getGraphicEffects().remove(i);
-			plugin.clientThread.invoke(plugin::updateAnimationsAndTransmog);
+			plugin.clientThread.invoke(plugin::handleTransmogSetChange);
 			SwingUtilities.invokeLater(rebuild::run);
 		}, () -> {
 			plugin.clientThread.invokeLater(() -> {
 				swap.addNewGraphicEffect();
-				plugin.updateAnimationsAndTransmog();
+				plugin.handleTransmogSetChange();
 				SwingUtilities.invokeLater(rebuild::run);
 			});
 		}, (enabled) -> {
@@ -766,8 +765,11 @@ class TransmogSetPanel extends JPanel
 	}
 
 	public class ItemSelectionButton extends JButton {
-		boolean isTriggerItem = false;
+		String nameWhenEmpty = "None";
 		{
+			setPreferredSize(new Dimension(35, 35));
+			setMaximumSize(new Dimension(35, 35));
+			setMinimumSize(new Dimension( 30, 30));
 			addActionListener((e) -> {
 //				if (plugin.client.getGameState() == GameState.LOGGED_IN) setItemInternal(-1);
 				plugin.doItemSearch(this, (itemId) -> {
@@ -787,7 +789,7 @@ class TransmogSetPanel extends JPanel
 			if (itemId == -1)
 			{
 				setIcon(null);
-				setText(isTriggerItem ? "Any" : "None");
+				setText(nameWhenEmpty);
 				setBorder(null);
 			} else if (itemId < 0) {
 				NegativeId negativeId = mapNegativeId(itemId);
@@ -937,12 +939,12 @@ class TransmogSetPanel extends JPanel
 		}, () -> {
 			plugin.clientThread.invokeLater(() -> {
 				plugin.addNewTransmogSet(index + 1);
-				plugin.updateAnimationsAndTransmog();
+				plugin.handleTransmogSetChange();
 			});
 		}, (b) -> {
 			plugin.clientThread.invokeLater(() -> {
 				transmogSet.setEnabled(b);
-				plugin.updateAnimationsAndTransmog();
+				plugin.handleTransmogSetChange();
 			});
 		});
 	}

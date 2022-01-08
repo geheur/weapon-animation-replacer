@@ -453,7 +453,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
         {
 			ItemComposition itemComposition = itemManager.getItemComposition(itemManager.canonicalize(i));
             ItemStats itemStats = itemManager.getItemStats(itemComposition.getId(), false);
-            if (Constants.equippableItemsNotMarkedAsEquipment.containsKey(i)) {
+            if (Constants.EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPPABLE.containsKey(i)) {
             	// don't need to check anything else.
 			}
             else if (itemStats == null || !itemStats.isEquipable())
