@@ -4,6 +4,7 @@ import java.awt.image.BufferedImage;
 import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
+import net.runelite.api.Player;
 import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.CommandExecuted;
 import net.runelite.api.events.MenuOptionClicked;
@@ -52,6 +53,16 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		}
 
 		if (command.equals("poseanims")) {
+			String name = arguments[0];
+			for (Player player : client.getPlayers())
+			{
+				if (player.getName().equals(name)) {
+					for (Constants.ActorAnimation value : Constants.ActorAnimation.values())
+					{
+						System.out.println(value + " " + value.getAnimation(player));
+					}
+				}
+			}
 			for (Constants.ActorAnimation value : Constants.ActorAnimation.values())
 			{
 				System.out.println(value + " " + value.getAnimation(client.getLocalPlayer()));

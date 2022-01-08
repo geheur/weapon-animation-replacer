@@ -192,6 +192,36 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			DEFEND, 7056
 		));
 
+		animationSets.add(new AnimationSet("Godsword (Ancient)", AnimationSetType.MELEE_SPECIFIC,
+			STAND, 7053,
+			RUN, 7043,
+			WALK, 7052,
+			WALK_BACKWARD, 7052,
+			SHUFFLE_LEFT, 7048,
+			SHUFFLE_RIGHT, 7047,
+			ROTATE, 7044,
+			ATTACK_SLASH, 7045,
+			ATTACK_SLASH2, 7055,
+			ATTACK_CRUSH, 7054,
+			ATTACK_SPEC, 9171,
+			DEFEND, 7056
+		));
+
+		animationSets.add(new AnimationSet("Godsword (Ancient, alternative spec)", AnimationSetType.MELEE_SPECIFIC,
+			STAND, 7053,
+			RUN, 7043,
+			WALK, 7052,
+			WALK_BACKWARD, 7052,
+			SHUFFLE_LEFT, 7048,
+			SHUFFLE_RIGHT, 7047,
+			ROTATE, 7044,
+			ATTACK_SLASH, 7045,
+			ATTACK_SLASH2, 7055,
+			ATTACK_CRUSH, 7054,
+			ATTACK_SPEC, 9173,
+			DEFEND, 7056
+		));
+
 		animationSets.add(new AnimationSet("Boxing gloves", AnimationSetType.FUN,
 			STAND, 3677,
 			RUN, 824,
@@ -738,6 +768,30 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			ATTACK, 7552
 		));
 
+		animationSets.add(new AnimationSet("Zaryte crossbow", AnimationSetType.RANGED,
+			STAND, 4591,
+			RUN, 4228,
+			WALK, 4226,
+			WALK_BACKWARD, 4227,
+			SHUFFLE_LEFT, 821,
+			SHUFFLE_RIGHT, 822,
+			ROTATE, 823,
+			DEFEND, 424,
+			ATTACK, 9168,
+			ATTACK_SPEC, 9168
+			// 9166 looks identical but isn't used as either the regular attack or the spec.
+		));
+
+		animationSets.add(new AnimationSet("Unknown (arms out)", AnimationSetType.RANGED,
+			STAND, 9050,
+			RUN, 9051,
+			WALK, 9051,
+			WALK_BACKWARD, 9054,
+			SHUFFLE_LEFT, 9052,
+			SHUFFLE_RIGHT, 9053,
+			ROTATE, 9050
+		));
+
 		animationSets.add(new AnimationSet("Dart", AnimationSetType.RANGED,
 			STAND, 808,
 			RUN, 824,
@@ -1071,6 +1125,20 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			ATTACK_STAB, 376,
 			ATTACK_SLASH, 377,
 			DEFEND, 378
+		));
+
+		animationSets.add(new AnimationSet("Clan vexillum", AnimationSetType.MELEE_SPECIFIC,
+			STAND, 9018,
+			RUN, 9019,
+			WALK, 9017,
+			WALK_BACKWARD, 9017,
+			SHUFFLE_LEFT, 9021,
+			SHUFFLE_RIGHT, 9020,
+			ROTATE, 7044,
+			ATTACK_STAB, 7046,
+			ATTACK_SLASH, 7045,
+			ATTACK_CRUSH, 7054,
+			DEFEND, 7056
 		));
 
 		Collections.sort(animationSets);
