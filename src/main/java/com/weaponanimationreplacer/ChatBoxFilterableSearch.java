@@ -422,6 +422,8 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
     @Override
     protected void close()
     {
+    	if (onItemMouseOvered != null) onItemMouseOvered.accept(-1);
+
         // Clear search string when closed
         value("");
         results.clear();
