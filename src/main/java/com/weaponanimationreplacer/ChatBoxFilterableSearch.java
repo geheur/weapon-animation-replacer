@@ -83,7 +83,9 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
     @Getter
     private Consumer<Integer> onItemSelected;
 
-    @Value
+	private Consumer<Integer> onItemMouseOvered;
+
+	@Value
     private static class ItemIcon
     {
         private final int modelId;
@@ -206,8 +208,14 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 		}
 		else
 		{
-			item.setOnMouseOverListener((JavaScriptCallback) ev -> item.setOpacity(HOVERED_OPACITY));
-			item.setOnMouseLeaveListener((JavaScriptCallback) ev -> item.setOpacity(0));
+			item.setOnMouseOverListener((JavaScriptCallback) ev -> {
+				item.setOpacity(HOVERED_OPACITY);
+				if (onItemMouseOvered != null) onItemMouseOvered.accept(item.getItemId());
+			});
+			item.setOnMouseLeaveListener((JavaScriptCallback) ev -> {
+				item.setOpacity(0);
+				if (onItemMouseOvered != null) onItemMouseOvered.accept(-1);
+			});
 		}
 
 		item.setOnOpListener((JavaScriptCallback) ev -> runnable.run());
@@ -484,7 +492,13 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
         return this;
     }
 
-    public ChatBoxFilterableSearch tooltipText(final String text)
+	public ChatBoxFilterableSearch onItemMouseOvered(Consumer<Integer> onItemMouseOvered)
+	{
+		this.onItemMouseOvered = onItemMouseOvered;
+		return this;
+	}
+
+	public ChatBoxFilterableSearch tooltipText(final String text)
     {
         tooltipText = text;
         return this;

@@ -127,27 +127,27 @@ public class Swap
 
 	public boolean appliesToGear(List<Integer> equippedItemIds, Function<Integer, Integer> getSlot)
 	{
-		return appliesToGear(equippedItemIds, false, getSlot);
+		if (itemRestrictions.contains(-1)) return true;
+		return appliesSpecificallyToGear(equippedItemIds, getSlot);
 	}
 
+	/**
+	 * returns true if each slot of the equipped gear that has a corresponding trigger item matches at least one of the trigger items for that slot.
+	 * In other words, all trigger items must match unless there are multiple for the same slot in which case only one much match.
+	 */
 	public boolean appliesSpecificallyToGear(List<Integer> equippedItemIds, Function<Integer, Integer> getSlot)
-	{
-		return appliesToGear(equippedItemIds, true, getSlot);
-	}
-
-	private boolean appliesToGear(List<Integer> equippedItemIds, boolean specific, Function<Integer, Integer> getSlot)
 	{
 		Set<Integer> slots = new HashSet<>();
 		Set<Integer> slotsSatisfied = new HashSet<>();
 		for (Integer itemRestriction : itemRestrictions)
 		{
 			if (itemRestriction == -1) {
-				continue;
+				return false;
 			}
 
 			int slot = getSlot.apply(itemRestriction);
 			slots.add(slot);
-			if (equippedItemIds.contains(itemRestriction) || (!specific && itemRestriction == -1)) {
+			if (equippedItemIds.contains(itemRestriction)) {
 				slotsSatisfied.add(slot);
 			}
 		}

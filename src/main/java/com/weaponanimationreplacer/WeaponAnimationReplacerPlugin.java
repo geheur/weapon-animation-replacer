@@ -403,11 +403,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
     private void updateAnimations() { // TODO cache maybe based on the current gear.
         AnimationSet currentSet = new AnimationSet();
 
-		List<Swap> matchingSwaps = transmogSets.stream()
-			.filter(TransmogSet::isEnabled)
-			.flatMap(set -> set.getSwaps().stream())
-			.filter(swap -> swap.appliesToGear(equippedItemsFromKit, getSlot))
-			.collect(Collectors.toList());
+		List<Swap> matchingSwaps = getApplicableSwaps();
 
 		List<AnimationReplacement> replacements = matchingSwaps.stream()
 			.flatMap(swap -> swap.animationReplacements.stream()
@@ -531,11 +527,19 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
                             onItemChosen.accept(itemId);
                         });})
 
+				.onItemMouseOvered(this::setPreviewItem)
                 .build();
         clientUI.requestFocus();
     }
 
-    public BufferedImage getItemImage(int itemId) {
+    int previewItem = -1;
+
+	private void setPreviewItem(Integer itemId)
+	{
+		previewItem = itemId;
+		transmogManager.changeTransmog();
+	}
+	public BufferedImage getItemImage(int itemId) {
         return itemManager.getImage(itemId);
     }
 
@@ -578,11 +582,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
 	public Map<Integer, Integer> getApplicableModelSwaps()
 	{
-		List<Swap> swaps = transmogSets.stream()
-			.filter(TransmogSet::isEnabled)
-			.flatMap(set -> set.getSwaps().stream())
-			.filter(swap -> swap.appliesToGear(equippedItemsFromKit, getSlot))
-			.collect(Collectors.toList());
+		List<Swap> swaps = getApplicableSwaps();
 
 		Map<Integer, Integer> genericTransmog = new HashMap<>();
 		Map<Integer, Integer> specificTransmog = new HashMap<>();
@@ -614,23 +614,8 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 				}
 				else
 				{
-					ItemStats itemStats = itemManager.getItemStats(modelSwap, false);
-					if (itemStats == null || !itemStats.isEquipable())
-					{
-						if (Constants.EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPPABLE.containsKey(modelSwap)) {
-							slot = Constants.EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPPABLE.get(modelSwap);
-						} else {
-							continue;
-						}
-					} else {
-						ItemEquipmentStats stats = itemStats.getEquipment();
-						slot = stats.getSlot();
-					}
-
-					if (Constants.JAW_SLOT.contains(modelSwap))
-					{
-						slot = 11;
-					}
+					slot = getSlotForItem(modelSwap);
+					if (slot == -1) continue;
 				}
 
 				if (!transmogMap.containsKey(slot)) {
@@ -644,6 +629,33 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			genericTransmog.put(entry.getKey(), entry.getValue());
 		}
 
+		if (previewItem != -1) genericTransmog.put(getSlotForItem(previewItem), previewItem);
+
 		return genericTransmog;
+	}
+
+	private List<Swap> getApplicableSwaps()
+	{
+		return transmogSets.stream()
+			.filter(TransmogSet::isEnabled)
+			.flatMap(set -> set.getSwaps().stream())
+			.filter(swap -> swap.appliesToGear(equippedItemsFromKit, getSlot))
+			.collect(Collectors.toList());
+	}
+
+	private int getSlotForItem(Integer modelSwap)
+	{
+		ItemStats itemStats = itemManager.getItemStats(modelSwap, false);
+		if (itemStats == null || !itemStats.isEquipable())
+		{
+			return Constants.EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPPABLE.getOrDefault(modelSwap, -1);
+		}
+
+		if (Constants.JAW_SLOT.contains(modelSwap))
+		{
+			return KitType.JAW.getIndex();
+		}
+
+		return itemStats.getEquipment().getSlot();
 	}
 }

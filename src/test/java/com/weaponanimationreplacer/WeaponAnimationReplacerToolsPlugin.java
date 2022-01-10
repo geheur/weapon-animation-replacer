@@ -1,6 +1,8 @@
 package com.weaponanimationreplacer;
 
 import java.awt.image.BufferedImage;
+import java.util.HashMap;
+import java.util.Map;
 import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
@@ -14,6 +16,8 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDependency;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.util.Text;
+import net.runelite.http.api.item.ItemEquipmentStats;
+import net.runelite.http.api.item.ItemStats;
 
 @Slf4j
 @PluginDescriptor(
@@ -44,12 +48,37 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 			AnimationSet.loadAnimationSets();
 		}
 
+		if (command.equals("listweapons")) {
+			Map<Integer, Integer> map = new HashMap<>();
+			for (int i = 0; i < client.getItemCount(); i++)
+			{
+				ItemStats itemStats = itemManager.getItemStats(i, false);
+				if (itemStats == null) continue;
+				ItemEquipmentStats equipment = itemStats.getEquipment();
+				if (equipment == null) continue;
+				int slot = equipment.getSlot();
+				map.put(slot, map.getOrDefault(slot, 0) + 1);
+			}
+			for (Map.Entry<Integer, Integer> integerIntegerEntry : map.entrySet())
+			{
+
+				System.out.println(integerIntegerEntry.getKey() + " " + integerIntegerEntry.getValue());
+			}
+			System.out.println("reloading animations sets");
+			AnimationSet.loadAnimationSets();
+		}
+
 		if (command.equals("demoanim")) {
 			demoanim = Integer.parseInt(arguments[0]);
 		}
 
 		if (command.equals("demogfx")) {
 			demogfx = Integer.parseInt(arguments[0]);
+		}
+
+		if (command.equals("testthing")) {
+			client.getLocalPlayer().setAnimation(713);
+			client.getLocalPlayer().setAnimationFrame(Integer.parseInt(arguments[0]));
 		}
 
 		if (command.equals("poseanims")) {
@@ -103,6 +132,11 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 
 	@Subscribe
 	public void onClientTick(ClientTick clientTick) {
+//		for (int i = 0; i < Math.min(100, client.getLocalPlayer().getModel().getFaceColors1().length); i++)
+//		for (int i = 0; i < client.getLocalPlayer().getModel().getFaceColors1().length; i++)
+//		{
+//			client.getLocalPlayer().getModel().getFaceColors1()[i] = 0;
+//		}
 		if (demoanim != -1) {
 			client.getLocalPlayer().setAnimation(demoanim);
 			client.getLocalPlayer().setAnimationFrame(0);
