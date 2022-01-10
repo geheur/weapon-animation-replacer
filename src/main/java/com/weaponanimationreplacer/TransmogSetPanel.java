@@ -767,6 +767,7 @@ class TransmogSetPanel extends JPanel
 	public class ItemSelectionButton extends JButton {
 		String nameWhenEmpty = "None";
 		{
+			setBackground(ColorScheme.LIGHT_GRAY_COLOR);
 			setPreferredSize(new Dimension(35, 35));
 			setMaximumSize(new Dimension(35, 35));
 			setMinimumSize(new Dimension( 30, 30));
