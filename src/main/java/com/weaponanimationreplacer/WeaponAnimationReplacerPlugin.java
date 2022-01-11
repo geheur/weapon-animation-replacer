@@ -34,6 +34,7 @@ import net.runelite.api.Actor;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.JagexColor;
+import net.runelite.api.Model;
 import net.runelite.api.NPC;
 import net.runelite.api.Player;
 import net.runelite.api.RuneLiteObject;
@@ -382,11 +383,17 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		Color scytheSwingColor = currentScytheGraphicEffect != null ? currentScytheGraphicEffect.color : null;
 		if (scytheSwingColor != null)
 		{
-			runeLiteObject.setModel(client.loadModel(
+			Model model = client.loadModel(
 				id,
 				new short[]{960},
 				new short[]{JagexColor.rgbToHSL(scytheSwingColor.getRGB(), 1.0d)}
-			));
+			);
+			int[] verticesY = model.getVerticesY();
+			for (int i = 0; i < verticesY.length; i++)
+			{
+				verticesY[i] -= 85;
+			}
+			runeLiteObject.setModel(model);
 		} else {
 			runeLiteObject.setModel(client.loadModel(id));
 		}
@@ -563,6 +570,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		{
 			player.setAnimation(animation);
 			player.setAnimationFrame(0);
+			if (currentScytheGraphicEffect != null) scytheSwingCountdown = 20;
 		}
     }
 
