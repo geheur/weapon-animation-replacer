@@ -584,7 +584,7 @@ class TransmogSetPanel extends JPanel
 				animationReplacement.animationSet = (AnimationSet) animationSetToUse.getSelectedItem();
 				if (ATTACK.appliesTo(animationReplacement.animationtypeToReplace) && animationReplacement.animationSet != null)
 				{
-					List<AnimationSet.Animation> actions = animationReplacement.animationSet.animations.entries().stream()
+					List<AnimationSet.Animation> actions = animationReplacement.animationSet.animations.entrySet().stream()
 						.filter(t -> ATTACK.appliesTo(t.getKey()))
 						.map(entry -> entry.getValue())
 						.collect(Collectors.toList());
@@ -608,7 +608,7 @@ class TransmogSetPanel extends JPanel
 			row3.setLayout(new BoxLayout(row3, BoxLayout.X_AXIS));
 			row3.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 			row3.add(new JLabel("attack animation:"));
-			List<AnimationSet.Animation> actions = animationReplacement.animationSet.animations.entries().stream()
+			List<AnimationSet.Animation> actions = animationReplacement.animationSet.animations.entrySet().stream()
 					.filter(t -> ATTACK.appliesTo(t.getKey()))
 					.map(e -> e.getValue())
 					.collect(Collectors.toList());

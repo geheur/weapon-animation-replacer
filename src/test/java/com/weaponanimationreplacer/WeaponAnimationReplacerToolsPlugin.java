@@ -82,19 +82,16 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		}
 
 		if (command.equals("poseanims")) {
-			String name = arguments[0];
+			String name = arguments.length == 0 ? client.getLocalPlayer().getName() : arguments[0];
 			for (Player player : client.getPlayers())
 			{
-				if (player.getName().equals(name)) {
+				if (player.getName().equals(name))
+				{
 					for (Constants.ActorAnimation value : Constants.ActorAnimation.values())
 					{
-						System.out.println(value + " " + value.getAnimation(player));
+						System.out.println(value.getType() + ", " + value.getAnimation(player) + ",");
 					}
 				}
-			}
-			for (Constants.ActorAnimation value : Constants.ActorAnimation.values())
-			{
-				System.out.println(value + " " + value.getAnimation(client.getLocalPlayer()));
 			}
 		}
 
@@ -138,8 +135,8 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 //			client.getLocalPlayer().getModel().getFaceColors1()[i] = 0;
 //		}
 		if (demoanim != -1) {
-			client.getLocalPlayer().setAnimation(demoanim);
-			client.getLocalPlayer().setAnimationFrame(0);
+//			client.getLocalPlayer().setAnimation(demoanim);
+//			client.getLocalPlayer().setAnimationFrame(0);
 		}
 		if (demogfx != -1) {
 			client.getLocalPlayer().setGraphic(demogfx);
@@ -150,18 +147,26 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 	@Subscribe
 	public void onMenuOptionClicked(MenuOptionClicked menuOptionClicked)
 	{
-		if (menuOptionClicked.getMenuOption().equals("Wield")) {
+		if (menuOptionClicked.getMenuOption().equals("Use") && menuOptionClicked.getId() == 563) {
 			if (demoanim != -1) {
 				demoanim--;
+				for (Constants.ActorAnimation value : Constants.ActorAnimation.values())
+				{
+					value.setAnimation(client.getLocalPlayer(), demoanim);
+				}
 				System.out.println("demo anim " + demoanim);
 			}
 			if (demogfx != -1) {
 				demogfx--;
 				System.out.println("demo gfx " + demogfx);
 			}
-		} else if (menuOptionClicked.getMenuOption().equals("Use")){
+		} else if (menuOptionClicked.getMenuOption().equals("Use") && menuOptionClicked.getId() == 995){
 			if (demoanim != -1) {
 				demoanim++;
+				for (Constants.ActorAnimation value : Constants.ActorAnimation.values())
+				{
+					value.setAnimation(client.getLocalPlayer(), demoanim);
+				}
 				System.out.println("demo anim " + demoanim);
 			}
 			if (demogfx != -1) {
