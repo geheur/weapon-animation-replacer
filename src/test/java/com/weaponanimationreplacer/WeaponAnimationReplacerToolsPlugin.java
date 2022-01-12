@@ -42,6 +42,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 	public void onCommandExecuted(CommandExecuted commandExecuted) {
 		String[] arguments = commandExecuted.getArguments();
 		String command = commandExecuted.getCommand();
+		System.out.println(arguments.length);
 
 		if (command.equals("reload")) {
 			System.out.println("reloading animations sets");
@@ -82,10 +83,11 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		}
 
 		if (command.equals("poseanims")) {
-			String name = arguments.length == 0 ? client.getLocalPlayer().getName() : arguments[0];
+			String name = arguments.length == 0 ? client.getLocalPlayer().getName() : String.join(" ", arguments);
+			System.out.println("pose anims for player " + name);
 			for (Player player : client.getPlayers())
 			{
-				if (player.getName().equals(name))
+				if (player.getName().toLowerCase().equals(name))
 				{
 					for (Constants.ActorAnimation value : Constants.ActorAnimation.values())
 					{

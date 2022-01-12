@@ -56,7 +56,7 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			.put(DEFEND, 403)
 			.build();
 		new AnimationSetBuilder("Dinh's bulwhark")
-			.poseAnims(7508, -1, 7510, -1, -1, -1, 7509)
+			.poseAnims(7508, 823, 7510, 7510, 7510, 7510, 7509)
 			.put(ATTACK_CRUSH, 7511)
 			.put(ATTACK_SPEC, 7512)
 			.put(DEFEND, 7517)
