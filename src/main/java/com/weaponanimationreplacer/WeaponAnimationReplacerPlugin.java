@@ -457,7 +457,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		Player player = client.getLocalPlayer();
 		if (player == null) return;
 
-		if (AnimationSet.doNotReplaceIdles.contains(player.getIdlePoseAnimation())) return;
+		if (AnimationSet.doNotReplaceIdles.contains(naturalPlayerPoseAnimations.get(Constants.ActorAnimation.IDLE.ordinal()))) return;
 
 		for (Constants.ActorAnimation animation : Constants.ActorAnimation.values())
 		{
