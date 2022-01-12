@@ -29,6 +29,7 @@ import javax.inject.Inject;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import lombok.Getter;
+import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
 import net.runelite.api.Client;
@@ -601,35 +602,9 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			Map<Integer, Integer> transmogMap = swap.appliesSpecificallyToGear(equippedItemsFromKit, getSlot) ? specificTransmog : genericTransmog;
 			for (Integer modelSwap : swap.getModelSwaps())
 			{
-				int slot;
-				if (modelSwap < 0) {
-					Constants.NegativeId negativeId = mapNegativeId(modelSwap);
-					if (negativeId.type == Constants.NegativeIdsMap.HIDE_SLOT) {
-						modelSwap = 0;
-						slot = negativeId.id;
-					}
-					else if (negativeId.type == Constants.NegativeIdsMap.SHOW_SLOT) {
-						modelSwap =
-							negativeId.id == KitType.ARMS.getIndex() ? (TransmogrificationManager.baseArmsKit == -1 ? (client.getLocalPlayer().getPlayerComposition().isFemale() ? DEFAULT_FEMALE_ARMS : DEFAULT_MALE_ARMS) : TransmogrificationManager.baseArmsKit) :
-							negativeId.id == KitType.HAIR.getIndex() ? (TransmogrificationManager.baseHairKit == -1 ? (client.getLocalPlayer().getPlayerComposition().isFemale() ? DEFAULT_FEMALE_HAIR : DEFAULT_MALE_HAIR) : TransmogrificationManager.baseHairKit) :
-							(TransmogrificationManager.baseJawKit == -1 ? (client.getLocalPlayer().getPlayerComposition().isFemale() ? 0 : DEFAULT_MALE_JAW) : TransmogrificationManager.baseJawKit)
-							;
-						slot = negativeId.id;
-						modelSwap -= 512;
-					}
-					else
-					{
-						continue;
-					}
-				}
-				else
-				{
-					slot = getSlotForItem(modelSwap);
-					if (slot == -1) continue;
-				}
-
-				if (!transmogMap.containsKey(slot)) {
-					transmogMap.put(slot, modelSwap);
+				SlotAndKitId slotForItem = getSlotForItem(modelSwap);
+				if (slotForItem != null && !transmogMap.containsKey(slotForItem.slot)) {
+					transmogMap.put(slotForItem.slot, slotForItem.kitId);
 				}
 			}
 		}
@@ -639,7 +614,10 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			genericTransmog.put(entry.getKey(), entry.getValue());
 		}
 
-		if (previewItem != -1) genericTransmog.put(getSlotForItem(previewItem), previewItem);
+		if (previewItem != -1) {
+			SlotAndKitId slotForItem = getSlotForItem(previewItem);
+			if (slotForItem != null) genericTransmog.put(slotForItem.slot, slotForItem.kitId);
+		}
 
 		return genericTransmog;
 	}
@@ -653,19 +631,49 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			.collect(Collectors.toList());
 	}
 
-	private int getSlotForItem(Integer modelSwap)
+	@Value
+	private static class SlotAndKitId {
+		int slot;
+		int kitId;
+	}
+
+	private SlotAndKitId getSlotForItem(Integer modelSwap)
 	{
-		ItemStats itemStats = itemManager.getItemStats(modelSwap, false);
-		if (itemStats == null || !itemStats.isEquipable())
+		if (modelSwap < 0) {
+			Constants.NegativeId negativeId = mapNegativeId(modelSwap);
+			if (negativeId.type == Constants.NegativeIdsMap.HIDE_SLOT) {
+				return new SlotAndKitId(negativeId.id, 0);
+			}
+			else if (negativeId.type == Constants.NegativeIdsMap.SHOW_SLOT) {
+				modelSwap =
+					negativeId.id == KitType.ARMS.getIndex() ? (TransmogrificationManager.baseArmsKit == -1 ? (client.getLocalPlayer().getPlayerComposition().isFemale() ? DEFAULT_FEMALE_ARMS : DEFAULT_MALE_ARMS) : TransmogrificationManager.baseArmsKit) :
+					negativeId.id == KitType.HAIR.getIndex() ? (TransmogrificationManager.baseHairKit == -1 ? (client.getLocalPlayer().getPlayerComposition().isFemale() ? DEFAULT_FEMALE_HAIR : DEFAULT_MALE_HAIR) : TransmogrificationManager.baseHairKit) :
+					(TransmogrificationManager.baseJawKit == -1 ? (client.getLocalPlayer().getPlayerComposition().isFemale() ? 0 : DEFAULT_MALE_JAW) : TransmogrificationManager.baseJawKit)
+				;
+				return new SlotAndKitId(negativeId.id, modelSwap - 512);
+			}
+			else
+			{
+				return null;
+			}
+		}
+		else
 		{
-			return Constants.EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPPABLE.getOrDefault(modelSwap, -1);
+			ItemStats itemStats = itemManager.getItemStats(modelSwap, false);
+			if (itemStats == null || !itemStats.isEquipable())
+			{
+				Integer slot = Constants.EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPPABLE.get(modelSwap);
+				if (slot == null) return null;
+				return new SlotAndKitId(slot, modelSwap);
+			}
+
+			if (Constants.JAW_SLOT.contains(modelSwap))
+			{
+				return new SlotAndKitId(KitType.JAW.getIndex(), modelSwap);
+			}
+
+			return new SlotAndKitId(itemStats.getEquipment().getSlot(), modelSwap);
 		}
 
-		if (Constants.JAW_SLOT.contains(modelSwap))
-		{
-			return KitType.JAW.getIndex();
-		}
-
-		return itemStats.getEquipment().getSlot();
 	}
 }

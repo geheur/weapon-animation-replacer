@@ -135,7 +135,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 		{
 			for (ItemComposition itemComposition : results.values())
 			{
-				addItemWidget(itemComposition.getId(), itemComposition.getName(), container, x, y, () ->
+				addItemWidget(itemComposition.getId(), itemComposition.getId(), itemComposition.getName(), container, x, y, () ->
 				{
 					onItemSelected.accept(itemComposition.getId());
 					chatboxPanelManager.close();
@@ -167,7 +167,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 			for (int i = 0; i < iconIds.size(); i++)
 			{
 				final int finalI = i;
-				addItemWidget(iconIds.get(i), names.get(i), container, x, y, () ->
+				addItemWidget(hideSlotIds.get(i), iconIds.get(i), names.get(i), container, x, y, () ->
 				{
 					onItemSelected.accept(hideSlotIds.get(finalI));
 					chatboxPanelManager.close();
@@ -185,7 +185,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 		}
 	}
 
-	private void addItemWidget(int id, String name,  Widget container, int x, int y, Runnable runnable, int idx)
+	private void addItemWidget(int id, int iconId, String name, Widget container, int x, int y, Runnable runnable, int idx)
 	{
 		Widget item = container.createChild(-1, WidgetType.GRAPHIC);
 		item.setXPositionMode(WidgetPositionMode.ABSOLUTE_LEFT);
@@ -195,7 +195,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 		item.setOriginalHeight(ICON_HEIGHT);
 		item.setOriginalWidth(ICON_WIDTH);
 		item.setName(JagexColors.MENU_TARGET_TAG + name);
-		item.setItemId(id);
+		item.setItemId(iconId);
 		item.setItemQuantity(10000);
 		item.setItemQuantityMode(ItemQuantityMode.NEVER);
 		item.setBorderType(1);
@@ -210,7 +210,8 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 		{
 			item.setOnMouseOverListener((JavaScriptCallback) ev -> {
 				item.setOpacity(HOVERED_OPACITY);
-				if (onItemMouseOvered != null) onItemMouseOvered.accept(item.getItemId());
+				System.out.println(idx);
+				if (onItemMouseOvered != null) onItemMouseOvered.accept(id);
 			});
 			item.setOnMouseLeaveListener((JavaScriptCallback) ev -> {
 				item.setOpacity(0);
