@@ -675,7 +675,6 @@ public class AnimationSet implements Comparable<AnimationSet> {
 	private void replaceAnimations(AnimationSet animationSet, AnimationType toReplace, Animation replacement) {
 		AnimationType type = replacement == null ? toReplace : replacement.type;
 		if (toReplace.children == null || toReplace.children.isEmpty()) {
-			animations.remove(toReplace);
 			if (replacement != null) {
 				animations.put(toReplace, replacement);
 			} else {
