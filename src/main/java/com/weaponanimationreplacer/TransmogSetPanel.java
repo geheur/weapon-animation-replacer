@@ -81,6 +81,7 @@ import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.components.ColorJButton;
 import net.runelite.client.ui.components.FlatTextField;
 import net.runelite.client.ui.components.colorpicker.RuneliteColorPicker;
+import net.runelite.client.util.AsyncBufferedImage;
 import net.runelite.client.util.ColorUtil;
 import net.runelite.client.util.ImageUtil;
 
@@ -795,30 +796,27 @@ class TransmogSetPanel extends JPanel
 			} else if (itemId < 0) {
 				NegativeId negativeId = mapNegativeId(itemId);
 				if (negativeId.type == NegativeIdsMap.HIDE_SLOT) {
-					BufferedImage itemImage = plugin.getItemImage(HiddenSlot.values()[negativeId.id].iconIdToShow);
-					BufferedImage copy = new BufferedImage(itemImage.getWidth(), itemImage.getHeight(), itemImage.getType());
-					Graphics2D graphics = (Graphics2D) copy.getGraphics();
-					graphics.drawImage(itemImage, 0, 0, null);
-					BufferedImage bankFillerImage = plugin.getItemImage(ItemID.BANK_FILLER);
-					AlphaComposite ac = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f);
-					graphics.setComposite(ac);
-					graphics.drawImage(bankFillerImage, 0, 0/*, (int) (bankFillerImage.getHeight() * 1.5), (int) (bankFillerImage.getWidth() * 1.5)*/, null);
-					setIcon(new ImageIcon(copy));
+					plugin.clientThread.invoke(() -> {
+						BufferedImage itemImage = plugin.getItemImage(HiddenSlot.values()[negativeId.id].iconIdToShow);
+						BufferedImage bankFillerImage = plugin.getItemImage(ItemID.BANK_FILLER);
+						SwingUtilities.invokeLater(() -> {
+							BufferedImage copy = new BufferedImage(itemImage.getWidth(), itemImage.getHeight(), itemImage.getType());
+							Graphics2D graphics = (Graphics2D) copy.getGraphics();
+							graphics.drawImage(itemImage, 0, 0, null);
+							AlphaComposite ac = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f);
+							graphics.setComposite(ac);
+							graphics.drawImage(bankFillerImage, 0, 0/*, (int) (bankFillerImage.getHeight() * 1.5), (int) (bankFillerImage.getWidth() * 1.5)*/, null);
+							setIcon(new ImageIcon(copy));
+						});
+					});
 					setText(null);
 					SwingUtilities.invokeLater(() -> {
 						setToolTipText("hide " + KitType.values()[negativeId.id]);
 					});
 				}
 				else if (negativeId.type == NegativeIdsMap.SHOW_SLOT) {
-					BufferedImage itemImage = plugin.getItemImage(ShownSlot.values()[negativeId.id].iconIdToShow);
-					BufferedImage copy = new BufferedImage(itemImage.getWidth(), itemImage.getHeight(), itemImage.getType());
-					Graphics2D graphics = (Graphics2D) copy.getGraphics();
-					graphics.drawImage(itemImage, 0, 0, null);
-//					BufferedImage bankFillerImage = plugin.getItemImage(ItemID.BANK_FILLER);
-//					AlphaComposite ac = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f);
-//					graphics.setComposite(ac);
-//					graphics.drawImage(bankFillerImage, 0, 0/*, (int) (bankFillerImage.getHeight() * 1.5), (int) (bankFillerImage.getWidth() * 1.5)*/, null);
-					setIcon(new ImageIcon(copy));
+					AsyncBufferedImage itemImage = (AsyncBufferedImage) plugin.getItemImage(ShownSlot.values()[negativeId.id].iconIdToShow);
+					itemImage.addTo(this);
 					setText(null);
 					SwingUtilities.invokeLater(() -> {
 						setToolTipText("show " + KitType.values()[negativeId.id]);
