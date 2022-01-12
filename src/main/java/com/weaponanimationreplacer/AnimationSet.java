@@ -38,6 +38,7 @@ public class AnimationSet implements Comparable<AnimationSet> {
 	}
 	static void loadAnimationSets() {
 		animationSets.clear();
+		doNotReplaceIdles.clear();
 
 		new AnimationSetBuilder("Scythe of Vitur")
 			.poseAnims(8057, 823, 819, 820, 821, 822, 824)
@@ -619,7 +620,10 @@ public class AnimationSet implements Comparable<AnimationSet> {
 		}
 
 		public void build(Object... data) {
-			if (doNotReplace) doNotReplaceIdles.add(animations.get(STAND).id);
+			if (doNotReplace) {
+				Animation animation = animations.get(STAND);
+				if (animation != null) doNotReplaceIdles.add(animation.id);
+			}
 			animationSets.add(new AnimationSet(name, type, doNotReplace, animations));
 		}
 	}
