@@ -144,8 +144,13 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			.build();
 		new AnimationSetBuilder("Staff")
 			.poseAnims(813, 1209, 1205, 1206, 1207, 1208, 1210)
-			.put(ATTACK_CRUSH, 419)
+			.put(ATTACK_CRUSH, 419) // without shield. 393 is with shield.
 			.put(DEFEND, 420)
+			.build();
+		new AnimationSetBuilder("Staff2/Wand")
+			.poseAnims(813, 1209, 1205, 1206, 1207, 1208, 1210)
+			.put(ATTACK_CRUSH, 414) // without shield. 393 is with shield.
+			.put(DEFEND, 415)
 			.build();
 		new AnimationSetBuilder("Zamorakian hasta")
 			.poseAnims(813, 1209, 1205, 1206, 1207, 1208, 1210)
@@ -253,11 +258,6 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			.put(ATTACK_CRUSH, 429)
 			.put(ATTACK_STAB, 428)
 			.put(DEFEND, 430)
-			.build();
-		new AnimationSetBuilder("Staff2/Wand")
-			.poseAnims(813, 1209, 1205, 1206, 1207, 1208, 1210)
-			.put(ATTACK_CRUSH, 414)
-			.put(DEFEND, 415)
 			.build();
 		new AnimationSetBuilder("Magic butterfly net")
 			.poseAnims(6604, 6611, 6607, 6608, 6610, 6609, 6603)
@@ -367,6 +367,7 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			.put(ATTACK, 9168)
 			.put(DEFEND, 424)
 			.put(ATTACK_SPEC, 9168)
+			// 9166 looks identical but isn't used as either the regular attack or the spec.
 			.build();
 		new AnimationSetBuilder("Unknown (arms out)")
 			.poseAnims(9050, 9050, 9051, 9054, 9052, 9053, 9051)
@@ -537,10 +538,6 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			.put(ATTACK_STAB, 7046)
 			.put(DEFEND, 7056)
 			.build();
-		new AnimationSetBuilder("Underwater swimming")
-			.poseAnims(3418, 3415, 3415, 3415, 3415, 3415, 7703)
-			.doNotReplace()
-			.build();
 		new AnimationSetBuilder("Tightrope")
 			.poseAnims(763, 762, 762, 762, 762, 762, 762)
 			.doNotReplace()
@@ -550,7 +547,15 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			.doNotReplace()
 			.build();
 		new AnimationSetBuilder("Swimming")
+			.poseAnims(773, 773, 772, 772, 772, 772, 772)
+			.doNotReplace()
+			.build();
+		new AnimationSetBuilder("Swimming (drowning)")
 			.poseAnims(765, 765, 772, 772, 772, 772, 772)
+			.doNotReplace()
+			.build();
+		new AnimationSetBuilder("Swimming (underwater)")
+			.poseAnims(3418, 3415, 3415, 3415, 3415, 3415, 7703)
 			.doNotReplace()
 			.build();
 		new AnimationSetBuilder("Transparent")
@@ -564,6 +569,10 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			.build();
 		new AnimationSetBuilder("Leaping")
 			.poseAnims(-1, -1, 1603, 1603, 1603, 1603, 1603)
+			.doNotReplace()
+			.build();
+		new AnimationSetBuilder("Skipping")
+			.poseAnims(-1, -1, 3854, 3854, 3854, 3854, 3854)
 			.doNotReplace()
 			.build();
 

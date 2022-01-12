@@ -210,7 +210,6 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 		{
 			item.setOnMouseOverListener((JavaScriptCallback) ev -> {
 				item.setOpacity(HOVERED_OPACITY);
-				System.out.println(idx);
 				if (onItemMouseOvered != null) onItemMouseOvered.accept(id);
 			});
 			item.setOnMouseLeaveListener((JavaScriptCallback) ev -> {
