@@ -558,6 +558,11 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			.poseAnims(3418, 3415, 3415, 3415, 3415, 3415, 7703)
 			.doNotReplace()
 			.build();
+		new AnimationSetBuilder("Swimming (trident)")
+			.poseAnims(6998, 6998, 6996, 6996, 6996, 6996, 6995)
+			.put(ATTACK, 6997)
+			.doNotReplace()
+			.build();
 		new AnimationSetBuilder("Transparent")
 			.poseAnims(15, 15, 13, 13, 13, 13, 13)
 			.put(ATTACK_SLASH, 391)
@@ -568,11 +573,39 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			.doNotReplace()
 			.build();
 		new AnimationSetBuilder("Leaping")
-			.poseAnims(-1, -1, 1603, 1603, 1603, 1603, 1603)
+			.movement(1603)
 			.doNotReplace()
 			.build();
 		new AnimationSetBuilder("Skipping")
-			.poseAnims(-1, -1, 3854, 3854, 3854, 3854, 3854)
+			.movement(3854)
+			.doNotReplace()
+			.build();
+		new AnimationSetBuilder("Zombie")
+			.standMovement(6113, 6112)
+			.doNotReplace()
+			.build();
+		new AnimationSetBuilder("Hands on hips")
+			.standMovement(6393, 6395)
+			.doNotReplace()
+			.build();
+		new AnimationSetBuilder("Hands behind back")
+			.standMovement(6389, 6388)
+			.doNotReplace()
+			.build();
+		new AnimationSetBuilder("Sandstorm")
+			.standMovement(6379, 6378)
+			.doNotReplace()
+			.build();
+		new AnimationSetBuilder("Hunched over")
+			.standMovement(6469, 6468)
+			.doNotReplace()
+			.build();
+		new AnimationSetBuilder("Posh walk")
+			.standMovement(6487, 6486)
+			.doNotReplace()
+			.build();
+		new AnimationSetBuilder("Chicken")
+			.standMovement(6397, -1)
 			.doNotReplace()
 			.build();
 
@@ -634,6 +667,14 @@ public class AnimationSet implements Comparable<AnimationSet> {
 				if (animation != null) doNotReplaceIdles.add(animation.id);
 			}
 			animationSets.add(new AnimationSet(name, type, doNotReplace, animations));
+		}
+
+		public AnimationSetBuilder standMovement(int stand, int movement)
+		{
+			put(STAND, stand);
+			put(ROTATE, stand);
+			movement(movement);
+			return this;
 		}
 	}
 

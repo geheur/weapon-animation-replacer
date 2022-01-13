@@ -96,7 +96,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	@Inject
 	private EventBus eventBus;
 
-	private WeaponAnimationReplacerPluginPanel pluginPanel;
+	WeaponAnimationReplacerPluginPanel pluginPanel;
     private NavigationButton navigationButton;
 
 	private static final String TRANSMOG_SET_KEY = "transmogSets";

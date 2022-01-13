@@ -1,9 +1,20 @@
 package com.weaponanimationreplacer;
 
+import static com.weaponanimationreplacer.Constants.ActorAnimation.IDLE;
+import static com.weaponanimationreplacer.Constants.ActorAnimation.IDLE_ROTATE_LEFT;
+import static com.weaponanimationreplacer.Constants.ActorAnimation.IDLE_ROTATE_RIGHT;
+import static com.weaponanimationreplacer.Constants.ActorAnimation.RUN;
+import static com.weaponanimationreplacer.Constants.ActorAnimation.WALK;
+import static com.weaponanimationreplacer.Constants.ActorAnimation.WALK_ROTATE_180;
+import static com.weaponanimationreplacer.Constants.ActorAnimation.WALK_ROTATE_LEFT;
+import static com.weaponanimationreplacer.Constants.ActorAnimation.WALK_ROTATE_RIGHT;
+import static com.weaponanimationreplacer.Constants.ActorAnimation.values;
 import java.awt.image.BufferedImage;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import javax.inject.Inject;
+import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.Player;
@@ -45,8 +56,9 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		System.out.println(arguments.length);
 
 		if (command.equals("reload")) {
-			System.out.println("reloading animations sets");
 			AnimationSet.loadAnimationSets();
+			SwingUtilities.invokeLater(plugin.pluginPanel::rebuild);
+			System.out.println("reloaded animations sets");
 		}
 
 		if (command.equals("listweapons")) {
@@ -69,8 +81,36 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 			AnimationSet.loadAnimationSets();
 		}
 
+		if (command.equals("demo")) {
+			int demoanim = Integer.parseInt(arguments[0]);
+			for (Constants.ActorAnimation value : values())
+			{
+				value.setAnimation(client.getLocalPlayer(), demoanim);
+			}
+		}
+
+		if (command.equals("stand")) {
+			int demoanim = Integer.parseInt(arguments[0]);
+			for (Constants.ActorAnimation value : Arrays.asList(IDLE, IDLE_ROTATE_LEFT, IDLE_ROTATE_RIGHT))
+			{
+				value.setAnimation(client.getLocalPlayer(), demoanim);
+			}
+		}
+
+		if (command.equals("move")) {
+			int demoanim = Integer.parseInt(arguments[0]);
+			for (Constants.ActorAnimation value : Arrays.asList(WALK, WALK_ROTATE_180, WALK_ROTATE_LEFT, WALK_ROTATE_RIGHT, RUN))
+			{
+				value.setAnimation(client.getLocalPlayer(), demoanim);
+			}
+		}
+
 		if (command.equals("demoanim")) {
 			demoanim = Integer.parseInt(arguments[0]);
+			for (Constants.ActorAnimation value : values())
+			{
+				value.setAnimation(client.getLocalPlayer(), demoanim);
+			}
 		}
 
 		if (command.equals("demogfx")) {
@@ -82,6 +122,10 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 			client.getLocalPlayer().setAnimationFrame(Integer.parseInt(arguments[0]));
 		}
 
+		if (command.equals("pose")) {
+
+		}
+
 		if (command.equals("poseanims")) {
 			String name = arguments.length == 0 ? client.getLocalPlayer().getName() : String.join(" ", arguments);
 			System.out.println("pose anims for player " + name);
@@ -89,7 +133,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 			{
 				if (player.getName().toLowerCase().equals(name))
 				{
-					for (Constants.ActorAnimation value : Constants.ActorAnimation.values())
+					for (Constants.ActorAnimation value : values())
 					{
 						System.out.println(value.getType() + ", " + value.getAnimation(player) + ",");
 					}
@@ -152,7 +196,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		if (menuOptionClicked.getMenuOption().equals("Use") && menuOptionClicked.getId() == 563) {
 			if (demoanim != -1) {
 				demoanim--;
-				for (Constants.ActorAnimation value : Constants.ActorAnimation.values())
+				for (Constants.ActorAnimation value : values())
 				{
 					value.setAnimation(client.getLocalPlayer(), demoanim);
 				}
@@ -165,7 +209,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		} else if (menuOptionClicked.getMenuOption().equals("Use") && menuOptionClicked.getId() == 995){
 			if (demoanim != -1) {
 				demoanim++;
-				for (Constants.ActorAnimation value : Constants.ActorAnimation.values())
+				for (Constants.ActorAnimation value : values())
 				{
 					value.setAnimation(client.getLocalPlayer(), demoanim);
 				}
