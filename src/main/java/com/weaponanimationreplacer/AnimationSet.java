@@ -604,6 +604,14 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			.standMovement(6487, 6486)
 			.doNotReplace()
 			.build();
+		new AnimationSetBuilder("Posh walk 2")
+			.standMovement(6927, 6928)
+			.doNotReplace()
+			.build();
+		new AnimationSetBuilder("Looking at hands")
+			.standMovement(6075, 6076)
+			.doNotReplace()
+			.build();
 		new AnimationSetBuilder("Chicken")
 			.standMovement(6397, -1)
 			.doNotReplace()
