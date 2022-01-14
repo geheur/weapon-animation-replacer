@@ -8,7 +8,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 import lombok.Data;
 
 public class AnimationSet implements Comparable<AnimationSet> {
@@ -741,20 +740,14 @@ public class AnimationSet implements Comparable<AnimationSet> {
 
 	public Integer getAnimation(AnimationType type) {
 		if (ATTACK.appliesTo(type)) {
-			if (type != ATTACK)
-			{
-				Integer attack = getInt(type);
-				if (attack != null) return attack;
-			}
+			Integer attack = getInt(type);
+			if (attack != null) return attack;
+			attack = getInt(ATTACK);
+			if (attack != null) return attack;
 
-			List<Integer> attacks = animations.entrySet().stream()
+			return animations.entrySet().stream()
 				.filter(entry -> ATTACK.appliesTo(entry.getKey()) && entry.getValue() != null) // TODO why is the value sometimes null?
-				.map(entry -> entry.getValue().id).collect(Collectors.toList());
-			if (attacks.isEmpty()) {
-				return null;
-			} else {
-				return attacks.get(0);
-			}
+				.map(entry -> entry.getValue().id).findFirst().orElse(null);
 		} else {
 			return getInt(type);
 		}
