@@ -96,9 +96,6 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	@Inject
 	private EventBus eventBus;
 
-	WeaponAnimationReplacerPluginPanel pluginPanel;
-    private NavigationButton navigationButton;
-
 	private static final String TRANSMOG_SET_KEY = "transmogSets";
 	private static final String GROUP_NAME = "WeaponAnimationReplacer";
 
@@ -107,6 +104,20 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
 	@Inject
 	private TransmogrificationManager transmogManager;
+
+	WeaponAnimationReplacerPluginPanel pluginPanel;
+	private NavigationButton navigationButton;
+
+	/**
+	 * This is updated earlier than the player's equipment inventory. It uses the kit data, so it will have some negative numbers in it if there is no gear in that slot, or it is a jaw/hair/arms or something like that.
+	 */
+	private List<Integer> equippedItemsFromKit = new ArrayList<>();
+	private final List<Integer> naturalPlayerPoseAnimations = new ArrayList<>();
+	private AnimationSet currentAnimationSet = new AnimationSet();
+	private GraphicEffect currentScytheGraphicEffect = null;
+	int scytheSwingCountdown = -1;
+
+	int previewItem = -1;
 
 	@Override
     protected void startUp()
@@ -133,6 +144,22 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
                 .build();
 
         clientToolbar.addNavigation(navigationButton);
+
+        clientThread.invokeLater(() -> {
+			equippedItemsFromKit.clear();
+			if (client.getGameState() == GameState.LOGGED_IN) {
+				onPlayerChanged(new PlayerChanged(client.getLocalPlayer()));
+			}
+			else
+			{
+				naturalPlayerPoseAnimations.clear();
+			}
+			currentAnimationSet = new AnimationSet();
+			currentScytheGraphicEffect = null;
+			scytheSwingCountdown = -1;
+
+			previewItem = -1;
+		});
     }
 
 	private void migrate()
@@ -314,7 +341,6 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		}
 	}
 
-	int scytheSwingCountdown = -1;
 	@Subscribe
     public void onClientTick(ClientTick event)
 	{
@@ -406,8 +432,6 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		runeLiteObject.setActive(true);
 	}
 
-	private AnimationSet currentAnimationSet = new AnimationSet();
-	private GraphicEffect currentScytheGraphicEffect = null;
     private void updateAnimations() { // TODO cache maybe based on the current gear.
         AnimationSet currentSet = new AnimationSet();
 
@@ -490,12 +514,6 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		swapPlayerAnimation();
 	}
 
-	/**
-	 * This is updated earlier than the player's equipment inventory. It uses the kit data, so it will have some negative numbers in it if there is no gear in that slot, or it is a jaw/hair/arms or something like that.
-	 */
-	private List<Integer> equippedItemsFromKit = new ArrayList<>();
-	private final List<Integer> naturalPlayerPoseAnimations = new ArrayList<>();
-
 	@Subscribe(priority = 1) // I need kit data to determine what the player is wearing (equipment inventory does not update fast enough to avoid flickering), so I need this information before other plugins might change it.
 	public void onPlayerChanged(PlayerChanged playerChanged) {
 		if (playerChanged.getPlayer() != client.getLocalPlayer()) return;
@@ -541,8 +559,6 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
                 .build();
         clientUI.requestFocus();
     }
-
-    int previewItem = -1;
 
 	private void setPreviewItem(Integer itemId)
 	{
