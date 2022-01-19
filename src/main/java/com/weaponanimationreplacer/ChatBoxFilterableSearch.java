@@ -32,7 +32,7 @@ import static com.weaponanimationreplacer.Constants.NegativeId;
 import static com.weaponanimationreplacer.Constants.NegativeIdsMap;
 import static com.weaponanimationreplacer.Constants.ShownSlot;
 import static com.weaponanimationreplacer.Constants.mapNegativeId;
-import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.*;
+import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.ItemSearchType;
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -140,7 +140,8 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 
 					if (projectile.getName(itemManager).equals(spell)) {
 						int finalI = i;
-						addItemWidgetSprite(projectile.getItemIdIcon(), projectile.getSpriteIdIcon(), projectile.getName(itemManager), container, x, y, () ->
+						System.out.println(projectile.getName(itemManager) + " " + projectile.getItemIdIcon() + " " + projectile.getSpriteIdIcon());
+						addItemWidget(-1, projectile.getItemIdIcon(), projectile.getSpriteIdIcon(), projectile.getName(itemManager), container, x, y, () ->
 						{
 							onItemSelected.accept(finalI);
 							chatboxPanelManager.close();
@@ -244,7 +245,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 		item.setOriginalHeight(ICON_HEIGHT);
 		item.setOriginalWidth(ICON_WIDTH);
 		item.setName(JagexColors.MENU_TARGET_TAG + name);
-		if (id != -1) item.setItemId(iconId);
+		if (iconId != -1) item.setItemId(iconId);
 		else if (spriteId != -1) item.setSpriteId(spriteId);
 		item.setItemQuantity(10000);
 		item.setItemQuantityMode(ItemQuantityMode.NEVER);

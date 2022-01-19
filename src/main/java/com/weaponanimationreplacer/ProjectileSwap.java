@@ -11,10 +11,12 @@ public class ProjectileSwap
 	ProjectileCast toReplaceWithCustom = null;
 
 	public ProjectileCast getToReplace() {
+		if (toReplace == -1 || toReplace == toReplaceWith) return null; // if they're the same this leads to a stackoverflow.
 		return ProjectileCast.projectiles.get(toReplace);
 	}
 
 	public ProjectileCast getToReplaceWith() {
+		if (toReplaceWith == -1 || toReplace == toReplaceWith) return null; // if they're the same this leads to a stackoverflow.
 		return ProjectileCast.projectiles.get(toReplaceWith);
 	}
 

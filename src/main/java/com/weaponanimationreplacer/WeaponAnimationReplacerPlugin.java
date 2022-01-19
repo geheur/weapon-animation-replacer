@@ -33,9 +33,7 @@ import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
 import net.runelite.api.Client;
-import net.runelite.api.EquipmentInventorySlot;
 import net.runelite.api.GameState;
-import net.runelite.api.InventoryID;
 import net.runelite.api.JagexColor;
 import net.runelite.api.Model;
 import net.runelite.api.NPC;
@@ -124,6 +122,10 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	private AnimationSet currentAnimationSet = new AnimationSet();
 	private GraphicEffect currentScytheGraphicEffect = null;
 	int scytheSwingCountdown = -1;
+	int delayedGfxToApply = -1;
+	Actor actorToApplyDelayedGfxTo = null;
+	int timeToApplyDelayedGfx = -1;
+
 	private List<ProjectileSwap> projectileSwaps = Collections.emptyList();
 
 	int previewItem = -1;
@@ -168,6 +170,8 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			scytheSwingCountdown = -1;
 
 			previewItem = -1;
+
+			norecurse = false;
 		});
     }
 
@@ -198,7 +202,8 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 						rule.itemRestrictions.stream().map(r -> r.itemId).collect(Collectors.toList()),
 						Collections.singletonList(rule.modelSwap),
 						rule.animationReplacements,
-						Collections.emptyList(), Collections.emptyList())));
+						Collections.emptyList(),
+						Collections.emptyList())));
 			transmogSet.setName(rule.name);
 			transmogSets.add(transmogSet);
 		}
@@ -353,6 +358,12 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	@Subscribe
     public void onClientTick(ClientTick event)
 	{
+		if (client.getGameCycle() == timeToApplyDelayedGfx) {
+			actorToApplyDelayedGfxTo.setGraphic(delayedGfxToApply);
+			actorToApplyDelayedGfxTo.setSpotAnimFrame(0);
+			actorToApplyDelayedGfxTo.setGraphicHeight(124);
+		}
+
 		if (scytheSwingCountdown == 0) {
 			createScytheSwing();
 		} else {
@@ -360,16 +371,16 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		}
     }
 
-	int delayedGfxToApply = -1;
-	Actor actorToApplyDelayedGfxTo = null;
-	int timeToApplyDelayedGfx = -1;
-
-	@Subscribe
+    /** `Client#createProjectile` calls onProjectileMoved; it is dangerous to allow this to happen because of stackoverflows. */
+    private boolean norecurse = false;
+	@Subscribe(priority = -1)
 	public void onProjectileMoved(ProjectileMoved projectileMoved) {
+		if (norecurse) return;
+
 		Projectile projectile = projectileMoved.getProjectile();
 
 		// skip already seen projectiles.
-		if (client.getGameCycle() >= projectile.getStartMovementCycle()) {
+		if (client.getGameCycle() >= projectile.getStartCycle()) {
 			return;
 		}
 
@@ -388,38 +399,60 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		}
 
 		if (projectile.getX1() == playerPosLocal.getX() && projectile.getY1() == playerPosLocal.getY()) {
-			System.out.println(itemManager.getItemComposition(client.getItemContainer(InventoryID.EQUIPMENT).getItem(EquipmentInventorySlot.WEAPON.getSlotIdx()).getId()).getName());
-			System.out.println(
-					lastRealAnimation + ", " +
-					player.getGraphic() + ", " +
-					projectile.getId() + ", " +
-					lastCastedOnActorToTransmogHitSplashOn.getGraphic() + ", " +
-					(projectile.getStartMovementCycle() - client.getGameCycle()) + ", " +
-					projectile.getStartHeight() + ", " +
-					projectile.getEndHeight() + ", " +
-					projectile.getSlope()
-			);
+//			System.out.println(itemManager.getItemComposition(client.getItemContainer(InventoryID.EQUIPMENT).getItem(EquipmentInventorySlot.WEAPON.getSlotIdx()).getId()).getName());
+			int correctedLastRealAnimation = // Some standard spellbook spells use a different animation depending on the equipped weapon (or lack thereof).
+				(lastRealAnimation < 711 || lastRealAnimation > 729) ? lastRealAnimation :
+				lastRealAnimation == 710 ? 1161 :
+				lastRealAnimation == 711 ? 1162 :
+				lastRealAnimation == 716 ? 1163 :
+				lastRealAnimation == 717 ? 1164 :
+				lastRealAnimation == 718 ? 1165 :
+				lastRealAnimation == 724 ? 1166 :
+				lastRealAnimation == 727 ? 1167 :
+				lastRealAnimation == 728 ? 1168 :
+				lastRealAnimation == 729 ? 1169 :
+				lastRealAnimation
+			;
 			for (ProjectileSwap projectileSwap : projectileSwaps)
 			{
 				ProjectileCast toReplace = projectileSwap.getToReplace();
+				if (toReplace == null) continue;
+				System.out.println("checking " + toReplace.getName(itemManager));
+//				System.out.println(toReplace.getCastAnimation() + " " + correctedLastRealAnimation + " " + toReplace.getProjectileId() + " " + projectile.getId() + " " + toReplace.getCastGfx() + " " + player.getGraphic());
 				if (
-					toReplace.getCastAnimation() == lastRealAnimation && player.getAnimation() != -1 &&
+					toReplace.getCastAnimation() == correctedLastRealAnimation && correctedLastRealAnimation != -1 &&
 					toReplace.getProjectileId() == projectile.getId() &&
 					(toReplace.getCastGfx() == -1 || toReplace.getCastGfx() == player.getGraphic())
 				) {
+					System.out.println("matched " + toReplace.getName(itemManager));
 					ProjectileCast toReplaceWith = projectileSwap.getToReplaceWith();
 					player.setAnimation(toReplaceWith.getCastAnimation());
-					setField(projectile, "c", toReplaceWith.getProjectileId(), 516746677); // id.
-					setField(projectile, "j", client.getGameCycle() + toReplaceWith.getStartMovement(), -1732438681); // id.
-					setField(projectile, "n", toReplaceWith.getSlope(), -1213196577); // slope.
-					setField(projectile, "r", toReplaceWith.getStartHeight(), -1313399339); // start height.
-					setField(projectile, "s", toReplaceWith.getEndHeight(), 950754567); // end height.
+					if (toReplaceWith.getProjectileId() != -1)
+					{
+						norecurse = true;
+						Projectile p = client.createProjectile(toReplaceWith.getProjectileId(),
+							projectile.getFloor(),
+							projectile.getX1(), projectile.getY1(),
+							projectile.getHeight(), // start height
+							client.getGameCycle() + toReplace.getStartMovement(), projectile.getEndCycle(),
+							toReplace.getSlope(),
+							toReplace.getStartHeight(), toReplace.getEndHeight(),
+							projectile.getInteracting(),
+							projectile.getTarget().getX(), projectile.getTarget().getY());
+						client.getProjectiles().addLast(p);
+						norecurse = false;
+					}
+					int endCycle = projectile.getEndCycle();
+					projectile.setEndCycle(0);
+
 					player.setGraphic(toReplaceWith.getCastGfx());
+					player.setSpotAnimFrame(0);
 
 					if (lastCastedOnActorToTransmogHitSplashOn != null)
 					{
 						if (toReplace.getHitGfx() != -1)
 						{
+							// the spell's hit gfx is on the enemy when the spell is cast, it just has a delay on it.
 							if (lastCastedOnActorToTransmogHitSplashOn.getGraphic() == toReplace.getHitGfx())
 							{
 								lastCastedOnActorToTransmogHitSplashOn.setGraphic(toReplaceWith.getHitGfx());
@@ -429,26 +462,12 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 						{
 							delayedGfxToApply = toReplaceWith.getHitGfx();
 							actorToApplyDelayedGfxTo = lastCastedOnActorToTransmogHitSplashOn;
-							timeToApplyDelayedGfx = projectile.getEndCycle();
+							timeToApplyDelayedGfx = endCycle;
 						}
 					}
 					break;
 				}
 			}
-		}
-	}
-
-	private void setField(Projectile projectile, String n, int i, int i1)
-	{
-		try
-		{
-			java.lang.reflect.Field field = projectile.getClass().getDeclaredField(n);
-			field.setAccessible(true);
-			field.set(projectile, i * i1);
-		}
-		catch (IllegalAccessException | NoSuchFieldException e)
-		{
-			e.printStackTrace();
 		}
 	}
 

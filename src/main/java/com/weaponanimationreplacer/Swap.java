@@ -111,7 +111,13 @@ public class Swap
 	}
 
 	public static Swap createTemplate() {
-		return new Swap(Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
+		return new Swap(
+			Collections.emptyList(),
+			Collections.emptyList(),
+			Collections.emptyList(),
+			Collections.emptyList(),
+			Collections.emptyList()
+		);
     }
 
 	public void addNewTriggerItem(Integer itemId)
