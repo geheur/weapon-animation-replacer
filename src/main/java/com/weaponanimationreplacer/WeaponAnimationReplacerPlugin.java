@@ -410,16 +410,13 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		Color scytheSwingColor = currentScytheGraphicEffect != null ? currentScytheGraphicEffect.color : null;
 		if (scytheSwingColor != null)
 		{
-			Model model = client.loadModel(
-				id,
-				new short[]{960},
-				new short[]{JagexColor.rgbToHSL(scytheSwingColor.getRGB(), 1.0d)}
-			);
-			int[] verticesY = model.getVerticesY();
-			for (int i = 0; i < verticesY.length; i++)
-			{
-				verticesY[i] -= 85;
-			}
+			Model model = client.loadModelData(id)
+				.cloneVertices()
+				.cloneColors()
+				.recolor((short) 960, JagexColor.rgbToHSL(scytheSwingColor.getRGB(), 1.0d))
+				.translate(0, -85, 0)
+				.light()
+			;
 			runeLiteObject.setModel(model);
 		} else {
 			runeLiteObject.setModel(client.loadModel(id));
