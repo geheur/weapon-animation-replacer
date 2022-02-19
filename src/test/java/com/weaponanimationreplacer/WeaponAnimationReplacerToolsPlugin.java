@@ -58,6 +58,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		if (command.equals("reload")) {
 			AnimationSet.loadAnimationSets();
 			SwingUtilities.invokeLater(plugin.pluginPanel::rebuild);
+			Constants.loadEquippableItemsNotMarkedAsEquippable();
 			System.out.println("reloaded animations sets");
 		}
 

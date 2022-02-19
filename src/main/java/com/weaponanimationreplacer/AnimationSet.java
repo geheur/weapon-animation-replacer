@@ -615,6 +615,11 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			.standMovement(6397, -1)
 			.doNotReplace()
 			.build();
+		new AnimationSetBuilder("Skis")
+			.poseAnims(9341, 9343, 9342, 9345, 9343, 9344, 9346)
+			.put(ATTACK_CRUSH, 9347)
+			.put(DEFEND, 9348)
+			.build();
 
 		Collections.sort(animationSets);
 	}
@@ -623,6 +628,7 @@ public class AnimationSet implements Comparable<AnimationSet> {
 		public final Map<AnimationType, Animation> animations = new HashMap<>();
 		private AnimationSetType type;
 		private String name;
+		// This flag should be true for animations that are not the result of equipped weapons, such as the animations when the player crosses a tightrope. This animation is implemented as a pose animation but it should not be replaced by the player's current animation override.
 		private boolean doNotReplace = false;
 
 		public AnimationSetBuilder(String name) {

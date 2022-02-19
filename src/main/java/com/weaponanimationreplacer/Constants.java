@@ -23,8 +23,16 @@ public class Constants
 	// key is item id, value is the slot id it should go in.
 	public static final Map<Integer, Integer> EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPPABLE = new HashMap<>();
 	static {
+		loadEquippableItemsNotMarkedAsEquippable();
+	}
+
+	public static void loadEquippableItemsNotMarkedAsEquippable()
+	{
+		EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPPABLE.clear();
+
 		EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPPABLE.put(1963, KitType.WEAPON.getIndex());
 		EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPPABLE.put(3177, KitType.SHIELD.getIndex());
+		EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPPABLE.put(26649, KitType.SHIELD.getIndex());
 	}
 
 	public static final Set<Integer> showSleeves = new HashSet<>();
