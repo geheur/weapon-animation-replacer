@@ -15,6 +15,13 @@ import lombok.RequiredArgsConstructor;
 import net.runelite.api.Actor;
 import net.runelite.api.ItemID;
 import net.runelite.api.kit.KitType;
+import static net.runelite.api.kit.KitType.BOOTS;
+import static net.runelite.api.kit.KitType.HANDS;
+import static net.runelite.api.kit.KitType.HEAD;
+import static net.runelite.api.kit.KitType.LEGS;
+import static net.runelite.api.kit.KitType.SHIELD;
+import static net.runelite.api.kit.KitType.TORSO;
+import static net.runelite.api.kit.KitType.WEAPON;
 
 public class Constants
 {
@@ -30,9 +37,59 @@ public class Constants
 	{
 		EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPPABLE.clear();
 
-		EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPPABLE.put(1963, KitType.WEAPON.getIndex());
-		EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPPABLE.put(3177, KitType.SHIELD.getIndex());
-		EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPPABLE.put(26649, KitType.SHIELD.getIndex());
+		addUnequippable(1963, WEAPON);
+		addUnequippable(3177, SHIELD);
+		addUnequippable(26649, SHIELD);
+
+		// leagues 3 items.
+		// TODO remove these once they're marked as equippable.
+		addUnequippable(26424, WEAPON); // Shattered banner
+		addUnequippable(26427, HEAD); // Shattered hood (t1)
+		addUnequippable(26430, TORSO); // Shattered top (t1)
+		addUnequippable(26433, LEGS); // Shattered trousers (t1)
+		addUnequippable(26436, BOOTS); // Shattered boots (t1)
+		addUnequippable(26439, HEAD); // Shattered hood (t2)
+		addUnequippable(26442, TORSO); // Shattered top (t2)
+		addUnequippable(26445, LEGS); // Shattered trousers (t2)
+		addUnequippable(26448, BOOTS); // Shattered boots (t2)
+		addUnequippable(26451, HEAD); // Shattered hood (t3)
+		addUnequippable(26454, TORSO); // Shattered top (t3)
+		addUnequippable(26457, LEGS); // Shattered trousers (t3)
+		addUnequippable(26460, BOOTS); // Shattered boots (t3)
+		addUnequippable(26463, TORSO); // Void knight top (or)
+		addUnequippable(26465, LEGS); // Void knight robe (or)
+		addUnequippable(26467, HANDS); // Void knight gloves (or)
+		addUnequippable(26469, TORSO); // Elite void top (or)
+		addUnequippable(26471, LEGS); // Elite void robe (or)
+		addUnequippable(26473, HEAD); // Void mage helm (or)
+		addUnequippable(26475, HEAD); // Void ranger helm (or)
+		addUnequippable(26477, HEAD); // Void melee helm (or)
+		addUnequippable(26482, WEAPON); // Abyssal whip (or)
+		addUnequippable(26484, WEAPON); // Abyssal tentacle (or)
+		addUnequippable(26486, WEAPON); // Rune crossbow (or)
+		addUnequippable(26488, SHIELD); // Book of balance (or)
+		addUnequippable(26490, SHIELD); // Book of darkness (or)
+		addUnequippable(26492, SHIELD); // Book of law (or)
+		addUnequippable(26494, SHIELD); // Book of war (or)
+		addUnequippable(26496, SHIELD); // Holy book (or)
+		addUnequippable(26498, SHIELD); // Unholy book (or)
+		addUnequippable(26503, WEAPON); // Shattered relics bronze trophy
+		addUnequippable(26505, WEAPON); // Shattered relics iron trophy
+		addUnequippable(26507, WEAPON); // Shattered relics steel trophy
+		addUnequippable(26509, WEAPON); // Shattered relics mithril trophy
+		addUnequippable(26511, WEAPON); // Shattered relics adamant trophy
+		addUnequippable(26513, WEAPON); // Shattered relics rune trophy
+		addUnequippable(26515, WEAPON); // Shattered relics dragon trophy
+		addUnequippable(26517, WEAPON); // Shattered cane
+		addUnequippable(26531, HEAD); // Mystic hat (or)
+		addUnequippable(26533, TORSO); // Mystic robe top (or)
+		addUnequippable(26535, LEGS); // Mystic robe bottom (or)
+		addUnequippable(26537, HANDS); // Mystic gloves (or)
+		addUnequippable(26539, BOOTS); // Mystic boots (or)
+	}
+
+	private static void addUnequippable(int itemId, KitType kitType) {
+		EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPPABLE.put(itemId, kitType.getIndex());
 	}
 
 	public static final Set<Integer> showSleeves = new HashSet<>();
