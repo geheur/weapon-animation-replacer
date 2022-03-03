@@ -388,10 +388,22 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			.put(ATTACK_SPEC, 7521)
 			.put(DEFEND, 424)
 			.build();
-		new AnimationSetBuilder("Knife")
+		new AnimationSetBuilder("Knife (non-dragon)")
 			.poseAnims(808, 823, 819, 820, 821, 822, 824)
 			.put(ATTACK, 7617)
 			.put(ATTACK_SPEC, 8291)
+			.put(DEFEND, 424)
+			.build();
+		new AnimationSetBuilder("Dragon knife")
+			.poseAnims(808, 823, 819, 820, 821, 822, 824)
+			.put(ATTACK, 8194)
+			.put(ATTACK_SPEC, 8291)
+			.put(DEFEND, 424)
+			.build();
+		new AnimationSetBuilder("Dragon knife (poisoned)")
+			.poseAnims(808, 823, 819, 820, 821, 822, 824)
+			.put(ATTACK, 8195)
+			.put(ATTACK_SPEC, 8292)
 			.put(DEFEND, 424)
 			.build();
 		new AnimationSetBuilder("Guthan's warspear")

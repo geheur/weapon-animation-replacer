@@ -219,6 +219,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		renames.put("unarmed", "Unarmed");
 		renames.put("shortsword/scim/saeldor", "Dragon longsword/Saeldor");
 		renames.put("staff2/wand", "Staff2/Wand");
+		renames.put("Knife", "Knife (non-dragon)");
 	}
 
     static Gson customGson;

@@ -62,6 +62,11 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 			System.out.println("reloaded animations sets");
 		}
 
+		if (command.equals("listanimsets")) {
+			System.out.println("transmog sets: " + plugin.getTransmogSets());
+			System.out.println("applicable: " + plugin.getApplicableModelSwaps());
+		}
+
 		if (command.equals("listweapons")) {
 			Map<Integer, Integer> map = new HashMap<>();
 			for (int i = 0; i < client.getItemCount(); i++)
