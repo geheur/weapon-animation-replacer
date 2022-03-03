@@ -103,7 +103,13 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 			AnimationSet.loadAnimationSets();
 			ProjectileCast.initializeSpells();
 			SwingUtilities.invokeLater(plugin.pluginPanel::rebuild);
+			Constants.loadEquippableItemsNotMarkedAsEquippable();
 			System.out.println("reloaded animations sets and projectiles");
+		}
+
+		if (command.equals("listanimsets")) {
+			System.out.println("transmog sets: " + plugin.getTransmogSets());
+			System.out.println("applicable: " + plugin.getApplicableModelSwaps());
 		}
 
 		if (command.equals("listweapons")) {

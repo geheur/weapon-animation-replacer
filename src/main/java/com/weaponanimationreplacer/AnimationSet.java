@@ -388,10 +388,22 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			.put(ATTACK_SPEC, 7521)
 			.put(DEFEND, 424)
 			.build();
-		new AnimationSetBuilder("Knife")
+		new AnimationSetBuilder("Knife (non-dragon)")
 			.poseAnims(808, 823, 819, 820, 821, 822, 824)
 			.put(ATTACK, 7617)
 			.put(ATTACK_SPEC, 8291)
+			.put(DEFEND, 424)
+			.build();
+		new AnimationSetBuilder("Dragon knife")
+			.poseAnims(808, 823, 819, 820, 821, 822, 824)
+			.put(ATTACK, 8194)
+			.put(ATTACK_SPEC, 8291)
+			.put(DEFEND, 424)
+			.build();
+		new AnimationSetBuilder("Dragon knife (poisoned)")
+			.poseAnims(808, 823, 819, 820, 821, 822, 824)
+			.put(ATTACK, 8195)
+			.put(ATTACK_SPEC, 8292)
 			.put(DEFEND, 424)
 			.build();
 		new AnimationSetBuilder("Guthan's warspear")
@@ -615,6 +627,11 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			.standMovement(6397, -1)
 			.doNotReplace()
 			.build();
+		new AnimationSetBuilder("Skis")
+			.poseAnims(9341, 9343, 9342, 9345, 9343, 9344, 9346)
+			.put(ATTACK_CRUSH, 9347)
+			.put(DEFEND, 9348)
+			.build();
 
 		Collections.sort(animationSets);
 	}
@@ -623,6 +640,7 @@ public class AnimationSet implements Comparable<AnimationSet> {
 		public final Map<AnimationType, Animation> animations = new HashMap<>();
 		private AnimationSetType type;
 		private String name;
+		// This flag should be true for animations that are not the result of equipped weapons, such as the animations when the player crosses a tightrope. This animation is implemented as a pose animation but it should not be replaced by the player's current animation override.
 		private boolean doNotReplace = false;
 
 		public AnimationSetBuilder(String name) {
