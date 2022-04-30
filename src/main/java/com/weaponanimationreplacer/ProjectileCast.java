@@ -19,9 +19,11 @@ public final class ProjectileCast
 			This means if you're at a very long range it is possible for the hit gfx to never occur because it is replaced by the next spell cast before it goes off.
 		many of these can splash animation instead.
 	no hit gfx (ranged attacks mostly).
-	no projectile spells (such as ice barrage).
-	multiple projectile spells (such as dark bow).
+	no cast gfx or projectile - requires additional information to identify what spell was cast.
+	no projectile spells (such as ice barrage) - when replacing, requires hit delay to be calculated.
+	TODO multiple projectile spells (such as dark bow).
 		Dark bow spec is actually 4 projectiles (with 2 different versions, one with dragon arrows one without).
+	enchanted bolts.
 	 */
 	public static final List<ProjectileCast> projectiles = new ArrayList<>();
 	// TODO how to handle ids, using indexes makes this list not be nicely sortable.
@@ -75,9 +77,9 @@ public final class ProjectileCast
 		projectiles.add(p().name("Blood Rush").sprite(SpriteID.SPELL_BLOOD_RUSH).ids(1978, -1, 373).build());
 		projectiles.add(p().name("Ice Rush").sprite(SpriteID.SPELL_ICE_RUSH).ids(1978, -1, 360, 361, 51, 64, 0, 16).build());
 		projectiles.add(p().name("Smoke Burst").sprite(SpriteID.SPELL_SMOKE_BURST).ids(1979, -1, 389).build());
-		projectiles.add(p().name("Shadow Burst").sprite(SpriteID.SPELL_SHADOW_BURST).ids(1978, -1, 382).build());
-		projectiles.add(p().name("Blood Burst").sprite(SpriteID.SPELL_BLOOD_BURST).ids(1978, -1, 376).build());
-		projectiles.add(p().name("Ice Burst").sprite(SpriteID.SPELL_ICE_BURST).ids(1978, -1, 363).build());
+		projectiles.add(p().name("Shadow Burst").sprite(SpriteID.SPELL_SHADOW_BURST).ids(1979, -1, 382).build());
+		projectiles.add(p().name("Blood Burst").sprite(SpriteID.SPELL_BLOOD_BURST).ids(1979, -1, 376).build());
+		projectiles.add(p().name("Ice Burst").sprite(SpriteID.SPELL_ICE_BURST).ids(1979, -1, 363).build());
 		projectiles.add(p().name("Smoke Blitz").sprite(SpriteID.SPELL_SMOKE_BLITZ).ids(1978, -1, 386, 387, 51, 64, 124, 16).build());
 		projectiles.add(p().name("Shadow Blitz").sprite(SpriteID.SPELL_SHADOW_BLITZ).ids(1978, -1, 380, 381, 51, 64, 0, 16).build());
 		projectiles.add(p().name("Blood Blitz").sprite(SpriteID.SPELL_BLOOD_BLITZ).ids(1978, -1, 374, 375, 51, 64, 0, 16).build());
@@ -89,8 +91,8 @@ public final class ProjectileCast
 
 		// Arceuus spellbook.
 		projectiles.add(p().name("Ghostly Grasp").sprite(SpriteID.SPELL_GHOSTLY_GRASP).ids(8972, 1856, 1858).build());
-		projectiles.add(p().name("Ghostly Grasp").sprite(SpriteID.SPELL_SKELETAL_GRASP).ids(8972, 1859, 1861).build());
-		projectiles.add(p().name("Ghostly Grasp").sprite(SpriteID.SPELL_UNDEAD_GRASP).ids(8972, 1862, 1863).build());
+		projectiles.add(p().name("Skeletal Grasp").sprite(SpriteID.SPELL_SKELETAL_GRASP).ids(8972, 1859, 1861).build());
+		projectiles.add(p().name("Undead Grasp").sprite(SpriteID.SPELL_UNDEAD_GRASP).ids(8972, 1862, 1863).build());
 		projectiles.add(p().name("Inferior Demonbane").sprite(SpriteID.SPELL_INFERIOR_DEMONBANE).ids(8977, 1865, 1866).build());
 		projectiles.add(p().name("Superior Demonbane").sprite(SpriteID.SPELL_SUPERIOR_DEMONBANE).ids(8977, 1867, 1868).build());
 		projectiles.add(p().name("Dark Demonbane").sprite(SpriteID.SPELL_DARK_DEMONBANE).ids(8977, 1869, 1870).build());

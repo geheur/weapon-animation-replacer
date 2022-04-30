@@ -853,6 +853,7 @@ class TransmogSetPanel extends JPanel
 		String nameWhenEmpty = "None";
 		public ItemSelectionButton(ItemSearchType type)
 		{
+			setBackground(ColorScheme.LIGHT_GRAY_COLOR);
 			setPreferredSize(new Dimension(35, 35));
 			setMaximumSize(new Dimension(35, 35));
 			setMinimumSize(new Dimension( 30, 30));

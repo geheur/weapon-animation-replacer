@@ -112,6 +112,12 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
                 }));
     }
 
+    /*
+    Spell cast detection.
+    	The easiest way is the projectile because this is almost always unique (exception e.g. bolts all look the same).
+    	I don't think it's a good idea to use hit gfx to determine it because a) some spells can splash and b) I don't know what happens when multiple people cast on the same target.
+     */
+
     @Override
     protected void update()
     {

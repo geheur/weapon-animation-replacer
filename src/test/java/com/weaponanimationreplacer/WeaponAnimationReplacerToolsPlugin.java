@@ -25,6 +25,7 @@ import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.CommandExecuted;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.ProjectileMoved;
+import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.plugins.Plugin;
@@ -50,8 +51,18 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 	@Inject
 	private ItemManager itemManager;
 
+	@Inject
+	private EventBus eventBus;
+
 	int demoanim = -1;
 	int demogfx = -1;
+
+	@Override
+	public void startUp() {
+		SpellDataCollector sdc = new SpellDataCollector(plugin);
+		this.getInjector().injectMembers(sdc);
+		eventBus.register(sdc);
+	}
 
 	@Subscribe
 	public void onProjectileMoved(ProjectileMoved projectileMoved) {
