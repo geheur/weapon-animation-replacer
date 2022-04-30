@@ -118,13 +118,13 @@ public final class ProjectileCast
 		projectiles.add(p().itemId(ItemID.ADAMANT_ARROW).ids(426, 22, 13, -1, 41, 11, 144, 15).build());
 		projectiles.add(p().itemId(ItemID.RUNE_ARROW).ids(426, 24, 15, -1, 41, 11, 144, 15).build());
 		projectiles.add(p().itemId(ItemID.AMETHYST_ARROW).ids(426, 1385, 1384, -1, 41, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.DRAGON_ARROW).ids(426, 18, 9, -1, 41, 11, 144, 15).build());
+		projectiles.add(p().itemId(ItemID.DRAGON_ARROW).ids(426, 1116, 1120, -1, 41, 11, 144, 15).build());
 		projectiles.add(p().itemId(ItemID.ICE_ARROWS).ids(426, 25, 16, -1, 41, 11, 144, 15).build());
 		projectiles.add(p().name("Fire arrow").itemId(ItemID.BRONZE_FIRE_ARROW_LIT).ids(426, 26, 17, -1, 41, 11, 144, 15).build());
 		projectiles.add(p().itemId(ItemID.TRAINING_ARROWS).ids(426, 806, 805, -1, 41, 11, 144, 15).build());
 		projectiles.add(p().itemId(ItemID.CRYSTAL_BOW).ids(426, 250, 249, -1, 41, 11, 144, 15).build());
 		projectiles.add(p().itemId(ItemID.OGRE_ARROW).ids(426, 243, 242, -1, 41, 11, 144, 15).build());
-		// TODO dragon arrow, ba arrows, brutal arrow, broad arrow.
+		// TODO ba arrows, brutal arrow, broad arrow.
 		// TODO specs (seercull, msb, magic longbow), dark bow.
 
 		// bow of faerdhinen bofa
@@ -198,7 +198,7 @@ public final class ProjectileCast
 		projectiles.add(p().itemId(ItemID.ADAMANT_JAVELIN).ids(7555, -1, 204, -1, 32, 11, 144, 15, 0).build());
 		projectiles.add(p().itemId(ItemID.RUNE_JAVELIN).ids(7555, -1, 205, -1, 32, 11, 144, 15, 0).build());
 		projectiles.add(p().itemId(ItemID.AMETHYST_JAVELIN).ids(7555, -1, 1386, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.DRAGON_JAVELIN).ids(7555, -1, 206, -1, 32, 11, 144, 15, 0).build());
+		projectiles.add(p().itemId(ItemID.DRAGON_JAVELIN).ids(7555, -1, 1301, -1, 32, 11, 144, 15, 0).build());
 
 		projectiles.add(p().itemId(ItemID.BLACK_CHINCHOMPA).ids(7618, -1, 1272, 157, 21, 11, 144, 15).build()); // only has hit gfx when in multicombat area.
 		projectiles.add(p().itemId(ItemID.RED_CHINCHOMPA).ids(7618, -1, 909, 157, 21, 11, 144, 15, 0).build()); // only has hit gfx when in multicombat area.
