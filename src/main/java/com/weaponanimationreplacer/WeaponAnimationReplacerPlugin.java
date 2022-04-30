@@ -616,12 +616,14 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 				if (graphic == toReplace.getHitGfx() || (graphic == 85 && true)) // TODO remove second part.
 				{
 					player.getInteracting().setGraphic(toReplaceWith.getHitGfx());
+					player.getInteracting().setGraphicHeight(toReplaceWith.getEndHeight());
 				}
 			}
 			else
 			{
 				delayedGfxToApply = toReplaceWith.getHitGfx();
 				// TODO gfx height.
+				player.getInteracting().setGraphicHeight(toReplaceWith.getEndHeight());
 				actorToApplyDelayedGfxTo = player.getInteracting();
 				timeToApplyDelayedGfx = endCycle;
 			}

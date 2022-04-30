@@ -158,16 +158,26 @@ public final class ProjectileCast
 		projectiles.add(p().name("Dragon knife (p++) (spec)").itemId(ItemID.DRAGON_KNIFEP_22808).ids(8292, -1, 1629, -1, 25, 11, 144, 15, -1).build());
 
 		// Darts.
-		projectiles.add(p().itemId(ItemID.BRONZE_DART).ids(7553, 232, 226, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.IRON_DART).ids(7554, 233, 227, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.STEEL_DART).ids(7554, 234, 228, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.BLACK_DART).ids(7554, 273, 32, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.MITHRIL_DART).ids(7554, 235, 229, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.ADAMANT_DART).ids(7554, 236, 230, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.RUNE_DART).ids(7554, 237, 231, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.AMETHYST_DART).ids(5061, -1, 1936, -1, 32, 105, 144, 15, -1).build());
-		projectiles.add(p().itemId(ItemID.DRAGON_DART).ids(7554, 235, 229, -1, 32, 11, 144, 15, 0).build());
-		// TODO test blowpipe.
+		projectiles.add(p().itemId(ItemID.BRONZE_DART).ids(7553, -1, 226, -1, 32, 11, 144, 15, 0).build());
+		projectiles.add(p().itemId(ItemID.IRON_DART).ids(7554, -1, 227, -1, 32, 11, 144, 15, 0).build());
+		projectiles.add(p().itemId(ItemID.STEEL_DART).ids(7554, -1, 228, -1, 32, 11, 144, 15, 0).build());
+		projectiles.add(p().itemId(ItemID.BLACK_DART).ids(7554, -1, 32, -1, 32, 11, 144, 15, 0).build());
+		projectiles.add(p().itemId(ItemID.MITHRIL_DART).ids(7554, -1, 229, -1, 32, 11, 144, 15, 0).build());
+		projectiles.add(p().itemId(ItemID.ADAMANT_DART).ids(7554, -1, 230, -1, 32, 11, 144, 15, 0).build());
+		projectiles.add(p().itemId(ItemID.RUNE_DART).ids(7554, -1, 231, -1, 32, 11, 144, 15, 0).build());
+		projectiles.add(p().itemId(ItemID.AMETHYST_DART).ids(7554, -1, 1936, -1, 32, 11, 144, 15, -1).build());
+		projectiles.add(p().itemId(ItemID.DRAGON_DART).ids(7554, -1, 1122, -1, 32, 11, 144, 15, 0).build());
+
+		// Blowpipe.
+		projectiles.add(p().name("Bronze Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 226, -1, 32, 105, 144, 15, 0).build());
+		projectiles.add(p().name("Iron Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 227, -1,  32, 105, 144, 15, -1).build());
+		projectiles.add(p().name("Steel Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 228, -1, 32, 105, 144, 15, 0).build());
+		projectiles.add(p().name("Black Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 32, -1, 32, 105, 144, 15, 0).build());
+		projectiles.add(p().name("Mithril Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 229, -1, 32, 105, 144, 15, 0).build());
+		projectiles.add(p().name("Adamant Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 230, -1, 32, 105, 144, 15, 0).build());
+		projectiles.add(p().name("Rune Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 231, -1, 32, 105, 144, 15, 0).build());
+		projectiles.add(p().name("Amethyst Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 1936, -1, 32, 105, 144, 15, -1).build());
+		projectiles.add(p().name("Dragon Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 1122, -1, 32, 105, 144, 15, 0).build());
 
 		// Thrownaxes.
 		projectiles.add(p().itemId(ItemID.BRONZE_THROWNAXE).ids(7617, 43, 36, -1, 32, 11, 144, 15, 0).build());
