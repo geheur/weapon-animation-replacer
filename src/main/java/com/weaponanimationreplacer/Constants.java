@@ -40,6 +40,7 @@ public class Constants
 		addUnequippable(1963, WEAPON);
 		addUnequippable(3177, SHIELD);
 		addUnequippable(26649, SHIELD);
+		addUnequippable(27021, WEAPON); // for some reason colossal blade isn't marked equippable.
 
 		// leagues 3 items.
 		// TODO remove these once they're marked as equippable.

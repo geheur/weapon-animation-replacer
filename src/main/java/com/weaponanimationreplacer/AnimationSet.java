@@ -632,6 +632,12 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			.put(ATTACK_CRUSH, 9347)
 			.put(DEFEND, 9348)
 			.build();
+		new AnimationSetBuilder("Colossal Blade")
+			.poseAnims(9460, 823, 9461, 9461, 9461, 9461, 9459)
+			.put(ATTACK_CRUSH, 7516)
+			.put(ATTACK_SLASH, 7516)
+			.put(DEFEND, 7517)
+			.build();
 
 		Collections.sort(animationSets);
 	}
