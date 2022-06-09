@@ -673,11 +673,8 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		}
 		else
 		{
-			ItemStats itemStats = itemManager.getItemStats(modelSwap, false);
-			if (itemStats == null || !itemStats.isEquipable())
-			{
-				Integer slot = Constants.EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPPABLE.get(modelSwap);
-				if (slot == null) return null;
+			Integer slot = Constants.OVERRIDE_EQUIPPABILITY_OR_SLOT.get(modelSwap);
+			if (slot != null) {
 				return new SlotAndKitId(slot, modelSwap);
 			}
 
@@ -686,6 +683,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 				return new SlotAndKitId(KitType.JAW.getIndex(), modelSwap);
 			}
 
+			ItemStats itemStats = itemManager.getItemStats(modelSwap, false);
 			return new SlotAndKitId(itemStats.getEquipment().getSlot(), modelSwap);
 		}
 

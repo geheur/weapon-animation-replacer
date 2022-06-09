@@ -55,11 +55,23 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		String command = commandExecuted.getCommand();
 		System.out.println(arguments.length);
 
+		if (command.equals("checkunequippables"))
+		{
+			System.out.println("checking unequippables");
+			for (Map.Entry<Integer, Integer> integerIntegerEntry : Constants.OVERRIDE_EQUIPPABILITY_OR_SLOT.entrySet())
+			{
+				ItemStats itemStats = itemManager.getItemStats(integerIntegerEntry.getKey(), false);
+				if (itemStats == null || !itemStats.isEquipable() || itemStats.getEquipment().getSlot() != integerIntegerEntry.getValue())
+					continue;
+				System.out.println("item " + integerIntegerEntry.getKey() + " " + itemManager.getItemComposition(integerIntegerEntry.getKey()).getName() + " should be removed from constants.");
+			}
+		}
+
 		if (command.equals("reload")) {
 			AnimationSet.loadAnimationSets();
 			SwingUtilities.invokeLater(plugin.pluginPanel::rebuild);
 			Constants.loadEquippableItemsNotMarkedAsEquippable();
-			System.out.println("reloaded animations sets");
+			System.out.println("reloaded animations sets + equippable unequippables");
 		}
 
 		if (command.equals("listanimsets")) {
@@ -148,7 +160,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		}
 
 		if (command.equals("itemicons")) {
-			for (Integer integer : Constants.EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPPABLE.keySet())
+			for (Integer integer : Constants.OVERRIDE_EQUIPPABILITY_OR_SLOT.keySet())
 			{
 				System.out.println("here " + integer);
 				BufferedImage image = itemManager.getImage(integer);
