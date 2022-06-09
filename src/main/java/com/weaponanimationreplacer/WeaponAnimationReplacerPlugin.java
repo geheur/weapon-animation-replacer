@@ -21,6 +21,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -329,21 +330,28 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	{
 		Player player = client.getLocalPlayer();
 		int playerAnimation = player.getAnimation();
-		AnimationSet.Animation animationReplacement = getReplacementAttackAnimation(playerAnimation);
-		log.debug("replacing animation {} with {}", playerAnimation, animationReplacement);
-		if (animationReplacement != null)
-		{
-			player.setAnimation(animationReplacement.id);
+		if (playerAnimation == -1) return;
 
-			if (AnimationType.ATTACK.appliesTo(animationReplacement.type) && currentScytheGraphicEffect != null)
-			{
-				scytheSwingCountdown = 20;
-			}
+		Optional<AnimationType> type = AnimationSet.animationSets.stream()
+			.map(set -> set.getType(playerAnimation))
+			.filter(t -> t != null)
+			.findFirst();
+		if (!type.isPresent()) return;
+
+		Integer replacementAnim = currentAnimationSet.getAnimation(type.get());
+		if (replacementAnim != null)
+		{
+			log.debug("replacing animation {} with {}", playerAnimation, replacementAnim);
+			player.setAnimation(replacementAnim);
+		}
+
+		if (currentScytheGraphicEffect != null && AnimationType.ATTACK.appliesTo(type.get())) {
+			scytheSwingCountdown = 20;
 		}
 	}
 
 	@Subscribe
-    public void onClientTick(ClientTick event)
+	public void onClientTick(ClientTick event)
 	{
 		if (scytheSwingCountdown == 0) {
 			createScytheSwing();
@@ -488,20 +496,6 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			animation.setAnimation(player, animationId);
 		}
 	}
-
-	private AnimationSet.Animation getReplacementAttackAnimation(int animation) {
-		if (animation == -1) return null;
-
-		for (AnimationSet animationSet : AnimationSet.animationSets) {
-			AnimationType type = animationSet.getType(animation);
-			if (type != null) {
-				Integer replacementAnim = currentAnimationSet.getAnimation(type);
-				if (replacementAnim == null) return null;
-				return new AnimationSet.Animation(type, replacementAnim, null);
-			}
-		}
-        return null;
-    }
 
 	@Subscribe(priority = -1000.0f) // I want to run late, so that plugins that need animation changes don't see my changed animation ids, since mine are cosmetic and don't give information on what the player is actually doing.
 	public void onAnimationChanged(AnimationChanged e)
