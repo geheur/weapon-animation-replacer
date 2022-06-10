@@ -3,13 +3,14 @@ package com.weaponanimationreplacer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import lombok.Data;
-import net.runelite.api.ItemID;
+import net.runelite.api.EquipmentInventorySlot;
 
 /**
  * Represents a set of:
@@ -27,13 +28,11 @@ public class Swap
     public Swap(List<Integer> itemRestrictions, List<Integer> modelSwaps, List<AnimationReplacement> animationReplacements, List<GraphicEffect> graphicEffects) {
 		if (itemRestrictions.isEmpty()) {
         	this.itemRestrictions = new ArrayList<>();
-        	this.itemRestrictions.add(-1);
 		} else {
 			this.itemRestrictions = new ArrayList<>(itemRestrictions);
 		}
 		if (modelSwaps.isEmpty()) {
 			this.modelSwaps = new ArrayList<>();
-			this.modelSwaps.add(-1);
 		} else {
 			this.modelSwaps = new ArrayList<>(modelSwaps);
 		}
@@ -45,56 +44,88 @@ public class Swap
     	return Collections.unmodifiableList(itemRestrictions);
 	}
 
-	public void setItemRestriction(int index, int itemId)
-	{
-		setItem(index, itemId, itemRestrictions);
-	}
-
 	public List<Integer> getModelSwaps() {
 		return Collections.unmodifiableList(modelSwaps);
 	}
 
-	public void setModelSwap(int index, int itemId)
+	public void addModelSwap(Integer itemId, WeaponAnimationReplacerPlugin plugin)
 	{
-		setItem(index, itemId, modelSwaps);
+		Function<Integer, Integer> getSlot = plugin::getMySlot;
+		// cannot equip multiple items in the same slot.
+		Integer newItemSlot = getSlot.apply(itemId);
+		if (newItemSlot == null || newItemSlot == EquipmentInventorySlot.RING.getSlotIdx() || newItemSlot == EquipmentInventorySlot.AMMO.getSlotIdx()) return;
+		modelSwaps.removeIf(id -> {
+			Integer slot = getSlot.apply(id);
+			return slot == null || slot == EquipmentInventorySlot.RING.getSlotIdx() || slot == EquipmentInventorySlot.AMMO.getSlotIdx() ?
+				true : slot == newItemSlot;
+		});
+
+		int index = Collections.binarySearch(modelSwaps, itemId, itemComparator(getSlot));
+		if (index >= 0) return; // no duplicates allowed in this list. This shouldn't happen due to the same slot removal above, but it doesn't hurt to check.
+		modelSwaps.add(~index, itemId);
+	}
+
+	public void removeModelSwap(int prevItemId)
+	{
+		modelSwaps.remove((Integer) prevItemId); // Cast is necessary to use the right overload of the method.
+	}
+
+	public void replaceModelSwap(int prevItemId, int newItemId, WeaponAnimationReplacerPlugin plugin)
+	{
+		removeModelSwap(prevItemId);
+		addModelSwap(newItemId, plugin);
+	}
+
+	public void addTriggerItem(Integer itemId, WeaponAnimationReplacerPlugin plugin)
+	{
+		Function<Integer, Integer> getSlot = plugin::getSlot;
+		Integer newItemSlot = getSlot.apply(itemId);
+		if (newItemSlot == null || newItemSlot == EquipmentInventorySlot.RING.getSlotIdx() || newItemSlot == EquipmentInventorySlot.AMMO.getSlotIdx()) return;
+
+		int index = Collections.binarySearch(itemRestrictions, itemId, itemComparator(getSlot));
+		if (index >= 0) return; // no duplicates allowed in this list.
+		itemRestrictions.add(~index, itemId);
+	}
+
+	public void removeTriggerItem(int prevItemId)
+	{
+		itemRestrictions.remove((Integer) prevItemId); // Cast is necessary to use the right overload of the method.
+	}
+
+	public void replaceTriggerItem(int prevItemId, int newItemId, WeaponAnimationReplacerPlugin plugin)
+	{
+		removeTriggerItem(prevItemId);
+		addTriggerItem(newItemId, plugin);
+	}
+
+	private static final int[] MY_SLOT_ORDER = new int[]{2, 5, 6, 0, 7, 1, 8, 9, 3, 10, 11, 4, 12, 13};
+
+	private Comparator<Integer> itemComparator(Function<Integer, Integer> getSlot)
+	{
+		return (id1, id2) -> {
+			Integer slotForItem1 = getSlot.apply(id1);
+			Integer slotForItem2 = getSlot.apply(id2);
+			if (slotForItem1 == null) {
+				if (slotForItem2 == null) {
+					return Integer.compare(id1, id2);
+				} else {
+					return -1;
+				}
+			} else if (slotForItem2 == null) {
+				return 1;
+			}
+
+			if (slotForItem1 == slotForItem2) {
+				return Integer.compare(id1, id2);
+			}
+
+			return Integer.compare(MY_SLOT_ORDER[slotForItem1], MY_SLOT_ORDER[slotForItem2]);
+		};
 	}
 
 	public List<GraphicEffect> getGraphicEffects() {
     	if (graphicEffects == null) graphicEffects = new ArrayList<>(); // idk, gson overrides the default value if there's not value for it in the json.
 		return graphicEffects;
-	}
-
-	private void setItem(int index, int itemId, List<Integer> list)
-	{
-		for (int i = 0; i < list.size(); i++)
-		{
-			if (list.get(i) == -1) {
-				index = i;
-				break;
-			}
-		}
-		if (itemId != ItemID.BANK_FILLER || index < list.size())
-		{
-			if (itemId == ItemID.BANK_FILLER && list.size() == 1)
-			{
-				list.set(index, -1);
-			}
-			else if (itemId == ItemID.BANK_FILLER && list.size() > 1)
-			{
-				list.remove(index);
-			}
-			else
-			{
-				if (index >= list.size())
-				{
-					list.add(itemId);
-				}
-				else
-				{
-					list.set(index, itemId);
-				}
-			}
-		}
 	}
 
 	public static Swap createTemplate() {
@@ -113,16 +144,6 @@ public class Swap
 	public void addNewGraphicEffect()
 	{
 		graphicEffects.add(GraphicEffect.createTemplate());
-	}
-
-	public void addNewModelSwap(Integer itemId)
-	{
-		setModelSwap(modelSwaps.size(), itemId);
-	}
-
-	public void addNewTriggerItem(Integer itemId)
-	{
-		setItemRestriction(itemRestrictions.size(), itemId);
 	}
 
 	public boolean appliesToGear(List<Integer> equippedItemIds, Function<Integer, Integer> getSlot)
@@ -179,6 +200,24 @@ public class Swap
 	public int hashCode()
 	{
 		return Objects.hash(itemRestrictions, modelSwaps, animationReplacements, graphicEffects);
+	}
+
+	public void updateForSortOrderAndUniqueness(WeaponAnimationReplacerPlugin plugin)
+	{
+		List<Integer> modelSwapsCopy = new ArrayList<>(modelSwaps);
+		Collections.reverse(modelSwapsCopy); // The first item in the list for a particular slot was the one that was used previously, so add that one last so it ends up being the one in the list.
+		modelSwaps.clear();
+		for (Integer itemId : modelSwapsCopy)
+		{
+			addModelSwap(itemId, plugin);
+		}
+
+		List<Integer> itemRestrictionsCopy = new ArrayList<>(itemRestrictions);
+		itemRestrictions.clear();
+		for (Integer itemId : itemRestrictionsCopy)
+		{
+			addTriggerItem(itemId, plugin);
+		}
 	}
 
 	@Data

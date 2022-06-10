@@ -32,6 +32,8 @@ import static com.weaponanimationreplacer.Constants.NegativeId;
 import static com.weaponanimationreplacer.Constants.NegativeIdsMap;
 import static com.weaponanimationreplacer.Constants.ShownSlot;
 import static com.weaponanimationreplacer.Constants.mapNegativeId;
+import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.MODEL_SWAP;
+import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.TRIGGER_ITEM;
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -45,7 +47,10 @@ import lombok.Getter;
 import lombok.Value;
 import net.runelite.api.Client;
 import net.runelite.api.EquipmentInventorySlot;
+import net.runelite.api.InventoryID;
+import net.runelite.api.Item;
 import net.runelite.api.ItemComposition;
+import net.runelite.api.ItemContainer;
 import net.runelite.api.ItemID;
 import net.runelite.api.kit.KitType;
 import net.runelite.api.widgets.ItemQuantityMode;
@@ -84,6 +89,14 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
     private Consumer<Integer> onItemSelected;
 
 	private Consumer<Integer> onItemMouseOvered;
+	private Runnable onItemDeleted;
+	private WeaponAnimationReplacerPlugin.SearchType searchType;
+
+	public void setType(WeaponAnimationReplacerPlugin.SearchType searchType)
+	{
+		this.searchType = searchType;
+		mode = 0;
+	}
 
 	@Value
     private static class ItemIcon
@@ -112,7 +125,14 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
                 }));
     }
 
-    @Override
+	@Override
+	protected void open()
+	{
+		filterResults();
+		super.open();
+	}
+
+	@Override
     protected void update()
     {
         Widget container = chatboxPanelManager.getContainerWidget();
@@ -124,31 +144,44 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 
 		addSeparator(container);
 
-		Widget deleteItemWidget = createDeleteItemWidget(container);
-		Widget itemSearchWidget = createHideSlotWidget(container, "Items", 0, 10, 50);
-		Widget hideSlotWidget = createHideSlotWidget(container, "Hide/Show slot", 1, 60, 80);
+		createCloseInterfaceWidget(container);
+		createDeleteItemWidget(container);
+		if (searchType == MODEL_SWAP) {
+			createHideSlotWidget(container, "Items", 0, 10, 50);
+			createHideSlotWidget(container, "Hide/Show slot", 1, 60, 80);
+		}
 
 		int x = PADDING;
 		int y = PADDING * 3;
 		int idx = 0;
 		if (mode == 0) // items
 		{
-			for (ItemComposition itemComposition : results.values())
+			if (results.size() == 0)
 			{
-				addItemWidget(itemComposition.getId(), itemComposition.getId(), itemComposition.getName(), container, x, y, () ->
+				addText(container, "Type to search items.", 0xff000000, 170, 50);
+//				addText(container, "shift-click items to add them without closing this dialog", 0xff555555, 80, 70);
+			} else {
+				for (ItemComposition itemComposition : results.values())
 				{
-					onItemSelected.accept(itemComposition.getId());
-					chatboxPanelManager.close();
-				}, idx);
+					addItemWidget(
+						itemComposition.getId(),
+						itemComposition.getId(),
+						itemComposition.getName(),
+						container,
+						x,
+						y,
+						() -> itemSelected(itemComposition.getId()), idx
+					);
 
-				x += ICON_WIDTH + PADDING;
-				if (x + ICON_WIDTH >= container.getWidth())
-				{
-					y += ICON_HEIGHT + PADDING;
-					x = PADDING;
+					x += ICON_WIDTH + PADDING;
+					if (x + ICON_WIDTH >= container.getWidth())
+					{
+						y += ICON_HEIGHT + PADDING;
+						x = PADDING;
+					}
+
+					++idx;
 				}
-
-				++idx;
 			}
 		} else if (mode == 1) { // hide slots.
 			List<Integer> iconIds = new ArrayList<>();
@@ -167,11 +200,15 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 			for (int i = 0; i < iconIds.size(); i++)
 			{
 				final int finalI = i;
-				addItemWidget(hideSlotIds.get(i), iconIds.get(i), names.get(i), container, x, y, () ->
-				{
-					onItemSelected.accept(hideSlotIds.get(finalI));
-					chatboxPanelManager.close();
-				}, idx);
+				addItemWidget(
+					hideSlotIds.get(i),
+					iconIds.get(i),
+					names.get(i),
+					container,
+					x,
+					y,
+					() -> itemSelected(hideSlotIds.get(finalI)), idx
+				);
 
 				x += ICON_WIDTH + PADDING;
 				if (x + ICON_WIDTH >= container.getWidth())
@@ -183,6 +220,27 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 				++idx;
 			}
 		}
+	}
+
+	private void addText(Widget container, String text, int textColor, int x, int y)
+	{
+		Widget item = container.createChild(-1, WidgetType.TEXT);
+		item.setTextColor(textColor);
+		item.setText(text);
+		item.setFontId(getFontID());
+		item.setXPositionMode(WidgetPositionMode.ABSOLUTE_LEFT);
+		item.setYPositionMode(WidgetPositionMode.ABSOLUTE_TOP);
+		item.setOriginalX(x);
+		item.setOriginalY(y);
+		item.setOriginalHeight(40);
+		item.setOriginalWidth(1000);
+		item.setBorderType(1);
+		item.revalidate();
+	}
+
+	private void itemSelected(int itemId)
+	{
+		if (onItemSelected != null) onItemSelected.accept(itemId);
 	}
 
 	private void addItemWidget(int id, int iconId, String name, Widget container, int x, int y, Runnable runnable, int idx)
@@ -258,7 +316,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 		Widget item = container.createChild(-1, WidgetType.GRAPHIC);
 		item.setXPositionMode(WidgetPositionMode.ABSOLUTE_LEFT);
 		item.setYPositionMode(WidgetPositionMode.ABSOLUTE_TOP);
-		item.setOriginalX(470);
+		item.setOriginalX(430);
 		item.setOriginalY(5);
 		item.setOriginalHeight(ICON_HEIGHT);
 		item.setOriginalWidth(ICON_WIDTH);
@@ -274,12 +332,37 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 		item.setOnMouseOverListener((JavaScriptCallback) ev -> item.setOpacity(HOVERED_OPACITY));
 		item.setOnMouseLeaveListener((JavaScriptCallback) ev -> item.setOpacity(0));
 
-		item.setOnOpListener((JavaScriptCallback) ev ->
-		{
-			{
-				onItemSelected.accept(itemComposition.getId());
-			}
+		item.setOnOpListener((JavaScriptCallback) ev -> {
+			onItemDeleted.run();
+			chatboxPanelManager.close();
+		});
 
+		item.revalidate();
+
+		return item;
+	}
+
+	private Widget createCloseInterfaceWidget(Widget container)
+	{
+		Widget item = container.createChild(-1, WidgetType.TEXT);
+		item.setTextColor(0xff000000);
+		item.setFontId(getFontID());
+		item.setText("X");
+		item.setName("Close (Esc");
+		item.setXPositionMode(WidgetPositionMode.ABSOLUTE_LEFT);
+		item.setYPositionMode(WidgetPositionMode.ABSOLUTE_TOP);
+		item.setOriginalX(470); // Further left than it should be to prevent scrolling up the chat.
+		item.setOriginalY(2);
+		item.setOriginalHeight(ICON_HEIGHT);
+		item.setOriginalWidth(15);
+		item.setBorderType(1);
+		item.setAction(0, tooltipText);
+		item.setHasListener(true);
+
+		item.setOnMouseOverListener((JavaScriptCallback) ev -> item.setOpacity(HOVERED_OPACITY));
+		item.setOnMouseLeaveListener((JavaScriptCallback) ev -> item.setOpacity(0));
+
+		item.setOnOpListener((JavaScriptCallback) ev -> {
 			chatboxPanelManager.close();
 		});
 
@@ -339,12 +422,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 				ev.consume();
 				if (index > -1)
 				{
-					if (onItemSelected != null)
-					{
-						onItemSelected.accept(results.keySet().toArray(new Integer[results.size()])[index]);
-                    }
-
-                    chatboxPanelManager.close();
+					itemSelected(results.keySet().toArray(new Integer[results.size()])[index]);
                 }
                 break;
             case KeyEvent.VK_TAB:
@@ -447,6 +525,18 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
         String search = getValue().toLowerCase();
         if (search.isEmpty())
         {
+        	if (searchType == TRIGGER_ITEM) {
+				ItemContainer itemContainer = client.getItemContainer(InventoryID.EQUIPMENT);
+				Item[] items = itemContainer.getItems();
+				for (int i = 0; i < items.length; i++)
+				{
+					if (items[i].getId() == -1 || i == EquipmentInventorySlot.RING.getSlotIdx() || i == EquipmentInventorySlot.AMMO.getSlotIdx()) continue;
+
+					ItemComposition itemComposition = itemManager.getItemComposition(itemManager.canonicalize(items[i].getId()));
+					results.put(itemComposition.getId(), itemComposition);
+				}
+			}
+
             return;
         }
 
@@ -497,6 +587,12 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 	public ChatBoxFilterableSearch onItemMouseOvered(Consumer<Integer> onItemMouseOvered)
 	{
 		this.onItemMouseOvered = onItemMouseOvered;
+		return this;
+	}
+
+	public ChatBoxFilterableSearch onItemDeleted(Runnable onItemDeleted)
+	{
+		this.onItemDeleted = onItemDeleted;
 		return this;
 	}
 

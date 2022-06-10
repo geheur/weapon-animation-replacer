@@ -33,6 +33,8 @@ import static com.weaponanimationreplacer.Constants.ShownSlot;
 import static com.weaponanimationreplacer.Constants.mapNegativeId;
 import com.weaponanimationreplacer.Swap.AnimationType;
 import static com.weaponanimationreplacer.Swap.AnimationType.ATTACK;
+import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.MODEL_SWAP;
+import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.TRIGGER_ITEM;
 import java.awt.AlphaComposite;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -46,15 +48,16 @@ import java.awt.Point;
 import java.awt.event.ActionListener;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
+import java.awt.event.InputEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
-import java.util.function.IntConsumer;
 import java.util.stream.Collectors;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
@@ -193,15 +196,27 @@ class TransmogSetPanel extends JPanel
 
 		JPanel restrictionAndModelSwapPanel = getRestrictionAndModelSwapPanel();
 		restrictionAndModelSwapPanel.add(createSwapOptionsPanel(transmogSet, swap, index != 0, index != total - 1));
-		for (int i = 0; i < swap.getItemRestrictions().size(); i++)
-		{
-			restrictionAndModelSwapPanel.add(createItemRestrictionButton(swap, i));
+
+		List<Integer> itemRestrictions = swap.getItemRestrictions();
+		if (itemRestrictions.isEmpty()) {
+			itemRestrictions = Collections.singletonList(-1); // "Any" button.
 		}
+		for (Integer itemRestriction : itemRestrictions)
+		{
+			restrictionAndModelSwapPanel.add(createItemRestrictionButton(swap, itemRestriction));
+		}
+
 		restrictionAndModelSwapPanel.add(new JLabel("->"));
-		for (int i = 0; i < swap.getModelSwaps().size(); i++)
-		{
-			restrictionAndModelSwapPanel.add(createModelSwapButton(swap, i));
+
+		List<Integer> modelSwaps = swap.getModelSwaps();
+		if (modelSwaps.isEmpty()) {
+			modelSwaps = Collections.singletonList(-1); // "None" button.
 		}
+		for (Integer modelSwap : modelSwaps)
+		{
+			restrictionAndModelSwapPanel.add(createModelSwapButton(swap, modelSwap));
+		}
+
 		panel.add(restrictionAndModelSwapPanel, BorderLayout.NORTH);
 
 		JPanel animationSwapsPanel = new JPanel();
@@ -265,36 +280,48 @@ class TransmogSetPanel extends JPanel
 		return restrictionAndModelSwapPanel;
 	}
 
-	private Component createModelSwapButton(Swap swap, int index)
+	private Component createModelSwapButton(Swap swap, int initialItemId)
 	{
-		ItemSelectionButton weaponIdInput = new ItemSelectionButton();
-		weaponIdInput.setItem(swap.getModelSwaps().get(index));
-		weaponIdInput.setOnItemChanged((itemId) -> {
-			plugin.clientThread.invokeLater(() -> {
-				swap.setModelSwap(index, itemId);
-				plugin.handleTransmogSetChange();
-
-				SwingUtilities.invokeLater(rebuild::run);
-			});
-		});
-
-		return weaponIdInput;
+		return createItemSelectionButton(swap, initialItemId, false);
 	}
 
-	private Component createItemRestrictionButton(Swap swap, int index)
+	private Component createItemRestrictionButton(Swap swap, int initialItemId)
+	{
+		return createItemSelectionButton(swap, initialItemId, true);
+	}
+
+	private ItemSelectionButton createItemSelectionButton(Swap swap, int initialItemId, boolean isTriggerItem)
 	{
 		ItemSelectionButton weaponIdInput = new ItemSelectionButton();
-		weaponIdInput.nameWhenEmpty = "Any";
-		weaponIdInput.setItem(swap.getItemRestrictions().get(index));
-		weaponIdInput.setOnItemChanged((itemId) -> {
-			plugin.clientThread.invokeLater(() -> {
-				swap.setItemRestriction(index, itemId);
+		if (isTriggerItem) weaponIdInput.nameWhenEmpty = "Any";
+		weaponIdInput.setItem(initialItemId);
+		Runnable deleteItem = () ->
+			plugin.clientThread.invoke(() -> {
+				if (isTriggerItem) swap.removeTriggerItem(initialItemId); else swap.removeModelSwap(initialItemId);
 				plugin.handleTransmogSetChange();
-
 				SwingUtilities.invokeLater(rebuild::run);
-			});
-		});
-
+			}
+		);
+		Runnable addItem = () -> {
+			plugin.doItemSearch(
+				itemId -> {
+					if (isTriggerItem) swap.addTriggerItem(itemId, plugin); else swap.addModelSwap(itemId, plugin);
+					plugin.handleTransmogSetChange();
+					SwingUtilities.invokeLater(rebuild::run);
+				},
+				deleteItem,
+				isTriggerItem ? TRIGGER_ITEM : MODEL_SWAP
+			);
+		};
+		weaponIdInput.addActionListener(e -> ((e.getModifiers() & InputEvent.CTRL_MASK) > 0 ? deleteItem : addItem).run());
+		JPopupMenu rightClickMenu = new JPopupMenu();
+		JMenuItem addItemsMenuItem = new JMenuItem("Add more items");
+		addItemsMenuItem.addActionListener(e -> addItem.run());
+		rightClickMenu.add(addItemsMenuItem);
+		JMenuItem removeItemMenuItem = new JMenuItem("Remove (ctrl-click)");
+		removeItemMenuItem.addActionListener(e -> deleteItem.run());
+		rightClickMenu.add(removeItemMenuItem);
+		weaponIdInput.setComponentPopupMenu(rightClickMenu);
 		return weaponIdInput;
 	}
 
@@ -385,20 +412,26 @@ class TransmogSetPanel extends JPanel
 	// TODO threading, memory consistency? on which threads am I doing what. I want swaps to be modified on the client thread only, I think.
 	private void addModelSwap(Swap swap)
 	{
-		plugin.doItemSearch(null, itemId -> {
-			swap.addNewModelSwap(itemId);
-			plugin.handleTransmogSetChange();
-			SwingUtilities.invokeLater(rebuild::run);
-		});
+		plugin.doItemSearch(
+			itemId -> {
+				swap.addModelSwap(itemId, plugin);
+				plugin.handleTransmogSetChange();
+				SwingUtilities.invokeLater(rebuild);
+			},
+			MODEL_SWAP
+		);
 	}
 
 	private void addTriggerItem(Swap swap)
 	{
-		plugin.doItemSearch(null, itemId -> {
-			swap.addNewTriggerItem(itemId);
-			plugin.handleTransmogSetChange();
-			SwingUtilities.invokeLater(rebuild::run);
-		});
+		plugin.doItemSearch(
+			itemId -> {
+				swap.addTriggerItem(itemId, plugin);
+				plugin.handleTransmogSetChange();
+				SwingUtilities.invokeLater(rebuild);
+			},
+			TRIGGER_ITEM
+		);
 	}
 
 	private void addMenuItem(JPopupMenu menu, String name, ActionListener actionListener)
@@ -772,20 +805,6 @@ class TransmogSetPanel extends JPanel
 			setPreferredSize(new Dimension(35, 35));
 			setMaximumSize(new Dimension(35, 35));
 			setMinimumSize(new Dimension( 30, 30));
-			addActionListener((e) -> {
-//				if (plugin.client.getGameState() == GameState.LOGGED_IN) setItemInternal(-1);
-				plugin.doItemSearch(this, (itemId) -> {
-					setItemInternal(itemId);
-				});
-			});
-		}
-		private IntConsumer f;
-		public void setOnItemChanged(IntConsumer f) {
-			this.f = f;
-		}
-		private void setItemInternal(int itemId) {
-			f.accept(itemId);
-			setItem(itemId);
 		}
 		public void setItem(int itemId) {
 			if (itemId == -1)

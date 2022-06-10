@@ -13,6 +13,7 @@ import com.google.gson.reflect.TypeToken;
 import static com.weaponanimationreplacer.Constants.mapNegativeId;
 import com.weaponanimationreplacer.Swap.AnimationReplacement;
 import com.weaponanimationreplacer.Swap.AnimationType;
+import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.MODEL_SWAP;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.lang.reflect.Type;
@@ -23,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import javax.inject.Inject;
@@ -123,30 +123,16 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	@Override
     protected void startUp()
     {
-		migrate();
-
-        try {
-            transmogSets = getTransmogSetsFromConfig();
-        } catch (JsonParseException | IllegalStateException e) {
-            log.error("issue parsing json: " + configManager.getConfiguration(GROUP_NAME, TRANSMOG_SET_KEY), e);
-            transmogSets = new ArrayList<>();
-        }
-
-        pluginPanel = new WeaponAnimationReplacerPluginPanel(this);
-        pluginPanel.rebuild();
-
-        final BufferedImage icon = ImageUtil.loadImageResource(WeaponAnimationReplacerPlugin.class, "panel_icon.png");
-
-        navigationButton = NavigationButton.builder()
-                .tooltip("Weapon Animation Replacer")
-                .icon(icon)
-                .priority(5)
-                .panel(pluginPanel)
-                .build();
-
-        clientToolbar.addNavigation(navigationButton);
-
         clientThread.invokeLater(() -> {
+			migrate();
+
+			try {
+				transmogSets = getTransmogSetsFromConfig();
+			} catch (JsonParseException | IllegalStateException e) {
+				log.error("issue parsing json: " + configManager.getConfiguration(GROUP_NAME, TRANSMOG_SET_KEY), e);
+				transmogSets = new ArrayList<>();
+			}
+
 			equippedItemsFromKit.clear();
 			if (client.getGameState() == GameState.LOGGED_IN) {
 				onPlayerChanged(new PlayerChanged(client.getLocalPlayer()));
@@ -160,22 +146,67 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			scytheSwingCountdown = -1;
 
 			previewItem = -1;
+
+			SwingUtilities.invokeLater(() -> {
+				pluginPanel = new WeaponAnimationReplacerPluginPanel(this);
+				pluginPanel.rebuild();
+
+				final BufferedImage icon = ImageUtil.loadImageResource(WeaponAnimationReplacerPlugin.class, "panel_icon.png");
+
+				navigationButton = NavigationButton.builder()
+					.tooltip("Weapon Animation Replacer")
+					.icon(icon)
+					.priority(5)
+					.panel(pluginPanel)
+					.build();
+
+				clientToolbar.addNavigation(navigationButton);
+			});
 		});
-    }
+	}
 
 	private void migrate()
 	{
-		if (configManager.getConfiguration(GROUP_NAME, TRANSMOG_SET_KEY) != null) return;
+		// I did a big format change at some point, this handles that.
+		if (configManager.getConfiguration("WeaponAnimationReplacer", TRANSMOG_SET_KEY) == null)
+		{
+			String configuration = configManager.getConfiguration("WeaponAnimationReplacer", "rules");
+			if (configuration == null) return; // do nothing. No existing rules, nothing to convert to new format.
 
-		String configuration = configManager.getConfiguration("WeaponAnimationReplacer", "rules");
-		if (configuration == null) return; // do nothing. No existing rules, nothing to convert to new format.
+			List<TransmogSet> transmogSets = migrate(configuration);
 
-		List<TransmogSet> transmogSets = migrate(configuration);
+			this.transmogSets = transmogSets;
+			saveTransmogSets();
+			configManager.setConfiguration(GROUP_NAME, "rulesbackup", configuration); // just in case!
+			configManager.unsetConfiguration(GROUP_NAME, "rules");
+		}
 
+		// update old stuff for the new sort order and model swap one item per slot.
+		if (configManager.getConfiguration(GROUP_NAME, "serialVersion") == null) {
+			updateForSortOrder();
+		}
+
+		configManager.setConfiguration(GROUP_NAME, "serialVersion", 1);
+	}
+
+	private void updateForSortOrder()
+	{
+		List<TransmogSet> transmogSets;
+		try {
+			transmogSets = getTransmogSetsFromConfig();
+		} catch (JsonParseException | IllegalStateException e) {
+			log.error("issue parsing json: " + configManager.getConfiguration(GROUP_NAME, TRANSMOG_SET_KEY), e);
+			return;
+		}
+		for (TransmogSet transmogSet : transmogSets)
+		{
+			for (Swap swap : transmogSet.getSwaps())
+			{
+				swap.updateForSortOrderAndUniqueness(this);
+			}
+		}
 		this.transmogSets = transmogSets;
 		saveTransmogSets();
-		configManager.setConfiguration(GROUP_NAME, "rulesbackup", configuration); // just in case!
-		configManager.unsetConfiguration(GROUP_NAME, "rules");
 	}
 
 	static List<TransmogSet> migrate(String config)
@@ -289,8 +320,6 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
         transmogManager.changeTransmog();
 		updateAnimations();
-
-        clientUI.requestFocus();
     }
 
     public void deleteTransmogSet(int index) {
@@ -527,7 +556,22 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		}
 	}
 
-    public void doItemSearch(TransmogSetPanel.ItemSelectionButton button, Consumer<Integer> onItemChosen) {
+	public enum SearchType {
+		TRIGGER_ITEM,
+		MODEL_SWAP,
+		;
+	}
+
+	public void doItemSearch(Consumer<Integer> onItemChosen, SearchType searchType) {
+		doItemSearch(onItemChosen, () -> {}, searchType);
+	}
+
+	/**
+	 * Listeners should always be called on the client thread.
+	 * @param onItemChosen
+	 * @param onItemDeleted
+	 */
+	public void doItemSearch(Consumer<Integer> onItemChosen, Runnable onItemDeleted, SearchType searchType) {
         if (client.getGameState() != GameState.LOGGED_IN)
         {
             JOptionPane.showMessageDialog(pluginPanel,
@@ -537,18 +581,12 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
             return;
         }
 
-        itemSearch
-                .tooltipText("select")
-                .onItemSelected((itemId) -> {
-                        clientThread.invokeLater(() ->
-                        {
-                            if (button != null) button.setItem(itemId);
-
-                            onItemChosen.accept(itemId);
-                        });})
-
-				.onItemMouseOvered(this::setPreviewItem)
-                .build();
+        itemSearch.tooltipText("select");
+		itemSearch.onItemSelected(onItemChosen);
+		itemSearch.onItemDeleted(onItemDeleted);
+		itemSearch.setType(searchType);
+		itemSearch.onItemMouseOvered(searchType == MODEL_SWAP ? this::setPreviewItem : null);
+		itemSearch.build();
         clientUI.requestFocus();
     }
 
@@ -567,7 +605,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
     public void onGameStateChanged(GameStateChanged event)
     {
         if (event.getGameState() == GameState.LOGIN_SCREEN) {
-            if (!clientLoaded) SwingUtilities.invokeLater(pluginPanel::rebuild);
+            if (!clientLoaded && pluginPanel != null) SwingUtilities.invokeLater(pluginPanel::rebuild);
             clientLoaded = true;
         } else if (event.getGameState() == GameState.LOGGED_IN) {
         	// This is necessary for transmog to show up on teleports.
@@ -591,13 +629,13 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	private static final int DEFAULT_FEMALE_HAIR = 256 + 45;
 	private static final int DEFAULT_MALE_JAW = 256 + 14;
 
-	private final Function<Integer, Integer> getSlot = i -> {
-		ItemStats itemStats = itemManager.getItemStats(i, false);
+	public Integer getSlot(int itemId) {
+		ItemStats itemStats = itemManager.getItemStats(itemId, false);
 		if (itemStats == null) return null;
 		ItemEquipmentStats equipment = itemStats.getEquipment();
 		if (equipment == null) return null;
 		return equipment.getSlot();
-	};
+	}
 
 	public Map<Integer, Integer> getApplicableModelSwaps()
 	{
@@ -607,7 +645,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		Map<Integer, Integer> specificTransmog = new HashMap<>();
 		for (Swap swap : swaps)
 		{
-			Map<Integer, Integer> transmogMap = swap.appliesSpecificallyToGear(equippedItemsFromKit, getSlot) ? specificTransmog : genericTransmog;
+			Map<Integer, Integer> transmogMap = swap.appliesSpecificallyToGear(equippedItemsFromKit, this::getSlot) ? specificTransmog : genericTransmog;
 			for (Integer modelSwap : swap.getModelSwaps())
 			{
 				SlotAndKitId slotForItem = getSlotForItem(modelSwap);
@@ -635,17 +673,23 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		return transmogSets.stream()
 			.filter(TransmogSet::isEnabled)
 			.flatMap(set -> set.getSwaps().stream())
-			.filter(swap -> swap.appliesToGear(equippedItemsFromKit, getSlot))
+			.filter(swap -> swap.appliesToGear(equippedItemsFromKit, this::getSlot))
 			.collect(Collectors.toList());
 	}
 
 	@Value
-	private static class SlotAndKitId {
+	public static class SlotAndKitId {
 		int slot;
 		int kitId;
 	}
 
-	private SlotAndKitId getSlotForItem(Integer modelSwap)
+	public Integer getMySlot(Integer modelSwap)
+	{
+		SlotAndKitId slotForItem = getSlotForItem(modelSwap);
+		return slotForItem == null ? null : slotForItem.getSlot();
+	}
+
+	public SlotAndKitId getSlotForItem(Integer modelSwap)
 	{
 		if (modelSwap < 0) {
 			Constants.NegativeId negativeId = mapNegativeId(modelSwap);
@@ -678,6 +722,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			}
 
 			ItemStats itemStats = itemManager.getItemStats(modelSwap, false);
+			if (itemStats == null || itemStats.getEquipment() == null) return null;
 			return new SlotAndKitId(itemStats.getEquipment().getSlot(), modelSwap);
 		}
 

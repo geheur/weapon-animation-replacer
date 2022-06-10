@@ -35,7 +35,6 @@ public class Constants
 		addUnequippable(1963, WEAPON); // banana (right-handed)
 		addUnequippable(3177, SHIELD); // banana (left-handed)
 		addUnequippable(26649, SHIELD); // skis (I want them in the shield slot not the weapon slot. They are marked as equippable though).
-		addUnequippable(27021, WEAPON); // Colossal blade
 
 		// leagues 3 items.
 		addUnequippable(26503, WEAPON); // Shattered relics bronze trophy
