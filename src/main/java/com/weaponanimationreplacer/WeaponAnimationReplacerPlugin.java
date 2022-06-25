@@ -648,7 +648,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			Map<Integer, Integer> transmogMap = swap.appliesSpecificallyToGear(equippedItemsFromKit, this::getSlot) ? specificTransmog : genericTransmog;
 			for (Integer modelSwap : swap.getModelSwaps())
 			{
-				SlotAndKitId slotForItem = getSlotForItem(modelSwap);
+				SlotAndKitId slotForItem = getSlotAndKitForItem(modelSwap);
 				if (slotForItem != null && !transmogMap.containsKey(slotForItem.slot)) {
 					transmogMap.put(slotForItem.slot, slotForItem.kitId);
 				}
@@ -661,7 +661,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		}
 
 		if (previewItem != -1) {
-			SlotAndKitId slotForItem = getSlotForItem(previewItem);
+			SlotAndKitId slotForItem = getSlotAndKitForItem(previewItem);
 			if (slotForItem != null) genericTransmog.put(slotForItem.slot, slotForItem.kitId);
 		}
 
@@ -683,13 +683,43 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		int kitId;
 	}
 
-	public Integer getMySlot(Integer modelSwap)
+	public Integer getMySlot(int modelSwap)
 	{
-		SlotAndKitId slotForItem = getSlotForItem(modelSwap);
-		return slotForItem == null ? null : slotForItem.getSlot();
+		if (modelSwap < 0) {
+			Constants.NegativeId negativeId = mapNegativeId(modelSwap);
+			if (negativeId.type == Constants.NegativeIdsMap.HIDE_SLOT || negativeId.type == Constants.NegativeIdsMap.SHOW_SLOT) {
+				return negativeId.id;
+			}
+			else
+			{
+				return null;
+			}
+		}
+		else
+		{
+			return getSlotForNonNegativeModelId(modelSwap);
+		}
+
 	}
 
-	public SlotAndKitId getSlotForItem(Integer modelSwap)
+	private Integer getSlotForNonNegativeModelId(int modelSwap)
+	{
+		Integer slot = Constants.OVERRIDE_EQUIPPABILITY_OR_SLOT.get(modelSwap);
+		if (slot != null) {
+			return slot;
+		}
+
+		if (Constants.JAW_SLOT.contains(modelSwap))
+		{
+			return KitType.JAW.getIndex();
+		}
+
+		ItemStats itemStats = itemManager.getItemStats(modelSwap, false);
+		if (itemStats == null || itemStats.getEquipment() == null) return null;
+		return itemStats.getEquipment().getSlot();
+	}
+
+	public SlotAndKitId getSlotAndKitForItem(int modelSwap)
 	{
 		if (modelSwap < 0) {
 			Constants.NegativeId negativeId = mapNegativeId(modelSwap);
@@ -709,22 +739,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 				return null;
 			}
 		}
-		else
-		{
-			Integer slot = Constants.OVERRIDE_EQUIPPABILITY_OR_SLOT.get(modelSwap);
-			if (slot != null) {
-				return new SlotAndKitId(slot, modelSwap);
-			}
 
-			if (Constants.JAW_SLOT.contains(modelSwap))
-			{
-				return new SlotAndKitId(KitType.JAW.getIndex(), modelSwap);
-			}
-
-			ItemStats itemStats = itemManager.getItemStats(modelSwap, false);
-			if (itemStats == null || itemStats.getEquipment() == null) return null;
-			return new SlotAndKitId(itemStats.getEquipment().getSlot(), modelSwap);
-		}
-
+		return new SlotAndKitId(getSlotForNonNegativeModelId(modelSwap), modelSwap);
 	}
 }

@@ -23,6 +23,7 @@ import net.runelite.api.Player;
 import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.CommandExecuted;
 import net.runelite.api.events.MenuOptionClicked;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.plugins.Plugin;
@@ -41,21 +42,27 @@ import net.runelite.http.api.item.ItemStats;
 @PluginDependency(WeaponAnimationReplacerPlugin.class)
 public class WeaponAnimationReplacerToolsPlugin extends Plugin
 {
-
 	@Inject
 	private WeaponAnimationReplacerPlugin plugin;
 
 	@Inject
 	private ItemManager itemManager;
 
+	@Inject
+	private ClientThread clientThread;
+
 	int demoanim = -1;
 	int demogfx = -1;
+
+	@Override
+	public void startUp() {
+		clientThread.invokeLater(() -> onCommandExecuted(new CommandExecuted("testsortupdate", null)));
+	}
 
 	@Subscribe
 	public void onCommandExecuted(CommandExecuted commandExecuted) {
 		String[] arguments = commandExecuted.getArguments();
 		String command = commandExecuted.getCommand();
-		System.out.println(arguments.length);
 
 		if (command.equals("checkunequippables"))
 		{
@@ -78,6 +85,9 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 			if (swap.getModelSwaps().size() != 0 || swap.getItemRestrictions().size() != 0) {
 				System.out.println("test 1 failed.");
 			}
+
+			swap = new Swap(Arrays.asList(-1), Arrays.asList(-14, -15, -16), Collections.emptyList(), Collections.emptyList());
+			swap.updateForSortOrderAndUniqueness(plugin);
 
 			swap = new Swap(
 				Arrays.asList(ItemID.SLAYER_HELMET_I, ItemID.ABYSSAL_TENTACLE, ItemID.GHRAZI_RAPIER, ItemID.DRAGON_SCIMITAR, ItemID.CHEFS_HAT),
