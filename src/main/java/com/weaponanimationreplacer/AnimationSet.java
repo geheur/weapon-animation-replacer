@@ -638,6 +638,11 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			.put(ATTACK_SLASH, 7516)
 			.put(DEFEND, 7517)
 			.build();
+		new AnimationSetBuilder("Tumeken's Shadow")
+			.poseAnims(1713, 1702, 1703, 1704, 1706, 1705, 1707)
+			.put(ATTACK, 9493)
+			.put(DEFEND, 1709) // Not sure, haven't seen this one in-game.
+			.build();
 
 		Collections.sort(animationSets);
 	}
