@@ -74,6 +74,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	@Inject private ClientToolbar clientToolbar;
 	@Inject private ConfigManager configManager;
 	@Inject private TransmogrificationManager transmogManager;
+	@Inject private Gson runeliteGson;
 	@Inject ClientUI clientUI;
 	@Inject ItemManager itemManager;
 	@Inject ClientThread clientThread;
@@ -98,6 +99,45 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	int scytheSwingCountdown = -1;
 
 	int previewItem = -1;
+
+	private Gson customGson = null; // Lazy initialized due to timing of @Injected runeliteGson and not being able to use constructor injection.
+	Gson getGson()
+	{
+		if (customGson != null) return customGson;
+
+		GsonBuilder gsonBuilder = runeliteGson.newBuilder();
+
+		Type animationSetTypeToken = new TypeToken<AnimationSet>() {}.getType();
+		JsonSerializer<AnimationSet> serializer = new JsonSerializer<AnimationSet>() {
+			@Override
+			public JsonElement serialize(AnimationSet set, Type typeOfSrc, JsonSerializationContext context) {
+				return new JsonPrimitive(set.name);
+			}
+		};
+		gsonBuilder.registerTypeAdapter(animationSetTypeToken, serializer);
+		JsonDeserializer<AnimationSet> deserializer = new JsonDeserializer<AnimationSet>() {
+			@Override
+			public AnimationSet deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext jsonDeserializationContext) throws JsonParseException {
+				if (jsonElement instanceof JsonPrimitive && ((JsonPrimitive) jsonElement).isString()) {
+					String s = jsonElement.getAsString();
+					String newS = renames.get(s);
+					if (newS != null) {
+						log.debug("updating \"" + s + "\" to \"" + newS + "\"");
+						s = newS;
+					}
+					AnimationSet animationSet = AnimationSet.getAnimationSet(s);
+					if (animationSet == null) return AnimationSet.animationSets.get(0);
+					return animationSet;
+				} else {
+					throw new JsonParseException("animationset is supposed to be a string.");
+				}
+			}
+		};
+		gsonBuilder.registerTypeAdapter(animationSetTypeToken, deserializer);
+
+		customGson = gsonBuilder.create();
+		return customGson;
+	}
 
 	@Override
     protected void startUp()
@@ -188,9 +228,9 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		saveTransmogSets();
 	}
 
-	static List<TransmogSet> migrate(String config)
+	List<TransmogSet> migrate(String config)
 	{
-		List<AnimationReplacementRule_OLD> rules = customGson.fromJson(config, new TypeToken<ArrayList<AnimationReplacementRule_OLD>>() {}.getType());
+		List<AnimationReplacementRule_OLD> rules = getGson().fromJson(config, new TypeToken<ArrayList<AnimationReplacementRule_OLD>>() {}.getType());
 		List<TransmogSet> transmogSets = new ArrayList<>();
 		for (AnimationReplacementRule_OLD rule : rules)
 		{
@@ -233,61 +273,20 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		renames.put("Knife", "Knife (non-dragon)");
 	}
 
-    static Gson customGson;
-    static Gson customGsonPretty;
-    static {
-        GsonBuilder gsonBuilder = new GsonBuilder();
-
-        Type merchantListType = new TypeToken<AnimationSet>() {}.getType();
-        JsonSerializer<AnimationSet> serializer = new JsonSerializer<AnimationSet>() {
-            @Override
-            public JsonElement serialize(AnimationSet set, Type typeOfSrc, JsonSerializationContext context) {
-                return new JsonPrimitive(set.name);
-            }
-        };
-        gsonBuilder.registerTypeAdapter(merchantListType, serializer);
-        JsonDeserializer<AnimationSet> deserializer = new JsonDeserializer<AnimationSet>() {
-            @Override
-            public AnimationSet deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext jsonDeserializationContext) throws JsonParseException {
-                if (jsonElement instanceof JsonPrimitive && ((JsonPrimitive) jsonElement).isString()) {
-                    String s = jsonElement.getAsString();
-					String newS = renames.get(s);
-					if (newS != null) {
-						log.debug("updating \"" + s + "\" to \"" + newS + "\"");
-						s = newS;
-					}
-					AnimationSet animationSet = AnimationSet.getAnimationSet(s);
-                    if (animationSet == null) return AnimationSet.animationSets.get(0);
-                    return animationSet;
-                } else {
-                    throw new JsonParseException("animationset is supposed to be a string.");
-                }
-            }
-        };
-        gsonBuilder.registerTypeAdapter(merchantListType, deserializer);
-
-        customGson = gsonBuilder.create();
-
-        gsonBuilder = new GsonBuilder();
-        gsonBuilder.registerTypeAdapter(merchantListType, serializer);
-        gsonBuilder.registerTypeAdapter(merchantListType, deserializer);
-        gsonBuilder.setPrettyPrinting();
-        customGsonPretty = gsonBuilder.create();
-    }
-
 	public List<TransmogSet> getTransmogSetsFromConfig() {
         String configuration = configManager.getConfiguration(GROUP_NAME, TRANSMOG_SET_KEY);
         if (configuration == null) return getDefaultTransmogSets();
 		if (configuration.startsWith("NOT_JSON")) {
 			configuration = configuration.substring("NOT_JSON".length());
 		}
-		return customGson.fromJson(configuration, new TypeToken<ArrayList<TransmogSet>>() {}.getType());
+		return getGson().fromJson(configuration, new TypeToken<ArrayList<TransmogSet>>() {}.getType());
     }
 
     public void saveTransmogSets() {
     	// Runelite won't store config values that are valid json with a nested depth of 8 or higher. Adding "NOT_JSON"
 		// makes the string not be valid json, circumventing this.
-        String s = "NOT_JSON" + customGson.toJson(transmogSets);
+		// This might not be necessary anymore but I don't feel like updating it; it works fine as is.
+        String s = "NOT_JSON" + getGson().toJson(transmogSets);
         configManager.setConfiguration(GROUP_NAME, TRANSMOG_SET_KEY, s);
     }
 
@@ -329,9 +328,9 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
         saveTransmogSets();
     }
 
-    public static List<TransmogSet> getDefaultTransmogSets() {
+    private List<TransmogSet> getDefaultTransmogSets() {
         String configuration = "[{\"name\":\"Monkey run\",\"enabled\":false,\"minimized\":false,\"swaps\":[{\"itemRestrictions\":[-1],\"modelSwaps\":[-1],\"animationReplacements\":[{\"animationSet\":\"Cursed banana\",\"animationtypeToReplace\":\"ALL\"}],\"graphicEffects\":[]}]},{\"name\":\"Elder Maul Scythe\",\"enabled\":false,\"minimized\":false,\"swaps\":[{\"itemRestrictions\":[22324,4151,12006,4587,24551],\"modelSwaps\":[22325],\"animationReplacements\":[{\"animationSet\":\"Elder maul\",\"animationtypeToReplace\":\"ALL\"},{\"animationSet\":\"Scythe of Vitur\",\"animationtypeToReplace\":\"ATTACK\",\"animationtypeReplacement\":{\"type\":\"ATTACK_SLASH\",\"id\":8056}}],\"graphicEffects\":[{\"type\":\"SCYTHE_SWING\",\"color\":{\"value\":-4030079,\"falpha\":0.0}}]}]},{\"name\":\"Shoulder Halberd\",\"enabled\":false,\"minimized\":false,\"swaps\":[{\"itemRestrictions\":[3204,23987],\"modelSwaps\":[-1],\"animationReplacements\":[{\"animationSet\":\"Dharok's greataxe\",\"animationtypeToReplace\":\"STAND_PLUS_MOVEMENT\"}],\"graphicEffects\":[]}]},{\"name\":\"Saeldor Slash\",\"enabled\":false,\"minimized\":false,\"swaps\":[{\"itemRestrictions\":[24551,23995,23997],\"modelSwaps\":[-1],\"animationReplacements\":[{\"animationSet\":\"Inquisitor's mace\",\"animationtypeToReplace\":\"ATTACK_SLASH\",\"animationtypeReplacement\":{\"type\":\"ATTACK_CRUSH\",\"id\":4503}}],\"graphicEffects\":[]}]},{\"name\":\"Rich voider\",\"enabled\":false,\"minimized\":false,\"swaps\":[{\"itemRestrictions\":[8839,8840,8842,11664,13072,13073],\"modelSwaps\":[11826,11828,11830,7462,13237,22249,21898],\"animationReplacements\":[],\"graphicEffects\":[]}]}]";
-        return customGson.fromJson(configuration, new TypeToken<ArrayList<TransmogSet>>() {}.getType());
+        return getGson().fromJson(configuration, new TypeToken<ArrayList<TransmogSet>>() {}.getType());
     }
 
 	private void swapPlayerAnimation()

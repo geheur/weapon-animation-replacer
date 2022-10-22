@@ -14,8 +14,7 @@ public class ExamplePluginTest
 	{
 		setWindowTitle("weapon-animation-replacer (" + getCurrentGitBranch() + ") RL-" + RuneLiteProperties.getVersion());
 
-//		System.setProperty("runelite.pluginhub.version", "1.8.24.1");
-		System.setProperty("runelite.pluginhub.version", "0");
+//		System.setProperty("runelite.pluginhub.version", "0");
 		ExternalPluginManager.loadBuiltin(WeaponAnimationReplacerPlugin.class, WeaponAnimationReplacerToolsPlugin.class);
 		RuneLite.main(args);
 	}
