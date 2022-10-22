@@ -42,14 +42,10 @@ import net.runelite.http.api.item.ItemStats;
 @PluginDependency(WeaponAnimationReplacerPlugin.class)
 public class WeaponAnimationReplacerToolsPlugin extends Plugin
 {
-	@Inject
-	private WeaponAnimationReplacerPlugin plugin;
-
-	@Inject
-	private ItemManager itemManager;
-
-	@Inject
-	private ClientThread clientThread;
+	@Inject private WeaponAnimationReplacerPlugin plugin;
+	@Inject private ItemManager itemManager;
+	@Inject private ClientThread clientThread;
+	@Inject private Client client;
 
 	int demoanim = -1;
 	int demogfx = -1;
@@ -223,9 +219,6 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 			}
 		}
 	}
-
-	@Inject
-	private Client client;
 
 	@Subscribe
 	public void onClientTick(ClientTick clientTick) {

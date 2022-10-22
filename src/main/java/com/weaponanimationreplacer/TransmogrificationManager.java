@@ -40,11 +40,8 @@ import net.runelite.api.kit.KitType;
 @Slf4j
 public class TransmogrificationManager
 {
-    @Inject
-    private Client client;
-
-    @Inject
-    WeaponAnimationReplacerPlugin plugin;
+    @Inject private Client client;
+    @Inject WeaponAnimationReplacerPlugin plugin;
 
     @Getter
     private int[] currentActualState;

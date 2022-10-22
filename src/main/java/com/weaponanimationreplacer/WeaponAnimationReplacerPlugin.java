@@ -49,7 +49,6 @@ import net.runelite.api.events.PlayerChanged;
 import net.runelite.api.kit.KitType;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
-import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.plugins.Plugin;
@@ -70,41 +69,21 @@ import net.runelite.http.api.item.ItemStats;
 )
 public class WeaponAnimationReplacerPlugin extends Plugin {
 
-    @Inject
-    Client client;
-
-    @Inject
-    private ChatBoxFilterableSearch itemSearch;
-
-    @Inject
-    ClientUI clientUI;
-
-    @Inject
-    ItemManager itemManager;
-
-    @Inject
-    public ClientThread clientThread;
-
-    @Inject
-    private ClientToolbar clientToolbar;
-
-    @Inject
-	ConfigManager configManager;
-
-	@Inject
-	public ColorPickerManager colorPickerManager;
-
-	@Inject
-	private EventBus eventBus;
+	@Inject private Client client;
+	@Inject private ChatBoxFilterableSearch itemSearch;
+	@Inject private ClientToolbar clientToolbar;
+	@Inject private ConfigManager configManager;
+	@Inject private TransmogrificationManager transmogManager;
+	@Inject ClientUI clientUI;
+	@Inject ItemManager itemManager;
+	@Inject ClientThread clientThread;
+	@Inject ColorPickerManager colorPickerManager;
 
 	private static final String TRANSMOG_SET_KEY = "transmogSets";
 	private static final String GROUP_NAME = "WeaponAnimationReplacer";
 
 	@Getter
 	private List<TransmogSet> transmogSets;
-
-	@Inject
-	private TransmogrificationManager transmogManager;
 
 	WeaponAnimationReplacerPluginPanel pluginPanel;
 	private NavigationButton navigationButton;
