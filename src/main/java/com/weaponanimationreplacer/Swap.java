@@ -23,9 +23,16 @@ public class Swap
     private final List<Integer> itemRestrictions;
 	private final List<Integer> modelSwaps;
 	public final List<AnimationReplacement> animationReplacements;
+	private List<ProjectileSwap> projectileSwaps;
 	private List<GraphicEffect> graphicEffects;
 
-    public Swap(List<Integer> itemRestrictions, List<Integer> modelSwaps, List<AnimationReplacement> animationReplacements, List<GraphicEffect> graphicEffects) {
+    public Swap(
+    	List<Integer> itemRestrictions,
+		List<Integer> modelSwaps,
+		List<AnimationReplacement> animationReplacements,
+		List<ProjectileSwap> projectileSwaps,
+		List<GraphicEffect> graphicEffects
+	) {
 		if (itemRestrictions.isEmpty()) {
         	this.itemRestrictions = new ArrayList<>();
 		} else {
@@ -37,6 +44,7 @@ public class Swap
 			this.modelSwaps = new ArrayList<>(modelSwaps);
 		}
 		this.animationReplacements = new ArrayList<>(animationReplacements);
+		this.projectileSwaps = new ArrayList<>(projectileSwaps);
 		this.graphicEffects = new ArrayList<>(graphicEffects);
     }
 
@@ -123,17 +131,24 @@ public class Swap
 		};
 	}
 
+	public List<ProjectileSwap> getProjectileSwaps() {
+		if (projectileSwaps == null) projectileSwaps = new ArrayList<>(); // idk, gson overrides the default value if there's not value for it in the json.
+		return projectileSwaps;
+	}
+
 	public List<GraphicEffect> getGraphicEffects() {
     	if (graphicEffects == null) graphicEffects = new ArrayList<>(); // idk, gson overrides the default value if there's not value for it in the json.
 		return graphicEffects;
 	}
 
 	public static Swap createTemplate() {
-        List<Integer> itemRestrictions = new ArrayList<>();
-        List<AnimationReplacement> animationReplacements = new ArrayList<>();
-		List<GraphicEffect> graphicEffects = new ArrayList<>();
-		Swap swap = new Swap(itemRestrictions, new ArrayList<>(), animationReplacements, graphicEffects);
-        return swap;
+		return new Swap(
+			Collections.emptyList(),
+			Collections.emptyList(),
+			Collections.emptyList(),
+			Collections.emptyList(),
+			Collections.emptyList()
+		);
     }
 
 	public void addNewAnimationReplacement()
@@ -218,6 +233,11 @@ public class Swap
 		{
 			addTriggerItem(itemId, plugin);
 		}
+	}
+
+	public void addNewProjectileSwap()
+	{
+		projectileSwaps.add(ProjectileSwap.createTemplate());
 	}
 
 	@Data

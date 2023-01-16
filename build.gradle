@@ -19,12 +19,13 @@ dependencies {
 	annotationProcessor 'org.projectlombok:lombok:1.18.4'
 
     testImplementation 'org.projectlombok:lombok:1.18.4'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.4'
 	testImplementation 'junit:junit:4.12'
 	testImplementation group: 'net.runelite', name:'client', version: runeLiteVersion
 }
 
 group = 'com.weaponanimationreplacer'
-version = '2.3.0'
+version = '3.0.0'
 sourceCompatibility = '1.8'
 
 tasks.withType(JavaCompile) {

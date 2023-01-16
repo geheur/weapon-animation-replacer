@@ -33,8 +33,7 @@ import static com.weaponanimationreplacer.Constants.NegativeId;
 import static com.weaponanimationreplacer.Constants.NegativeIdsMap;
 import static com.weaponanimationreplacer.Constants.ShownSlot;
 import static com.weaponanimationreplacer.Constants.mapNegativeId;
-import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.MODEL_SWAP;
-import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.TRIGGER_ITEM;
+import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.*;
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -83,7 +82,8 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
     private final Client client;
 
     private final Map<Integer, ItemComposition> results = new LinkedHashMap<>();
-    private String tooltipText;
+	private final List<String> spells = new ArrayList<>();
+	private String tooltipText;
     private int index = -1;
 
     @Getter
@@ -156,23 +156,72 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 		int x = PADDING;
 		int y = PADDING * 3;
 		int idx = 0;
-		if (mode == 0) // items
+		if (searchType == TRIGGER_ITEM || searchType == MODEL_SWAP)
 		{
-			if (results.size() == 0)
+			if (mode == 0) // items
 			{
-				addText(container, "Type to search items.", 0xff000000, 170, 50);
-//				addText(container, "shift-click items to add them without closing this dialog", 0xff555555, 80, 70);
-			} else {
-				for (ItemComposition itemComposition : results.values())
+				if (results.size() == 0)
 				{
-					addItemWidget(
-						itemComposition.getId(),
-						itemComposition.getId(),
-						itemComposition.getName(),
+					addText(container, "Type to search items.", 0xff000000, 170, 50);
+//				addText(container, "shift-click items to add them without closing this dialog", 0xff555555, 80, 70);
+				}
+				else
+				{
+					for (ItemComposition itemComposition : results.values())
+					{
+						addItemWidgetItem(
+							itemComposition.getId(),
+							itemComposition.getId(),
+							itemComposition.getName(),
+							container,
+							x,
+							y,
+							() -> itemSelected(itemComposition.getId()), idx
+						);
+
+						x += ICON_WIDTH + PADDING;
+						if (x + ICON_WIDTH >= container.getWidth())
+						{
+							y += ICON_HEIGHT + PADDING;
+							x = PADDING;
+						}
+
+						++idx;
+					}
+				}
+			}
+			else if (mode == 1)
+			{ // hide slots.
+				List<Integer> iconIds = new ArrayList<>();
+				List<String> names = new ArrayList<>();
+				List<Integer> hideSlotIds = new ArrayList<>();
+				for (HiddenSlot hiddenSlot : HiddenSlot.values())
+				{
+					iconIds.add(hiddenSlot.iconIdToShow);
+					names.add(hiddenSlot.actionName);
+					hideSlotIds.add(mapNegativeId(new NegativeId(NegativeIdsMap.HIDE_SLOT, hiddenSlot.ordinal())));
+				}
+
+				iconIds.add(ShownSlot.ARMS.iconIdToShow);
+				names.add("Show arms");
+				hideSlotIds.add(mapNegativeId(new NegativeId(NegativeIdsMap.SHOW_SLOT, KitType.ARMS.getIndex())));
+				iconIds.add(ShownSlot.HAIR.iconIdToShow);
+				names.add("Show hair");
+				hideSlotIds.add(mapNegativeId(new NegativeId(NegativeIdsMap.SHOW_SLOT, KitType.HAIR.getIndex())));
+				iconIds.add(ShownSlot.JAW.iconIdToShow);
+				names.add("Show jaw");
+				hideSlotIds.add(mapNegativeId(new NegativeId(NegativeIdsMap.SHOW_SLOT, KitType.JAW.getIndex())));
+				for (int i = 0; i < iconIds.size(); i++)
+				{
+					final int finalI = i;
+					addItemWidgetItem(
+						hideSlotIds.get(i),
+						iconIds.get(i),
+						names.get(i),
 						container,
 						x,
 						y,
-						() -> itemSelected(itemComposition.getId()), idx
+						() -> itemSelected(hideSlotIds.get(finalI)), idx
 					);
 
 					x += ICON_WIDTH + PADDING;
@@ -185,41 +234,32 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 					++idx;
 				}
 			}
-		} else if (mode == 1) { // hide slots.
-			List<Integer> iconIds = new ArrayList<>();
-			List<String> names = new ArrayList<>();
-			List<Integer> hideSlotIds = new ArrayList<>();
-			for (HiddenSlot hiddenSlot : HiddenSlot.values())
+		} else { // spell
+			for (String spell : spells)
 			{
-				iconIds.add(hiddenSlot.iconIdToShow);
-				names.add(hiddenSlot.actionName);
-				hideSlotIds.add(mapNegativeId(new NegativeId(NegativeIdsMap.HIDE_SLOT, hiddenSlot.ordinal())));
-			}
-
-			iconIds.add(ShownSlot.ARMS.iconIdToShow); names.add("Show arms"); hideSlotIds.add(mapNegativeId(new NegativeId(NegativeIdsMap.SHOW_SLOT, KitType.ARMS.getIndex())));
-			iconIds.add(ShownSlot.HAIR.iconIdToShow); names.add("Show hair"); hideSlotIds.add(mapNegativeId(new NegativeId(NegativeIdsMap.SHOW_SLOT, KitType.HAIR.getIndex())));
-			iconIds.add(ShownSlot.JAW.iconIdToShow); names.add("Show jaw"); hideSlotIds.add(mapNegativeId(new NegativeId(NegativeIdsMap.SHOW_SLOT, KitType.JAW.getIndex())));
-			for (int i = 0; i < iconIds.size(); i++)
-			{
-				final int finalI = i;
-				addItemWidget(
-					hideSlotIds.get(i),
-					iconIds.get(i),
-					names.get(i),
-					container,
-					x,
-					y,
-					() -> itemSelected(hideSlotIds.get(finalI)), idx
-				);
-
-				x += ICON_WIDTH + PADDING;
-				if (x + ICON_WIDTH >= container.getWidth())
+				for (int i = 0; i < ProjectileCast.projectiles.size(); i++)
 				{
-					y += ICON_HEIGHT + PADDING;
-					x = PADDING;
-				}
+					ProjectileCast projectile = ProjectileCast.projectiles.get(i);
 
-				++idx;
+					if (projectile.getName(itemManager).equals(spell)) {
+						int finalI = i;
+						addItemWidget(-1, projectile.getItemIdIcon(), projectile.getSpriteIdIcon(), projectile.getName(itemManager), container, x, y, () ->
+						{
+							onItemSelected.accept(finalI);
+							chatboxPanelManager.close();
+						}, idx);
+
+						x += ICON_WIDTH + PADDING;
+						if (x + ICON_WIDTH >= container.getWidth())
+						{
+							y += ICON_HEIGHT + PADDING;
+							x = PADDING;
+						}
+
+						++idx;
+						break;
+					}
+				}
 			}
 		}
 	}
@@ -314,7 +354,17 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 		if (onItemSelected != null) onItemSelected.accept(itemId);
 	}
 
-	private void addItemWidget(int id, int iconId, String name, Widget container, int x, int y, Runnable runnable, int idx)
+	private void addItemWidgetSprite(int id, int spriteId, String name, Widget container, int x, int y, Runnable runnable, int idx)
+	{
+		addItemWidget(id, -1, spriteId, name, container, x, y, runnable, idx);
+	}
+
+	private void addItemWidgetItem(int id, int iconId, String name, Widget container, int x, int y, Runnable runnable, int idx)
+	{
+		addItemWidget(id, iconId, -1, name, container, x, y, runnable, idx);
+	}
+
+	private void addItemWidget(int id, int iconId, int spriteId, String name, Widget container, int x, int y, Runnable runnable, int idx)
 	{
 		Widget item = container.createChild(-1, WidgetType.GRAPHIC);
 		item.setXPositionMode(WidgetPositionMode.ABSOLUTE_LEFT);
@@ -324,7 +374,8 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 		item.setOriginalHeight(ICON_HEIGHT);
 		item.setOriginalWidth(ICON_WIDTH);
 		item.setName(JagexColors.MENU_TARGET_TAG + name);
-		item.setItemId(iconId);
+		if (iconId != -1) item.setItemId(iconId);
+		else if (spriteId != -1) item.setSpriteId(spriteId);
 		item.setItemQuantity(10000);
 		item.setItemQuantityMode(ItemQuantityMode.NEVER);
 		item.setBorderType(1);
@@ -576,6 +627,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
         // Clear search string when closed
         value("");
         results.clear();
+        spells.clear();
         index = -1;
         mode = 0;
         super.close();
@@ -596,6 +648,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
     private void filterResults()
     {
         results.clear();
+        spells.clear();
         index = -1;
 
         String search = getValue().toLowerCase();
@@ -612,10 +665,16 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 					ItemComposition itemComposition = itemManager.getItemComposition(itemManager.canonicalize(items[i].getId()));
 					results.put(itemComposition.getId(), itemComposition);
 				}
-			}
-        	lastPage = 0; // Do not show page change arrows.
+				lastPage = 0; // Do not show page change arrows.
+				return;
+			} else if (searchType == MODEL_SWAP) {
+				lastPage = 0; // Do not show page change arrows.
+				return;
+			} else if (searchType == SPELL_L) {
 
-            return;
+			} else if (searchType == SPELL_R) {
+
+			}
         }
 
         // For finding members items in f2p.
@@ -628,23 +687,47 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 		}
 
 		Integer start = filteredPageIndexes.getOrDefault(page - 1, 0);
-		for (int i = start; i < client.getItemCount(); i++)
-        {
-			ItemComposition itemComposition = getItemCompositionIfUsable(i);
-			if (itemComposition == null) continue;
+		if (searchType == TRIGGER_ITEM || searchType == MODEL_SWAP)
+		{
+			for (int i = start; i < client.getItemCount(); i++)
+			{
+				ItemComposition itemComposition = getItemCompositionIfUsable(i);
+				if (itemComposition == null) continue;
 
-			String name = itemComposition.getName().toLowerCase();
-			if (i == integer || name.contains(search))
-            {
-				if (results.size() == RESULTS_PER_PAGE) {
-					filteredPageIndexes.put(page, i);
-					return; // skip the lastPage setting, since there is at least 1 item on the next page.
+				String name = itemComposition.getName().toLowerCase();
+				if (i == integer || name.contains(search))
+				{
+					if (results.size() == RESULTS_PER_PAGE)
+					{
+						filteredPageIndexes.put(page, i);
+						return; // skip the lastPage setting, since there is at least 1 item on the next page.
+					}
+					results.put(itemComposition.getId(), itemComposition);
 				}
-				results.put(itemComposition.getId(), itemComposition);
-            }
-        }
-		// We ran out of items to search.
-		lastPage = page;
+			}
+			// We ran out of items to search.
+			lastPage = page;
+		} else { // is spell.
+			int skip = page * RESULTS_PER_PAGE;
+			for (ProjectileCast projectile : ProjectileCast.projectiles)
+			{
+				if (searchType == SPELL_L && projectile.isArtificial()) continue;
+				String projectileName = projectile.getName(itemManager);
+				if (projectileName.toLowerCase().contains(search) && !spells.contains(projectileName)) {
+					if (spells.size() >= RESULTS_PER_PAGE) {
+						return; // skip the lastPage setting, since there is at least 1 item on the next page.
+					}
+
+					skip--;
+					if (skip <= 0)
+					{
+						spells.add(projectileName);
+					}
+				}
+			}
+			// We ran out of items to search.
+			lastPage = page;
+		}
     }
 
 	private ItemComposition getItemCompositionIfUsable(int i)

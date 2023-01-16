@@ -20,9 +20,14 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.ItemID;
 import net.runelite.api.Player;
+import net.runelite.api.Projectile;
+import net.runelite.api.coords.LocalPoint;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.CommandExecuted;
 import net.runelite.api.events.MenuOptionClicked;
+import net.runelite.api.events.ProjectileMoved;
+import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
@@ -47,12 +52,58 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 	@Inject private ClientThread clientThread;
 	@Inject private Client client;
 
+	@Inject
+	private EventBus eventBus;
+
 	int demoanim = -1;
 	int demogfx = -1;
 
 	@Override
 	public void startUp() {
 		clientThread.invokeLater(() -> onCommandExecuted(new CommandExecuted("testsortupdate", null)));
+		SpellDataCollector sdc = new SpellDataCollector(plugin);
+		this.getInjector().injectMembers(sdc);
+		eventBus.register(sdc);
+	}
+
+	@Subscribe
+	public void onProjectileMoved(ProjectileMoved projectileMoved) {
+		Projectile projectile = projectileMoved.getProjectile();
+
+		// skip already seen projectiles.
+		if (client.getGameCycle() >= projectile.getStartCycle()) {
+			return;
+		}
+
+		for (Player clientPlayer : client.getPlayers())
+		{
+			final WorldPoint playerPos = clientPlayer.getWorldLocation();
+			if (playerPos == null)
+			{
+				return;
+			}
+
+			final LocalPoint playerPosLocal = LocalPoint.fromWorld(client, playerPos);
+			if (playerPosLocal == null)
+			{
+				return;
+			}
+
+			if (projectile.getX1() == playerPosLocal.getX() && projectile.getY1() == playerPosLocal.getY())
+			{
+				System.out.println(
+					clientPlayer.getAnimation() + ", " +
+						clientPlayer.getGraphic() + ", " +
+						projectile.getId() + ", " +
+						(clientPlayer.getInteracting() != null ? clientPlayer.getInteracting().getGraphic() : "-1") + ", " +
+						(projectile.getStartCycle() - client.getGameCycle()) + ", " +
+						projectile.getStartHeight() + ", " +
+						projectile.getEndHeight() + ", " +
+						projectile.getSlope() + ", " +
+						(clientPlayer.getInteracting() != null ? clientPlayer.getInteracting().getGraphicHeight() : "-1")
+				);
+			}
+		}
 	}
 
 	@Subscribe
@@ -76,19 +127,19 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 			System.out.println("doing test.");
 			Swap swap;
 
-			swap = new Swap(Arrays.asList(-1), Arrays.asList(-1), Collections.emptyList(), Collections.emptyList());
+			swap = new Swap(Arrays.asList(-1), Arrays.asList(-1), Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
 			swap.updateForSortOrderAndUniqueness(plugin);
 			if (swap.getModelSwaps().size() != 0 || swap.getItemRestrictions().size() != 0) {
 				System.out.println("test 1 failed.");
 			}
 
-			swap = new Swap(Arrays.asList(-1), Arrays.asList(-14, -15, -16), Collections.emptyList(), Collections.emptyList());
+			swap = new Swap(Arrays.asList(-1), Arrays.asList(-14, -15, -16), Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
 			swap.updateForSortOrderAndUniqueness(plugin);
 
 			swap = new Swap(
 				Arrays.asList(ItemID.SLAYER_HELMET_I, ItemID.ABYSSAL_TENTACLE, ItemID.GHRAZI_RAPIER, ItemID.DRAGON_SCIMITAR, ItemID.CHEFS_HAT),
 				Arrays.asList(ItemID.SLAYER_HELMET_I, ItemID.ABYSSAL_TENTACLE, ItemID.GHRAZI_RAPIER, ItemID.DRAGON_SCIMITAR, ItemID.CHEFS_HAT, ItemID.SKIS),
-				Collections.emptyList(), Collections.emptyList());
+				Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
 			swap.updateForSortOrderAndUniqueness(plugin);
 			if (
 				swap.getItemRestrictions().get(0) != ItemID.DRAGON_SCIMITAR || swap.getItemRestrictions().get(1) != ItemID.ABYSSAL_TENTACLE || swap.getItemRestrictions().get(2) != ItemID.GHRAZI_RAPIER || swap.getItemRestrictions().get(3) != ItemID.CHEFS_HAT || swap.getItemRestrictions().get(4) != ItemID.SLAYER_HELMET_I || swap.getItemRestrictions().size() != 5 ||
@@ -101,9 +152,10 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 
 		if (command.equals("reload")) {
 			AnimationSet.loadAnimationSets();
+			ProjectileCast.initializeSpells();
 			SwingUtilities.invokeLater(plugin.pluginPanel::rebuild);
 			Constants.loadEquippableItemsNotMarkedAsEquippable();
-			System.out.println("reloaded animations sets + equippable unequippables");
+			System.out.println("reloaded animations sets, projectiles, and equippable.");
 		}
 
 		if (command.equals("listanimsets")) {
@@ -165,6 +217,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 
 		if (command.equals("demogfx")) {
 			demogfx = Integer.parseInt(arguments[0]);
+			client.getLocalPlayer().setSpotAnimFrame(0);
 		}
 
 		if (command.equals("testthing")) {
@@ -231,7 +284,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 //			client.getLocalPlayer().setAnimation(demoanim);
 //			client.getLocalPlayer().setAnimationFrame(0);
 		}
-		if (demogfx != -1) {
+		if (demogfx != -1 && client.getLocalPlayer().getGraphic() != demogfx) {
 			client.getLocalPlayer().setGraphic(demogfx);
 			client.getLocalPlayer().setSpotAnimFrame(0);
 		}
@@ -251,6 +304,9 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 			}
 			if (demogfx != -1) {
 				demogfx--;
+				client.getLocalPlayer().setGraphic(demogfx);
+				client.getLocalPlayer().setSpotAnimFrame(0);
+				client.getLocalPlayer().setGraphicHeight(0);
 				System.out.println("demo gfx " + demogfx);
 			}
 		} else if (menuOptionClicked.getMenuOption().equals("Use") && menuOptionClicked.getId() == 995){
