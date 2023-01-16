@@ -39,18 +39,22 @@ import net.runelite.api.JagexColor;
 import net.runelite.api.Model;
 import net.runelite.api.NPC;
 import net.runelite.api.Player;
+import net.runelite.api.Projectile;
 import net.runelite.api.RuneLiteObject;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.PlayerChanged;
+import net.runelite.api.events.ProjectileMoved;
 import net.runelite.api.kit.KitType;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
+import net.runelite.client.game.SpriteManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
@@ -58,6 +62,7 @@ import net.runelite.client.ui.ClientUI;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.components.colorpicker.ColorPickerManager;
 import net.runelite.client.util.ImageUtil;
+import net.runelite.client.util.Text;
 import net.runelite.http.api.item.ItemEquipmentStats;
 import net.runelite.http.api.item.ItemStats;
 
@@ -77,6 +82,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	@Inject private Gson runeliteGson;
 	@Inject ClientUI clientUI;
 	@Inject ItemManager itemManager;
+	@Inject private SpriteManager spriteManager;
 	@Inject ClientThread clientThread;
 	@Inject ColorPickerManager colorPickerManager;
 
@@ -97,6 +103,11 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	private AnimationSet currentAnimationSet = new AnimationSet();
 	private GraphicEffect currentScytheGraphicEffect = null;
 	int scytheSwingCountdown = -1;
+	int delayedGfxToApply = -1;
+	Actor actorToApplyDelayedGfxTo = null;
+	int timeToApplyDelayedGfx = -1;
+
+	private List<ProjectileSwap> projectileSwaps = Collections.emptyList();
 
 	int previewItem = -1;
 
@@ -165,6 +176,8 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			scytheSwingCountdown = -1;
 
 			previewItem = -1;
+
+			norecurse = false;
 
 			SwingUtilities.invokeLater(() -> {
 				pluginPanel = new WeaponAnimationReplacerPluginPanel(this);
@@ -240,6 +253,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 						rule.itemRestrictions.stream().map(r -> r.itemId).collect(Collectors.toList()),
 						Collections.singletonList(rule.modelSwap),
 						rule.animationReplacements,
+						Collections.emptyList(),
 						Collections.emptyList())));
 			transmogSet.setName(rule.name);
 			transmogSets.add(transmogSet);
@@ -360,12 +374,265 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	@Subscribe
 	public void onClientTick(ClientTick event)
 	{
+		if (client.getLocalPlayer().getInteracting() != null) lastCastedOnActorToTransmogHitSplashOn = client.getLocalPlayer().getInteracting();
+
+		if (handlePossibleNoProjectileSpellInClientTick) {
+			replaceNoProjectileSpell();
+		}
+
+		if (client.getGameCycle() == timeToApplyDelayedGfx) {
+			System.out.println("it is " + client.getGameCycle() + ", applying delayed gfx.");
+			actorToApplyDelayedGfxTo.setGraphic(delayedGfxToApply);
+			actorToApplyDelayedGfxTo.setSpotAnimFrame(0);
+			actorToApplyDelayedGfxTo.setGraphicHeight(124);
+		}
+
 		if (scytheSwingCountdown == 0) {
 			createScytheSwing();
 		} else {
 			scytheSwingCountdown--;
 		}
     }
+
+	private void replaceNoProjectileSpell()
+	{
+		handlePossibleNoProjectileSpellInClientTick = false;
+
+		Player player = client.getLocalPlayer();
+		final WorldPoint playerPos = player.getWorldLocation();
+		if (playerPos == null)
+		{
+			return;
+		}
+
+		final LocalPoint playerPosLocal = LocalPoint.fromWorld(client, playerPos);
+		if (playerPosLocal.equals(player.getLocalLocation())) { // TODO remove this block
+			System.out.println("equal");
+		} else {
+			System.out.println("not equal");
+		}
+		if (playerPosLocal == null)
+		{
+			return;
+		}
+
+		for (ProjectileSwap projectileSwap : projectileSwaps)
+		{
+			ProjectileCast toReplace = projectileSwap.getToReplace();
+			System.out.println("checking " + toReplace.getName(itemManager) + " " + lastRealAnimation + " " + toReplace.getCastAnimation() + " " + toReplace.getProjectileId());
+			if (!(toReplace.getCastAnimation() == lastRealAnimation && toReplace.getProjectileId() == -1)) {
+				continue;
+			}
+
+			if (toReplace.getCastGfx() != -1) {
+				if (toReplace.getCastGfx() != player.getGraphic()) continue;
+			} else {
+				// TODO check autocast and last cast spell.
+			}
+
+			boolean isBarrage = false;
+			int chebyshevDistance = chebyshevDistance(player, lastCastedOnActorToTransmogHitSplashOn, isBarrage);
+			System.out.println("distance is " + chebyshevDistance);
+			// TODO splash detection.
+			int projectileTravelTime;
+			int graphicDelay;
+			switch (toReplace.getCastAnimation()) {
+				// magic spells.
+				case 811:
+					projectileTravelTime = 120 - projectileSwap.getToReplaceWith().getStartMovement();
+					graphicDelay = 48 + 10 * chebyshevDistance;
+					break;
+				case 1978:
+				case 1979:
+					projectileTravelTime = -5 + 10 * chebyshevDistance;
+					graphicDelay = 48 + 10 * chebyshevDistance;
+					break;
+				// arceuus spells.
+				case 8972:
+				case 8974:
+				case 8977:
+					// TODO check these values in-game.
+					projectileTravelTime = 60; // 2 ticks, according to hit delay article.
+					graphicDelay = 60;
+					break;
+				default:
+					return; // shouldn't happen.
+			}
+			int endCycle = client.getGameCycle() + projectileSwap.getToReplaceWith().getStartMovement() + projectileTravelTime;
+			int targetX = lastCastedOnActorToTransmogHitSplashOn.getLocalLocation().getX();
+			int targetY = lastCastedOnActorToTransmogHitSplashOn.getLocalLocation().getY();
+			int startHeight = -412; // TODO
+
+			System.out.println("replacing projectile-less spell. " + client.getGameCycle() + " " + endCycle);
+			replaceSpell(projectileSwap, player, playerPos.getPlane(), playerPosLocal, startHeight, endCycle, lastCastedOnActorToTransmogHitSplashOn, targetX, targetY);
+			break;
+		}
+	}
+
+	int chebyshevDistance(Player player, Actor target, boolean isBarrage)
+	{
+		/*
+		 * see https://oldschool.runescape.wiki/w/Hit_delay
+		 * "The distance is typically measured edge-to-edge in game squares, using the same edge for both entities. I.e. distance will be calculated using an NPC's closest edge to the player, and the player's furthest edge from the NPC. However, barrage spells are a notable exception in that they calculate distance from the player to an NPC's south-west tile, which causes abnormally long hit delay when attacking a large NPC from the north or east."
+		 */
+
+		LocalPoint playerLocation = player.getLocalLocation();
+		LocalPoint targetLocation = target.getLocalLocation();
+		int px = playerLocation.getSceneX();
+		int py = playerLocation.getSceneY();
+		int tx = targetLocation.getSceneX();
+		int ty = targetLocation.getSceneY();
+
+		// Special case for >1 tile sized npc with non-barrage attack.
+		if (target instanceof NPC && !isBarrage) {
+			NPC npc = (NPC) target;
+			int targetSize = npc.getTransformedComposition().getSize();
+			if (targetSize > 1) {
+				// measure distance from all 4 edges.
+				int nDiff = py - (ty + targetSize - 1);
+				int sDiff = ty - py;
+				int wDiff = tx - px;
+				int eDiff = px - (tx + targetSize - 1);
+				return Math.max(Math.max(nDiff, sDiff), Math.max(wDiff, eDiff));
+			}
+		}
+
+		return Math.max(Math.abs(tx - px), Math.abs(ty - py));
+	}
+
+	/** `Client#createProjectile` calls onProjectileMoved; it is dangerous to allow this to happen because of stackoverflows. */
+    private boolean norecurse = false;
+	@Subscribe(priority = -1)
+	public void onProjectileMoved(ProjectileMoved projectileMoved) {
+		if (norecurse) return;
+
+		Projectile projectile = projectileMoved.getProjectile();
+
+		// skip already seen projectiles.
+		if (client.getGameCycle() >= projectile.getStartCycle()) {
+			return;
+		}
+
+		// This is the player's actual location which is what projectiles use as their start position. Player#getX, #getSceneX, etc., do not work here.
+		Player player = client.getLocalPlayer();
+		final WorldPoint playerPos = player.getWorldLocation();
+		if (playerPos == null)
+		{
+			return;
+		}
+
+		final LocalPoint playerPosLocal = LocalPoint.fromWorld(client, playerPos);
+		if (playerPosLocal == null)
+		{
+			return;
+		}
+
+		if (projectile.getX1() == playerPosLocal.getX() && projectile.getY1() == playerPosLocal.getY()) {
+			System.out.println("projectilemoved " + client.getTickCount() + " " + client.getGameCycle() + " (" + (projectile.getStartCycle() - client.getGameCycle()) + ") " + lastCastedOnActorToTransmogHitSplashOn + " " + (projectile.getEndCycle() - projectile.getStartCycle()));
+//			System.out.println(itemManager.getItemComposition(client.getItemContainer(InventoryID.EQUIPMENT).getItem(EquipmentInventorySlot.WEAPON.getSlotIdx()).getId()).getName());
+			int correctedLastRealAnimation = // Some standard spellbook spells use a different animation depending on the equipped weapon (or lack thereof).
+				(lastRealAnimation < 711 || lastRealAnimation > 729) ? lastRealAnimation :
+				lastRealAnimation == 710 ? 1161 :
+				lastRealAnimation == 711 ? 1162 :
+				lastRealAnimation == 716 ? 1163 :
+				lastRealAnimation == 717 ? 1164 :
+				lastRealAnimation == 718 ? 1165 :
+				lastRealAnimation == 724 ? 1166 :
+				lastRealAnimation == 727 ? 1167 :
+				lastRealAnimation == 728 ? 1168 :
+				1169 // counterpart of 729
+			;
+			for (ProjectileSwap projectileSwap : projectileSwaps)
+			{
+				ProjectileCast toReplace = projectileSwap.getToReplace();
+				if (
+					toReplace.getCastAnimation() == correctedLastRealAnimation && correctedLastRealAnimation != -1 &&
+					toReplace.getProjectileId() == projectile.getId() &&
+					(toReplace.getCastGfx() == -1 || toReplace.getCastGfx() == player.getGraphic())
+				) {
+					handlePossibleNoProjectileSpellInClientTick = false;
+
+					System.out.println("matched " + toReplace.getName(itemManager) + " at " + client.getGameCycle());
+
+					int endCycle = projectile.getEndCycle();
+					Actor interacting = projectile.getInteracting();
+					int x = projectile.getTarget().getX();
+					int y = projectile.getTarget().getY();
+					int height = projectile.getHeight();
+
+					replaceSpell(projectileSwap, player, playerPos.getPlane(), playerPosLocal, height, endCycle, interacting, x, y);
+					projectile.setEndCycle(0);
+
+					break;
+				}
+			}
+		}
+	}
+
+	private void replaceSpell(
+		ProjectileSwap projectileSwap,
+		Player player,
+		int plane,
+		LocalPoint playerPosLocal,
+		int startHeight,
+		int endCycle,
+		Actor interacting,
+		int targetX,
+		int targetY
+	) {
+		if (interacting.getLocalLocation().getX() != targetX || interacting.getLocalLocation().getY() != targetY) { // TODO
+			System.out.println("!!!!!!!!!!!!!!!!!!!!!!!! mismatch with projectile target and interacting target.");
+		}
+
+		ProjectileCast toReplace = projectileSwap.getToReplace();
+		ProjectileCast toReplaceWith = projectileSwap.getToReplaceWith();
+		player.setAnimation(toReplaceWith.getCastAnimation());
+		// TODO what is startheight?
+		if (toReplaceWith.getProjectileId() != -1)
+		{
+			int startCycle = client.getGameCycle() + toReplaceWith.getStartMovement();
+			System.out.println("start height is " + startHeight + " " + startCycle + " " + endCycle + " " + (endCycle - startCycle));
+			norecurse = true;
+			Projectile p = client.createProjectile(toReplaceWith.getProjectileId(),
+//							projectile.getFloor(),
+//							projectile.getX1(), projectile.getY1(),
+				plane,
+				playerPosLocal.getX(), playerPosLocal.getY(),
+				startHeight,
+				startCycle, endCycle,
+				toReplace.getSlope(),
+				toReplace.getStartHeight(), toReplace.getEndHeight(),
+				interacting,
+				targetX, targetY);
+			client.getProjectiles().addLast(p);
+			norecurse = false;
+		}
+
+		player.setGraphic(toReplaceWith.getCastGfx());
+		// TODO set height.
+		player.setSpotAnimFrame(0);
+
+		if (lastCastedOnActorToTransmogHitSplashOn != null)
+		{
+			if (toReplace.getHitGfx() != -1)
+			{
+				// TODO remove this section, timing it yourself probably works better.
+				// the spell's hit gfx is on the enemy when the spell is cast, it just has a delay on it.
+				int graphic = lastCastedOnActorToTransmogHitSplashOn.getGraphic();
+				if (graphic == toReplace.getHitGfx() || (graphic == 85 && true)) // TODO remove second part.
+				{
+					lastCastedOnActorToTransmogHitSplashOn.setGraphic(toReplaceWith.getHitGfx());
+				}
+			}
+			else
+			{
+				delayedGfxToApply = toReplaceWith.getHitGfx();
+				// TODO gfx height.
+				actorToApplyDelayedGfxTo = lastCastedOnActorToTransmogHitSplashOn;
+				timeToApplyDelayedGfx = endCycle;
+			}
+		}
+	}
 
 	private void createScytheSwing()
 	{
@@ -470,6 +737,8 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		currentAnimationSet = currentSet;
 		setPlayerPoseAnimations();
 
+		projectileSwaps = matchingSwaps.stream().flatMap(swap -> swap.getProjectileSwaps().stream()).filter(swap -> swap.getToReplace() != null && swap.getToReplaceWith() != null).collect(Collectors.toList());
+
 		currentScytheGraphicEffect = matchingSwaps.stream()
 			.filter(swap -> swap.getGraphicEffects().stream().anyMatch(e -> e.type == GraphicEffect.Type.SCYTHE_SWING))
 			.flatMap(swap -> swap.getGraphicEffects().stream())
@@ -504,13 +773,64 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		}
 	}
 
+	Actor lastCastedOnActorToTransmogHitSplashOn = null;
+	private int lastRealAnimation = -1;
+
+	// For handling spells that have no projectiles which are harder to identify. This must be toggled off in onProjectileMoved the the spell is replaced there.
+	private boolean handlePossibleNoProjectileSpellInClientTick = false;
+
 	@Subscribe(priority = -1000.0f) // I want to run late, so that plugins that need animation changes don't see my changed animation ids, since mine are cosmetic and don't give information on what the player is actually doing.
 	public void onAnimationChanged(AnimationChanged e)
 	{
 		Player player = client.getLocalPlayer();
 		if (!e.getActor().equals(player)) return;
 
+		lastRealAnimation = player.getAnimation();
+
+		checkForPossibleNoProjectileSpell(player);
+
 		swapPlayerAnimation();
+	}
+
+	private void checkForPossibleNoProjectileSpell(Player player)
+	{
+		// Why don't I store this value in onProjectileMoved?
+		if (player.getInteracting() != null) lastCastedOnActorToTransmogHitSplashOn = player.getInteracting();
+		// Arrays.asList(a, b, c, d).contains(x);
+		// These spell casts all lack projectiles to identify them (with the exception of ice blitz).
+		// Therefore, other means must be used to determine whether or with what the spell should be replaced.
+		// TODO doesn't charge use 811 also?
+		if (
+			lastRealAnimation == 811 || // god spells
+			lastRealAnimation == 1978 || // ancient spells.
+			lastRealAnimation == 1979 || // ancient spells.
+			lastRealAnimation == 8972 || // arceuus spells.
+			lastRealAnimation == 8974 || // arceuus spells.
+			lastRealAnimation == 8977 // arceuus spells.
+		) {
+			// Mark that this needs to be processed in client tick. The reason the projectile replacement can't happen here is because projectilemoved hasn't yet happened, and some spells that have these animations (the ancient spell ones specifically) have projectiles so I'd rather do those in projectilemoved since it's simpler and maybe more consistent.
+			handlePossibleNoProjectileSpellInClientTick = true;
+		}
+	}
+
+	private ProjectileCast manualSpellCastNoCastGfx = null;
+
+	@Subscribe
+	public void onMenuOptionClicked(MenuOptionClicked e) {
+		// Cannot use hit gfx because of splashing, plus I don't know what happens if someone else casts on the same target at the same time.
+
+		if (e.getMenuOption().equals("Attack")) {
+			manualSpellCastNoCastGfx = null;
+		}
+		if (e.getMenuOption().equals("Cast")) {
+			String spellName = Text.removeTags(e.getMenuTarget());
+			for (ProjectileCast projectileCast : ProjectileCast.projectiles) { // TODO smaller lookup table maybe? That's a lot of list items to go through, many of which don't matter because they have cast gfx!
+				if (projectileCast.getName(itemManager).equals(spellName)) {
+					manualSpellCastNoCastGfx = projectileCast;
+					break;
+				}
+			}
+		}
 	}
 
 	@Subscribe(priority = 1) // I need kit data to determine what the player is wearing (equipment inventory does not update fast enough to avoid flickering), so I need this information before other plugins might change it.
@@ -537,7 +857,8 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	public enum SearchType {
 		TRIGGER_ITEM,
 		MODEL_SWAP,
-		;
+		SPELL_L,
+		SPELL_R,
 	}
 
 	public void doItemSearch(Consumer<Integer> onItemChosen, SearchType searchType) {
@@ -577,7 +898,15 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
         return itemManager.getImage(itemId);
     }
 
-    public boolean clientLoaded = false;
+	public BufferedImage getSpellImage(ProjectileCast projectileCast)
+	{
+		return projectileCast.getSpriteIdIcon() != -1 ?
+			spriteManager.getSprite(projectileCast.getSpriteIdIcon(), 0) :
+			itemManager.getImage(projectileCast.getItemIdIcon())
+			;
+	}
+
+	public boolean clientLoaded = false;
 
     @Subscribe
     public void onGameStateChanged(GameStateChanged event)
@@ -587,6 +916,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
             clientLoaded = true;
         } else if (event.getGameState() == GameState.LOGGED_IN) {
         	// This is necessary for transmog to show up on teleports.
+			if (client.getLocalPlayer() == null) return; // happens during dcs?
         	if (client.getLocalPlayer().getPlayerComposition() != null) transmogManager.reapplyTransmog();
 		}
 	}

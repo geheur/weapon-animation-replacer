@@ -643,6 +643,22 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			.put(ATTACK, 9493)
 			.put(DEFEND, 1709) // Not sure, haven't seen this one in-game.
 			.build();
+		new AnimationSetBuilder("Osmumten's Fang")
+			.poseAnims(809, 823, 819, 820, 821, 822, 824) // not sure
+			.put(ATTACK, 9471) // correct
+			.put(ATTACK_SPEC, 9544) // correct
+			.put(DEFEND, 388) // Not sure, haven't seen this one in-game.
+			.build();
+		new AnimationSetBuilder("Venator Bow")
+			.poseAnims(9857, 823, 9859, 9863, 9861, 9862, 9860) // unconfirmed
+			.put(ATTACK, 9858) // unconfirmed
+			.put(DEFEND, 424) // unconfirmed
+			.build();
+		new AnimationSetBuilder("Mystic cards")
+			.poseAnims(9847, 9847, 9849, 9849, 9851, 9852, 9850)
+			.put(ATTACK, 9848)
+			.put(DEFEND, 9853)
+			.build();
 
 		Collections.sort(animationSets);
 	}

@@ -41,6 +41,8 @@ public class Constants
 		addUnequippable(26505, WEAPON); // Shattered relics iron trophy
 		addUnequippable(26507, WEAPON); // Shattered relics steel trophy
 		addUnequippable(26509, WEAPON); // Shattered relics mithril trophy
+
+		addUnequippable(27645, WEAPON); // Shattered relics cards.
 	}
 
 	private static void addUnequippable(int itemId, KitType kitType) {
