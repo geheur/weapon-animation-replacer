@@ -654,6 +654,11 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			.put(ATTACK, 9858) // unconfirmed
 			.put(DEFEND, 424) // unconfirmed
 			.build();
+		new AnimationSetBuilder("Mystic cards")
+			.poseAnims(9847, 9847, 9849, 9849, 9851, 9852, 9850)
+			.put(ATTACK, 9848)
+			.put(DEFEND, 9853)
+			.build();
 
 		Collections.sort(animationSets);
 	}
