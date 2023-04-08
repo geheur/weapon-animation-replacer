@@ -10,6 +10,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import lombok.Data;
+import lombok.Getter;
 import net.runelite.api.EquipmentInventorySlot;
 
 /**
@@ -23,8 +24,16 @@ public class Swap
     private final List<Integer> itemRestrictions;
 	private final List<Integer> modelSwaps;
 	public final List<AnimationReplacement> animationReplacements;
-	private List<ProjectileSwap> projectileSwaps;
-	private List<GraphicEffect> graphicEffects;
+	@Getter
+	private final List<ProjectileSwap> projectileSwaps;
+	@Getter
+	private final List<GraphicEffect> graphicEffects;
+
+	// This is necessary for the gson to not do its own dumb stuff where it ignores default values of fields that are
+	// normally assigned in the constructor, and assigns them to null.
+	public Swap() {
+		this(Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
+	}
 
     public Swap(
     	List<Integer> itemRestrictions,
@@ -33,16 +42,8 @@ public class Swap
 		List<ProjectileSwap> projectileSwaps,
 		List<GraphicEffect> graphicEffects
 	) {
-		if (itemRestrictions.isEmpty()) {
-        	this.itemRestrictions = new ArrayList<>();
-		} else {
-			this.itemRestrictions = new ArrayList<>(itemRestrictions);
-		}
-		if (modelSwaps.isEmpty()) {
-			this.modelSwaps = new ArrayList<>();
-		} else {
-			this.modelSwaps = new ArrayList<>(modelSwaps);
-		}
+		this.itemRestrictions = new ArrayList<>(itemRestrictions);
+		this.modelSwaps = new ArrayList<>(modelSwaps);
 		this.animationReplacements = new ArrayList<>(animationReplacements);
 		this.projectileSwaps = new ArrayList<>(projectileSwaps);
 		this.graphicEffects = new ArrayList<>(graphicEffects);
@@ -130,26 +131,6 @@ public class Swap
 			return Integer.compare(MY_SLOT_ORDER[slotForItem1], MY_SLOT_ORDER[slotForItem2]);
 		};
 	}
-
-	public List<ProjectileSwap> getProjectileSwaps() {
-		if (projectileSwaps == null) projectileSwaps = new ArrayList<>(); // idk, gson overrides the default value if there's not value for it in the json.
-		return projectileSwaps;
-	}
-
-	public List<GraphicEffect> getGraphicEffects() {
-    	if (graphicEffects == null) graphicEffects = new ArrayList<>(); // idk, gson overrides the default value if there's not value for it in the json.
-		return graphicEffects;
-	}
-
-	public static Swap createTemplate() {
-		return new Swap(
-			Collections.emptyList(),
-			Collections.emptyList(),
-			Collections.emptyList(),
-			Collections.emptyList(),
-			Collections.emptyList()
-		);
-    }
 
 	public void addNewAnimationReplacement()
 	{

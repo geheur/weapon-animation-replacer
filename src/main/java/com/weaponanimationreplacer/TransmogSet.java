@@ -29,12 +29,12 @@ public class TransmogSet
 
 	public static TransmogSet createTemplate()
 	{
-		return new TransmogSet(Collections.singletonList(new Swap(Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList())));
+		return new TransmogSet(Collections.singletonList(new Swap()));
 	}
 
 	public void addNewSwap()
 	{
-		swaps.add(Swap.createTemplate());
+		swaps.add(new Swap());
 	}
 
 	public void removeSwap(Swap swap)

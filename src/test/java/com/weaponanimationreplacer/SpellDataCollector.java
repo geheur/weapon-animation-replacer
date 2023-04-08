@@ -275,7 +275,7 @@ public class SpellDataCollector
 //				currentProjectile.castGfxStart = client.getGameCycle() - currentProjectile.spellStart;
 			}
 			lastplayerspotanimframe = player.getSpotAnimFrame();
-		} else if (graphicChanged.getActor().equals(plugin.client.getLocalPlayer().getInteracting())) {
+		} else if (plugin.client.getLocalPlayer() != null && plugin.client.getLocalPlayer().getInteracting() != null && graphicChanged.getActor().equals(plugin.client.getLocalPlayer().getInteracting())) {
 			if (plugin.client.getLocalPlayer().getInteracting().getSpotAnimFrame() == 1 && lasttargetspotanimframe != 1) {
 //				currentProjectile.hitGfxStart.put() = client.getGameCycle() - currentProjectile.spellStart;
 			}

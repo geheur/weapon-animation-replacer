@@ -56,6 +56,7 @@ import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.SpriteManager;
+import net.runelite.client.game.chatbox.ChatboxPanelManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
@@ -86,6 +87,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	@Inject private SpriteManager spriteManager;
 	@Inject ClientThread clientThread;
 	@Inject ColorPickerManager colorPickerManager;
+	@Inject private ChatboxPanelManager chatboxPanelManager;
 
 	private static final String TRANSMOG_SET_KEY = "transmogSets";
 	private static final String GROUP_NAME = "WeaponAnimationReplacer";
@@ -267,7 +269,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
 	@Override
 	protected void shutDown() {
-        pluginPanel = null;
+		pluginPanel = null;
 
         transmogManager.shutDown();
 
@@ -877,14 +879,18 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
             return;
         }
 
-        itemSearch.tooltipText("select");
-		itemSearch.onItemSelected(onItemChosen);
-		itemSearch.onItemDeleted(onItemDeleted);
-		itemSearch.setType(searchType);
-		itemSearch.onItemMouseOvered(searchType == MODEL_SWAP ? this::setPreviewItem : null);
-		itemSearch.build();
-        clientUI.requestFocus();
-    }
+        chatboxPanelManager.close();
+        // invokelater is necessary because the close call above calls invokelater internally, and we want to run after that.
+        clientThread.invokeLater(() -> {
+			itemSearch.tooltipText("select");
+			itemSearch.onItemSelected(onItemChosen);
+			itemSearch.onItemDeleted(onItemDeleted);
+			itemSearch.setType(searchType);
+			itemSearch.onItemMouseOvered(searchType == MODEL_SWAP ? this::setPreviewItem : null);
+			itemSearch.build();
+			clientUI.requestFocus();
+		});
+	}
 
 	private void setPreviewItem(Integer itemId)
 	{
@@ -1033,9 +1039,9 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			}
 			else if (negativeId.type == Constants.NegativeIdsMap.SHOW_SLOT) {
 				modelSwap =
-					negativeId.id == KitType.ARMS.getIndex() ? (TransmogrificationManager.baseArmsKit == -1 ? (client.getLocalPlayer().getPlayerComposition().isFemale() ? DEFAULT_FEMALE_ARMS : DEFAULT_MALE_ARMS) : TransmogrificationManager.baseArmsKit) :
-					negativeId.id == KitType.HAIR.getIndex() ? (TransmogrificationManager.baseHairKit == -1 ? (client.getLocalPlayer().getPlayerComposition().isFemale() ? DEFAULT_FEMALE_HAIR : DEFAULT_MALE_HAIR) : TransmogrificationManager.baseHairKit) :
-					(TransmogrificationManager.baseJawKit == -1 ? (client.getLocalPlayer().getPlayerComposition().isFemale() ? 0 : DEFAULT_MALE_JAW) : TransmogrificationManager.baseJawKit)
+					negativeId.id == KitType.ARMS.getIndex() ? (TransmogrificationManager.baseArmsKit == -1 ? (client.getLocalPlayer().getPlayerComposition().getGender() == 1 ? DEFAULT_FEMALE_ARMS : DEFAULT_MALE_ARMS) : TransmogrificationManager.baseArmsKit) :
+					negativeId.id == KitType.HAIR.getIndex() ? (TransmogrificationManager.baseHairKit == -1 ? (client.getLocalPlayer().getPlayerComposition().getGender() == 1 ? DEFAULT_FEMALE_HAIR : DEFAULT_MALE_HAIR) : TransmogrificationManager.baseHairKit) :
+					(TransmogrificationManager.baseJawKit == -1 ? (client.getLocalPlayer().getPlayerComposition().getGender() == 1 /* female */ ? 0 : DEFAULT_MALE_JAW) : TransmogrificationManager.baseJawKit)
 				;
 				return new SlotAndKitId(negativeId.id, modelSwap - 512);
 			}

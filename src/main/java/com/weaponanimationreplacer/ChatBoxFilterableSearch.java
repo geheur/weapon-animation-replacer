@@ -162,8 +162,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 			{
 				if (results.size() == 0)
 				{
-					addText(container, "Type to search items.", 0xff000000, 170, 50);
-//				addText(container, "shift-click items to add them without closing this dialog", 0xff555555, 80, 70);
+					addText(container, getValue().isEmpty() ? "Type to search items." : "No results.", 0xff000000, 170, 50);
 				}
 				else
 				{
@@ -657,7 +656,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
         	if (searchType == TRIGGER_ITEM) {
         		// Add equipped items to the list for easy access.
 				ItemContainer itemContainer = client.getItemContainer(InventoryID.EQUIPMENT);
-				Item[] items = itemContainer.getItems();
+				Item[] items = itemContainer == null ? new Item[0] : itemContainer.getItems();
 				for (int i = 0; i < items.length; i++)
 				{
 					if (items[i].getId() == -1 || i == EquipmentInventorySlot.RING.getSlotIdx() || i == EquipmentInventorySlot.AMMO.getSlotIdx()) continue;
@@ -734,7 +733,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 	{
 		ItemComposition itemComposition = itemManager.getItemComposition(i);
 		// skip notes, placeholders, and weight-reducing item equipped version.
-		if (itemComposition.getNote() != -1 || itemComposition.getPlaceholderTemplateId() != -1 || WORN_ITEMS.get(i) != null)
+		if (itemComposition.getNote() != -1 || itemComposition.getPlaceholderTemplateId() != -1 || WEIGHT_REDUCING_ITEMS.get(i) != null)
 		{
 			return null;
 		}
@@ -780,7 +779,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
     }
 
     // Copied from ItemManager.
-	private static final ImmutableMap<Integer, Integer> WORN_ITEMS = ImmutableMap.<Integer, Integer>builder().
+	private static final ImmutableMap<Integer, Integer> WEIGHT_REDUCING_ITEMS = ImmutableMap.<Integer, Integer>builder().
 		put(BOOTS_OF_LIGHTNESS_89, BOOTS_OF_LIGHTNESS).
 		put(PENANCE_GLOVES_10554, PENANCE_GLOVES).
 
