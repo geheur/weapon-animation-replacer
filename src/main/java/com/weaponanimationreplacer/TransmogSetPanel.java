@@ -26,6 +26,7 @@
 
 package com.weaponanimationreplacer;
 
+import com.weaponanimationreplacer.ChatBoxFilterableSearch.SelectionResult;
 import static com.weaponanimationreplacer.Constants.HiddenSlot;
 import static com.weaponanimationreplacer.Constants.NegativeId;
 import static com.weaponanimationreplacer.Constants.NegativeIdsMap;
@@ -289,28 +290,31 @@ class TransmogSetPanel extends JPanel
 
 	private Component createItemRestrictionButton(Swap swap, int initialItemId)
 	{
-		return createItemSelectionButton(initialItemId, () -> swap.removeTriggerItem(initialItemId), (itemId, plugin) -> swap.addTriggerItem(itemId, plugin), TRIGGER_ITEM, "Any");
+		return createItemSelectionButton(initialItemId, () -> swap.removeTriggerItem(initialItemId), (result, plugin) -> swap.addTriggerItem(result.itemId, plugin), TRIGGER_ITEM, "Any", null);
 	}
 
 	private Component createModelSwapButton(Swap swap, int initialItemId)
 	{
-		return createItemSelectionButton(initialItemId, () -> swap.removeModelSwap(initialItemId), (itemId, plugin) -> swap.addModelSwap(itemId, plugin), MODEL_SWAP, "None");
+		int slotOverride = swap.getSlotOverride(initialItemId);
+		String overlayString = slotOverride != -1 ? KitType.values()[slotOverride].name() : null;
+		return createItemSelectionButton(initialItemId, () -> swap.removeModelSwap(initialItemId), (result, plugin) -> swap.addModelSwap(result.itemId, plugin, result.slot), MODEL_SWAP, "None", overlayString);
 	}
 
 	private Component createSpellSwapLButton(ProjectileSwap swap)
 	{
-		return createItemSelectionButton(swap.toReplace, () -> swap.toReplace = -1, (id, plugin) -> swap.toReplace = id, SPELL_L, "None");
+		return createItemSelectionButton(swap.toReplace, () -> swap.toReplace = -1, (result, plugin) -> swap.toReplace = result.itemId, SPELL_L, "None", null);
 	}
 
 	private Component createSpellSwapRButton(ProjectileSwap swap)
 	{
-		return createItemSelectionButton(swap.toReplaceWith, () -> swap.toReplaceWith = 01, (id, plugin) -> swap.toReplaceWith = id, SPELL_R, "None");
+		return createItemSelectionButton(swap.toReplaceWith, () -> swap.toReplaceWith = 01, (result, plugin) -> swap.toReplaceWith = result.itemId, SPELL_R, "None", null);
 	}
 
-	private ItemSelectionButton createItemSelectionButton(int initialId, Runnable onRemove, BiConsumer<Integer, WeaponAnimationReplacerPlugin> onAdd, SearchType type, String whenEmpty)
+	private ItemSelectionButton createItemSelectionButton(int initialId, Runnable onRemove, BiConsumer<SelectionResult, WeaponAnimationReplacerPlugin> onAdd, SearchType type, String whenEmpty, String overlayString)
 	{
 		ItemSelectionButton weaponIdInput = new ItemSelectionButton();
 		weaponIdInput.nameWhenEmpty = whenEmpty;
+		weaponIdInput.overlayString = overlayString;
 		if (type == TRIGGER_ITEM || type == MODEL_SWAP) weaponIdInput.setItem(initialId); else weaponIdInput.setSpell(initialId);
 		Runnable deleteItem = () ->
 			plugin.clientThread.invoke(() -> {
@@ -321,8 +325,8 @@ class TransmogSetPanel extends JPanel
 		);
 		Runnable addItem = () -> {
 			plugin.doItemSearch(
-				itemId -> {
-					onAdd.accept(itemId, plugin);
+				result -> {
+					onAdd.accept(result, plugin);
 					plugin.handleTransmogSetChange();
 					SwingUtilities.invokeLater(rebuild::run);
 				},
@@ -438,8 +442,8 @@ class TransmogSetPanel extends JPanel
 	private void addModelSwap(Swap swap)
 	{
 		plugin.doItemSearch(
-			itemId -> {
-				swap.addModelSwap(itemId, plugin);
+			result -> {
+				swap.addModelSwap(result.itemId, plugin, result.slot);
 				plugin.handleTransmogSetChange();
 				SwingUtilities.invokeLater(rebuild);
 			},
@@ -450,8 +454,8 @@ class TransmogSetPanel extends JPanel
 	private void addTriggerItem(Swap swap)
 	{
 		plugin.doItemSearch(
-			itemId -> {
-				swap.addTriggerItem(itemId, plugin);
+			result -> {
+				swap.addTriggerItem(result.itemId, plugin);
 				plugin.handleTransmogSetChange();
 				SwingUtilities.invokeLater(rebuild);
 			},
@@ -862,6 +866,7 @@ class TransmogSetPanel extends JPanel
 
 	public class ItemSelectionButton extends JButton {
 		String nameWhenEmpty = "None";
+		String overlayString = null;
 		public ItemSelectionButton()
 		{
 			setBackground(ColorScheme.LIGHT_GRAY_COLOR);
@@ -911,6 +916,15 @@ class TransmogSetPanel extends JPanel
 				plugin.clientThread.invoke(() -> {
 					String name = itemName(itemId);
 					SwingUtilities.invokeLater(() -> {
+						BufferedImage itemImage = plugin.getItemImage(itemId);
+						if (overlayString != null)
+						{
+							BufferedImage copy = new BufferedImage(itemImage.getWidth(), itemImage.getHeight(), itemImage.getType());
+							Graphics2D graphics = (Graphics2D) copy.getGraphics();
+							graphics.drawImage(itemImage, 0, 0, null);
+							graphics.drawString(overlayString, 0, 24);
+							setIcon(new ImageIcon(copy));
+						}
 						setToolTipText(name);
 					});
 				});

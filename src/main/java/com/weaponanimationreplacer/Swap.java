@@ -4,14 +4,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import lombok.Data;
 import lombok.Getter;
 import net.runelite.api.EquipmentInventorySlot;
+import net.runelite.api.kit.KitType;
 
 /**
  * Represents a set of:
@@ -28,6 +31,7 @@ public class Swap
 	private final List<ProjectileSwap> projectileSwaps;
 	@Getter
 	private final List<GraphicEffect> graphicEffects;
+	private final Map<Integer, Integer> slotOverrides;
 
 	// This is necessary for the gson to not do its own dumb stuff where it ignores default values of fields that are
 	// normally assigned in the constructor, and assigns them to null.
@@ -35,18 +39,30 @@ public class Swap
 		this(Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
 	}
 
-    public Swap(
-    	List<Integer> itemRestrictions,
+	public Swap(
+		List<Integer> itemRestrictions,
 		List<Integer> modelSwaps,
 		List<AnimationReplacement> animationReplacements,
 		List<ProjectileSwap> projectileSwaps,
 		List<GraphicEffect> graphicEffects
+	) {
+		this(itemRestrictions, modelSwaps, animationReplacements, projectileSwaps, graphicEffects, new HashMap<>());
+	}
+
+	public Swap(
+		List<Integer> itemRestrictions,
+		List<Integer> modelSwaps,
+		List<AnimationReplacement> animationReplacements,
+		List<ProjectileSwap> projectileSwaps,
+		List<GraphicEffect> graphicEffects,
+		Map<Integer, Integer> slotOverrides
 	) {
 		this.itemRestrictions = new ArrayList<>(itemRestrictions);
 		this.modelSwaps = new ArrayList<>(modelSwaps);
 		this.animationReplacements = new ArrayList<>(animationReplacements);
 		this.projectileSwaps = new ArrayList<>(projectileSwaps);
 		this.graphicEffects = new ArrayList<>(graphicEffects);
+		this.slotOverrides = new HashMap<>(slotOverrides);
     }
 
     public List<Integer> getItemRestrictions() {
@@ -57,26 +73,70 @@ public class Swap
 		return Collections.unmodifiableList(modelSwaps);
 	}
 
-	public void addModelSwap(Integer itemId, WeaponAnimationReplacerPlugin plugin)
+	/**
+	 * Takes into account slotOverrides. Do not use for getting the slot of an item not used as a model swap, otherwise
+	 * the result will not be useful.
+	 */
+	private int getModelSwapSlot(int itemId, WeaponAnimationReplacerPlugin plugin) {
+		Integer integer = slotOverrides.get(itemId);
+		if (integer != null) return integer;
+		integer = plugin.getMySlot(itemId);
+		if (integer != null) return integer;
+		return -1;
+	}
+
+	public int getSlotOverride(int itemId) {
+		return slotOverrides.getOrDefault(itemId, -1);
+	}
+
+	/** Use default slot for the item. */
+	public void addModelSwap(int itemId, WeaponAnimationReplacerPlugin plugin)
 	{
-		Function<Integer, Integer> getSlot = plugin::getMySlot;
-		// cannot equip multiple items in the same slot.
-		Integer newItemSlot = getSlot.apply(itemId);
-		if (newItemSlot == null || newItemSlot == EquipmentInventorySlot.RING.getSlotIdx() || newItemSlot == EquipmentInventorySlot.AMMO.getSlotIdx()) return;
+		addModelSwap(itemId, plugin, -1);
+	}
+
+	/** for assigning item to a custom slot. */
+	public void addModelSwap(int itemId, WeaponAnimationReplacerPlugin plugin, int newItemSlot)
+	{
+		if (itemId == -1) return;
+
+		boolean customSlot = newItemSlot != -1;
+		if (newItemSlot == -1)
+		{
+			Integer s = getModelSwapSlot(itemId, plugin);
+			if (s == null || s == EquipmentInventorySlot.RING.getSlotIdx() || s == EquipmentInventorySlot.AMMO.getSlotIdx())
+				return;
+			newItemSlot = s;
+			if (newItemSlot == -1) newItemSlot = KitType.WEAPON.getIndex();
+		}
+
+		// remove the item if it exists, and any item in the target slot.
+		final int finalSlot = newItemSlot;
 		modelSwaps.removeIf(id -> {
-			Integer slot = getSlot.apply(id);
-			return slot == null || slot == EquipmentInventorySlot.RING.getSlotIdx() || slot == EquipmentInventorySlot.AMMO.getSlotIdx() ?
-				true : slot == newItemSlot;
+			boolean match;
+			if (id == itemId) {
+				match = true;
+			} else {
+				Integer slot = getModelSwapSlot(id, plugin);
+				match =
+					slot == finalSlot ||
+					slot == EquipmentInventorySlot.RING.getSlotIdx() ||
+					slot == EquipmentInventorySlot.AMMO.getSlotIdx()
+				;
+			}
+			if (match) slotOverrides.remove(id);
+			return match;
 		});
 
-		int index = Collections.binarySearch(modelSwaps, itemId, itemComparator(getSlot));
-		if (index >= 0) return; // no duplicates allowed in this list. This shouldn't happen due to the same slot removal above, but it doesn't hurt to check.
+		if (customSlot) slotOverrides.put(itemId, newItemSlot);
+		int index = Collections.binarySearch(modelSwaps, itemId, itemComparator(i -> getModelSwapSlot(i, plugin)));
 		modelSwaps.add(~index, itemId);
 	}
 
 	public void removeModelSwap(int prevItemId)
 	{
 		modelSwaps.remove((Integer) prevItemId); // Cast is necessary to use the right overload of the method.
+		slotOverrides.remove(prevItemId);
 	}
 
 	public void replaceModelSwap(int prevItemId, int newItemId, WeaponAnimationReplacerPlugin plugin)

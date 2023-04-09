@@ -33,9 +33,15 @@ import static com.weaponanimationreplacer.Constants.NegativeId;
 import static com.weaponanimationreplacer.Constants.NegativeIdsMap;
 import static com.weaponanimationreplacer.Constants.ShownSlot;
 import static com.weaponanimationreplacer.Constants.mapNegativeId;
-import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.*;
+import com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType;
+import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.MODEL_SWAP;
+import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.SPELL_L;
+import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.SPELL_R;
+import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.TRIGGER_ITEM;
+import java.awt.Color;
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -43,6 +49,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 import javax.inject.Singleton;
 import lombok.Getter;
+import lombok.Value;
 import net.runelite.api.Client;
 import net.runelite.api.EquipmentInventorySlot;
 import net.runelite.api.InventoryID;
@@ -51,20 +58,26 @@ import net.runelite.api.ItemComposition;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.ItemID;
 import static net.runelite.api.ItemID.*;
+import net.runelite.api.MenuEntry;
 import net.runelite.api.SpriteID;
+import net.runelite.api.events.MenuOpened;
+import net.runelite.api.events.MenuShouldLeftClick;
 import net.runelite.api.kit.KitType;
 import net.runelite.api.widgets.ItemQuantityMode;
 import net.runelite.api.widgets.JavaScriptCallback;
 import net.runelite.api.widgets.Widget;
+import net.runelite.api.widgets.WidgetInfo;
 import net.runelite.api.widgets.WidgetPositionMode;
 import net.runelite.api.widgets.WidgetSizeMode;
 import net.runelite.api.widgets.WidgetTextAlignment;
 import net.runelite.api.widgets.WidgetType;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.chatbox.ChatboxPanelManager;
 import net.runelite.client.game.chatbox.ChatboxTextInput;
 import net.runelite.client.ui.JagexColors;
+import net.runelite.client.util.ColorUtil;
 import net.runelite.http.api.item.ItemStats;
 
 @Singleton
@@ -80,20 +93,23 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
     private final ChatboxPanelManager chatboxPanelManager;
     private final ItemManager itemManager;
     private final Client client;
+    private final WeaponAnimationReplacerConfig config;
+	private final WeaponAnimationReplacerPlugin plugin;
 
-    private final Map<Integer, ItemComposition> results = new LinkedHashMap<>();
+	private final Map<Integer, ItemComposition> results = new LinkedHashMap<>();
 	private final List<String> spells = new ArrayList<>();
 	private String tooltipText;
     private int index = -1;
 
     @Getter
-    private Consumer<Integer> onItemSelected;
+    private Consumer<SelectionResult> onItemSelected;
 
 	private Consumer<Integer> onItemMouseOvered;
 	private Runnable onItemDeleted;
-	private WeaponAnimationReplacerPlugin.SearchType searchType;
+	@Getter
+	private SearchType searchType;
 
-	public void setType(WeaponAnimationReplacerPlugin.SearchType searchType)
+	public void setType(SearchType searchType)
 	{
 		this.searchType = searchType;
 		mode = 0;
@@ -101,12 +117,15 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 
     @Inject
     private ChatBoxFilterableSearch(ChatboxPanelManager chatboxPanelManager, ClientThread clientThread,
-                                    ItemManager itemManager, Client client)
+                                    ItemManager itemManager, Client client, WeaponAnimationReplacerConfig config,
+									WeaponAnimationReplacerPlugin plugin)
     {
         super(chatboxPanelManager, clientThread);
         this.chatboxPanelManager = chatboxPanelManager;
         this.itemManager = itemManager;
         this.client = client;
+        this.config = config;
+        this.plugin = plugin;
 
         lines(1);
         prompt("Item Search");
@@ -175,7 +194,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 							container,
 							x,
 							y,
-							() -> itemSelected(itemComposition.getId()), idx
+							se -> itemSelected(itemComposition.getId()), idx
 						);
 
 						x += ICON_WIDTH + PADDING;
@@ -220,7 +239,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 						container,
 						x,
 						y,
-						() -> itemSelected(hideSlotIds.get(finalI)), idx
+						se -> itemSelected(hideSlotIds.get(finalI)), idx
 					);
 
 					x += ICON_WIDTH + PADDING;
@@ -242,9 +261,9 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 
 					if (projectile.getName(itemManager).equals(spell)) {
 						int finalI = i;
-						addItemWidget(-1, projectile.getItemIdIcon(), projectile.getSpriteIdIcon(), projectile.getName(itemManager), container, x, y, () ->
+						addItemWidget(-1, projectile.getItemIdIcon(), projectile.getSpriteIdIcon(), projectile.getName(itemManager), container, x, y, se ->
 						{
-							onItemSelected.accept(finalI);
+							itemSelected(finalI);
 							chatboxPanelManager.close();
 						}, idx);
 
@@ -348,22 +367,33 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 		item.revalidate();
 	}
 
+	@Value
+	public static final class SelectionResult {
+		public final int itemId;
+		public final int slot;
+	}
+
 	private void itemSelected(int itemId)
 	{
-		if (onItemSelected != null) onItemSelected.accept(itemId);
+		itemSelected(itemId, -1);
 	}
 
-	private void addItemWidgetSprite(int id, int spriteId, String name, Widget container, int x, int y, Runnable runnable, int idx)
+	private void itemSelected(int itemId, int slot)
 	{
-		addItemWidget(id, -1, spriteId, name, container, x, y, runnable, idx);
+		if (onItemSelected != null) onItemSelected.accept(new SelectionResult(itemId, slot));
 	}
 
-	private void addItemWidgetItem(int id, int iconId, String name, Widget container, int x, int y, Runnable runnable, int idx)
+	private void addItemWidgetSprite(int id, int spriteId, String name, Widget container, int x, int y, JavaScriptCallback onOpListener, int idx)
 	{
-		addItemWidget(id, iconId, -1, name, container, x, y, runnable, idx);
+		addItemWidget(id, -1, spriteId, name, container, x, y, onOpListener, idx);
 	}
 
-	private void addItemWidget(int id, int iconId, int spriteId, String name, Widget container, int x, int y, Runnable runnable, int idx)
+	private void addItemWidgetItem(int id, int iconId, String name, Widget container, int x, int y, JavaScriptCallback onOpListener, int idx)
+	{
+		addItemWidget(id, iconId, -1, name, container, x, y, onOpListener, idx);
+	}
+
+	private void addItemWidget(int id, int iconId, int spriteId, String name, Widget container, int x, int y, JavaScriptCallback onOpListener, int idx)
 	{
 		Widget item = container.createChild(-1, WidgetType.GRAPHIC);
 		item.setXPositionMode(WidgetPositionMode.ABSOLUTE_LEFT);
@@ -397,7 +427,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 			});
 		}
 
-		item.setOnOpListener((JavaScriptCallback) ev -> runnable.run());
+		item.setOnOpListener(onOpListener);
 		item.revalidate();
 	}
 
@@ -492,6 +522,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 		return item;
 	}
 
+	@Getter
 	private int mode = 0; // 0 items, 1 hide slots.
 
 	private Widget createHideSlotWidget(Widget container, String name, int modeToSwitchTo, int x, int width)
@@ -629,6 +660,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
         spells.clear();
         index = -1;
         mode = 0;
+        searchType = null;
         super.close();
     }
 
@@ -686,11 +718,12 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 		}
 
 		Integer start = filteredPageIndexes.getOrDefault(page - 1, 0);
+		boolean showUnequippableItems = config.showUnequippableItems();
 		if (searchType == TRIGGER_ITEM || searchType == MODEL_SWAP)
 		{
 			for (int i = start; i < client.getItemCount(); i++)
 			{
-				ItemComposition itemComposition = getItemCompositionIfUsable(i);
+				ItemComposition itemComposition = getItemCompositionIfUsable(i, showUnequippableItems);
 				if (itemComposition == null) continue;
 
 				String name = itemComposition.getName().toLowerCase();
@@ -729,32 +762,91 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 		}
     }
 
-	private ItemComposition getItemCompositionIfUsable(int i)
+	private ItemComposition getItemCompositionIfUsable(int i, boolean showUnequippableItems)
 	{
 		ItemComposition itemComposition = itemManager.getItemComposition(i);
+
 		// skip notes, placeholders, and weight-reducing item equipped version.
 		if (itemComposition.getNote() != -1 || itemComposition.getPlaceholderTemplateId() != -1 || WEIGHT_REDUCING_ITEMS.get(i) != null)
 		{
 			return null;
 		}
 
-		ItemStats itemStats = itemManager.getItemStats(itemComposition.getId(), false);
-		if (Constants.OVERRIDE_EQUIPPABILITY_OR_SLOT.containsKey(i)) {
-			// don't need to check anything else.
-		}
-		else if (itemStats == null || !itemStats.isEquipable())
+		if (Constants.OVERRIDE_EQUIPPABILITY_OR_SLOT.containsKey(i))
 		{
-			return null;
-		} else {
+			return itemComposition;
+		}
+
+		ItemStats itemStats = itemManager.getItemStats(itemComposition.getId(), false);
+		if (!showUnequippableItems)
+		{
+			if (itemStats == null || !itemStats.isEquipable())
+			{
+				return null;
+			}
 			int slot = itemStats.getEquipment().getSlot();
-			if (slot == EquipmentInventorySlot.RING.getSlotIdx() || slot == EquipmentInventorySlot.AMMO.getSlotIdx()) {
+			if (slot == EquipmentInventorySlot.RING.getSlotIdx() || slot == EquipmentInventorySlot.AMMO.getSlotIdx())
+			{
 				return null;
 			}
 		}
 		return itemComposition;
 	}
 
-    public ChatBoxFilterableSearch onItemSelected(Consumer<Integer> onItemSelected)
+	@Subscribe
+	public void onMenuShouldLeftClick(MenuShouldLeftClick e) {
+    	// items that do not have a default/known equip slot should require the user to select a slot, so force the
+		// right-click menu open.
+		if (getSearchType() != MODEL_SWAP || getMode() == 1 /* hide/show slots */) return;
+
+		for (MenuEntry menuEntry : client.getMenuEntries())
+		{
+			Widget widget = menuEntry.getWidget();
+			if (widget == null || widget.getId() != WidgetInfo.PACK(162, 37)) continue;
+
+			if (widget.getItemId() != -1 && !menuEntry.getTarget().equals("delete") && plugin.getMySlot(widget.getItemId()) == null) {
+				e.setForceRightClick(true);
+				return;
+			}
+		}
+	}
+
+	@Subscribe
+	public void onMenuOpened(MenuOpened e) {
+    	// there is a limit of 10 actions on a widget which is less than we need, so add menu entries here instead.
+		// Additionally, if the item has no default/known equip slot, remove the default option since there is no
+		// default. I cannot just not add this option to the widget because then there would be no menu options and
+		// neither menushouldleftclick nor this one will get called.
+		if (getSearchType() != MODEL_SWAP || getMode() == 1 /* hide/show slots */) return;
+
+		for (MenuEntry menuEntry : e.getMenuEntries())
+		{
+			Widget widget = menuEntry.getWidget();
+			if (widget == null || widget.getId() != WidgetInfo.PACK(162, 37)) continue;
+
+			if (widget.getItemId() != -1 && !menuEntry.getTarget().equals("delete") && plugin.getMySlot(widget.getItemId()) == null) {
+				MenuEntry[] newMenuEntries = Arrays.stream(client.getMenuEntries()).filter(me -> !me.getOption().equals(tooltipText)).toArray(i -> new MenuEntry[i]);
+				client.setMenuEntries(newMenuEntries);
+			}
+
+			ItemComposition itemComposition = itemManager.getItemComposition(widget.getItemId());
+			for (KitType value : KitType.values())
+			{
+				client.createMenuEntry(1)
+					.setTarget(ColorUtil.wrapWithColorTag(itemComposition.getName(), new Color(0xff9040)))
+					.setOption(value.name())
+					.onClick(me -> {
+						Consumer<SelectionResult> onItemSelected = getOnItemSelected();
+						if (onItemSelected == null) return;
+						onItemSelected.accept(new SelectionResult(widget.getItemId(), value.ordinal()));
+					})
+				;
+			}
+			return;
+		}
+	}
+
+	public ChatBoxFilterableSearch onItemSelected(Consumer<SelectionResult> onItemSelected)
     {
         this.onItemSelected = onItemSelected;
         return this;

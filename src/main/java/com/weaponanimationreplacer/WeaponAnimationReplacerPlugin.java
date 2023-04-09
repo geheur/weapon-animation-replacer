@@ -10,6 +10,8 @@ import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
 import com.google.gson.reflect.TypeToken;
+import com.google.inject.Provides;
+import com.weaponanimationreplacer.ChatBoxFilterableSearch.SelectionResult;
 import static com.weaponanimationreplacer.Constants.mapNegativeId;
 import com.weaponanimationreplacer.Swap.AnimationReplacement;
 import com.weaponanimationreplacer.Swap.AnimationType;
@@ -76,6 +78,10 @@ import net.runelite.http.api.item.ItemStats;
 )
 public class WeaponAnimationReplacerPlugin extends Plugin {
 
+	public static final String GROUP_NAME = "WeaponAnimationReplacer";
+
+	private static final String TRANSMOG_SET_KEY = "transmogSets";
+
 	@Inject Client client;
 	@Inject private ChatBoxFilterableSearch itemSearch;
 	@Inject private ClientToolbar clientToolbar;
@@ -89,8 +95,6 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	@Inject ColorPickerManager colorPickerManager;
 	@Inject private ChatboxPanelManager chatboxPanelManager;
 
-	private static final String TRANSMOG_SET_KEY = "transmogSets";
-	private static final String GROUP_NAME = "WeaponAnimationReplacer";
 
 	@Getter
 	private List<TransmogSet> transmogSets;
@@ -283,6 +287,11 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
         clientToolbar.removeNavigation(navigationButton);
     }
+
+    @Provides
+	public WeaponAnimationReplacerConfig provideConfig(ConfigManager configManager) {
+		return configManager.getConfig(WeaponAnimationReplacerConfig.class);
+	}
 
     static final Map<String, String> renames = new HashMap<>();
 	static {
@@ -860,7 +869,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		SPELL_R,
 	}
 
-	public void doItemSearch(Consumer<Integer> onItemChosen, SearchType searchType) {
+	public void doItemSearch(Consumer<SelectionResult> onItemChosen, SearchType searchType) {
 		doItemSearch(onItemChosen, () -> {}, searchType);
 	}
 
@@ -869,7 +878,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	 * @param onItemChosen
 	 * @param onItemDeleted
 	 */
-	public void doItemSearch(Consumer<Integer> onItemChosen, Runnable onItemDeleted, SearchType searchType) {
+	public void doItemSearch(Consumer<SelectionResult> onItemChosen, Runnable onItemDeleted, SearchType searchType) {
         if (client.getGameState() != GameState.LOGGED_IN)
         {
             JOptionPane.showMessageDialog(pluginPanel,
@@ -959,7 +968,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			Map<Integer, Integer> transmogMap = swap.appliesSpecificallyToGear(equippedItemsFromKit, this::getSlot) ? specificTransmog : genericTransmog;
 			for (Integer modelSwap : swap.getModelSwaps())
 			{
-				SlotAndKitId slotForItem = getSlotAndKitForItem(modelSwap);
+				SlotAndKitId slotForItem = getSlotAndKitForItem(modelSwap, swap);
 				if (slotForItem != null && !transmogMap.containsKey(slotForItem.slot)) {
 					transmogMap.put(slotForItem.slot, slotForItem.kitId);
 				}
@@ -972,7 +981,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		}
 
 		if (previewItem != -1) {
-			SlotAndKitId slotForItem = getSlotAndKitForItem(previewItem);
+			SlotAndKitId slotForItem = getSlotAndKitForItem(previewItem, null);
 			if (slotForItem != null) genericTransmog.put(slotForItem.slot, slotForItem.kitId);
 		}
 
@@ -1030,7 +1039,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		return itemStats.getEquipment().getSlot();
 	}
 
-	public SlotAndKitId getSlotAndKitForItem(int modelSwap)
+	public SlotAndKitId getSlotAndKitForItem(int modelSwap, Swap swap)
 	{
 		if (modelSwap < 0) {
 			Constants.NegativeId negativeId = mapNegativeId(modelSwap);
@@ -1051,6 +1060,11 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			}
 		}
 
-		return new SlotAndKitId(getSlotForNonNegativeModelId(modelSwap), modelSwap);
+		int slotOverride = swap != null ? swap.getSlotOverride(modelSwap) : -1;
+		if (slotOverride == -1) {
+			Integer slot = getSlotForNonNegativeModelId(modelSwap);
+			slotOverride = slot != null ? slot : KitType.WEAPON.getIndex();
+		}
+		return new SlotAndKitId(slotOverride, modelSwap);
 	}
 }
