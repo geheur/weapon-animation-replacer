@@ -56,6 +56,7 @@ import net.runelite.api.kit.KitType;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.ProfileChanged;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.SpriteManager;
 import net.runelite.client.game.chatbox.ChatboxPanelManager;
@@ -164,29 +165,22 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
     protected void startUp()
     {
         clientThread.invokeLater(() -> {
-			migrate();
+			reloadTransmogSetsFromConfig();
 
-			try {
-				transmogSets = getTransmogSetsFromConfig();
-			} catch (JsonParseException | IllegalStateException e) {
-				log.error("issue parsing json: " + configManager.getConfiguration(GROUP_NAME, TRANSMOG_SET_KEY), e);
-				transmogSets = new ArrayList<>();
-			}
-
-			equippedItemsFromKit.clear();
+			// record player's untransmogged state.
 			if (client.getGameState() == GameState.LOGGED_IN) {
 				onPlayerChanged(new PlayerChanged(client.getLocalPlayer()));
 			}
 			else
 			{
+				equippedItemsFromKit.clear();
 				naturalPlayerPoseAnimations.clear();
+				currentAnimationSet = new AnimationSet();
 			}
-			currentAnimationSet = new AnimationSet();
+
 			currentScytheGraphicEffect = null;
 			scytheSwingCountdown = -1;
-
 			previewItem = -1;
-
 			norecurse = false;
 
 			SwingUtilities.invokeLater(() -> {
@@ -287,6 +281,31 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
         clientToolbar.removeNavigation(navigationButton);
     }
+
+    @Subscribe
+	public void onProfileChanged(ProfileChanged e) {
+		chatboxPanelManager.close();
+		clientThread.invokeLater(() -> {
+			reloadTransmogSetsFromConfig();
+			if (client.getLocalPlayer() != null) handleTransmogSetChange();
+			SwingUtilities.invokeLater(pluginPanel::rebuild);
+		});
+	}
+
+	private void reloadTransmogSetsFromConfig()
+	{
+		migrate();
+
+		try
+		{
+			transmogSets = getTransmogSetsFromConfig();
+		}
+		catch (JsonParseException | IllegalStateException ex)
+		{
+			log.error("issue parsing json: " + configManager.getConfiguration(GROUP_NAME, TRANSMOG_SET_KEY), ex);
+			transmogSets = new ArrayList<>();
+		}
+	}
 
     @Provides
 	public WeaponAnimationReplacerConfig provideConfig(ConfigManager configManager) {
