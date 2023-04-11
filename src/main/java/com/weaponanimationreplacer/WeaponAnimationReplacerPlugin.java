@@ -66,6 +66,7 @@ import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.ClientUI;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.components.colorpicker.ColorPickerManager;
+import net.runelite.client.util.AsyncBufferedImage;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.Text;
 import net.runelite.http.api.item.ItemEquipmentStats;
@@ -98,7 +99,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
 
 	@Getter
-	private List<TransmogSet> transmogSets;
+	List<TransmogSet> transmogSets;
 
 	WeaponAnimationReplacerPluginPanel pluginPanel;
 	private NavigationButton navigationButton;
@@ -165,6 +166,8 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
     protected void startUp()
     {
         clientThread.invokeLater(() -> {
+        	Constants.loadEquippableItemsNotMarkedAsEquippable(getGson());
+
 			reloadTransmogSetsFromConfig();
 
 			// record player's untransmogged state.
@@ -771,6 +774,10 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			.findAny().orElse(null);
     }
 
+    public String itemDisplayName(int itemId) {
+		return Constants.getName(itemId, itemManager.getItemComposition(itemId).getName());
+	}
+
 	public String itemName(Integer itemId)
 	{
 		if (itemId == null) return "\"null\"";
@@ -925,7 +932,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		previewItem = itemId;
 		transmogManager.changeTransmog();
 	}
-	public BufferedImage getItemImage(int itemId) {
+	public AsyncBufferedImage getItemImage(int itemId) {
         return itemManager.getImage(itemId);
     }
 
@@ -1043,7 +1050,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
 	private Integer getSlotForNonNegativeModelId(int modelSwap)
 	{
-		Integer slot = Constants.OVERRIDE_EQUIPPABILITY_OR_SLOT.get(modelSwap);
+		Integer slot = Constants.SLOT_OVERRIDES.get(modelSwap);
 		if (slot != null) {
 			return slot;
 		}

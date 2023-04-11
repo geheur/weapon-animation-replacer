@@ -187,14 +187,15 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 				{
 					for (ItemComposition itemComposition : results.values())
 					{
+						int itemId = itemComposition.getId();
 						addItemWidgetItem(
-							itemComposition.getId(),
-							itemComposition.getId(),
-							itemComposition.getName(),
+							itemId,
+							Constants.getIconId(itemId),
+							Constants.getName(itemId, itemComposition.getName()),
 							container,
 							x,
 							y,
-							se -> itemSelected(itemComposition.getId()), idx
+							se -> itemSelected(itemId), idx
 						);
 
 						x += ICON_WIDTH + PADDING;
@@ -708,7 +709,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 			}
         }
 
-        // For finding members items in f2p.
+        // For searching by item id.
 		Integer integer = -1;
 		try
 		{
@@ -726,7 +727,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 				ItemComposition itemComposition = getItemCompositionIfUsable(i, showUnequippableItems);
 				if (itemComposition == null) continue;
 
-				String name = itemComposition.getName().toLowerCase();
+				String name = Constants.getName(i, itemComposition.getName()).toLowerCase();
 				if (i == integer || name.contains(search))
 				{
 					if (results.size() == RESULTS_PER_PAGE)
@@ -772,7 +773,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 			return null;
 		}
 
-		if (Constants.OVERRIDE_EQUIPPABILITY_OR_SLOT.containsKey(i))
+		if (Constants.SLOT_OVERRIDES.containsKey(i))
 		{
 			return itemComposition;
 		}

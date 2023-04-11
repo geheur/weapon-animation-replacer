@@ -35,7 +35,10 @@ import static com.weaponanimationreplacer.Constants.mapNegativeId;
 import com.weaponanimationreplacer.Swap.AnimationType;
 import static com.weaponanimationreplacer.Swap.AnimationType.ATTACK;
 import com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType;
-import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.*;
+import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.MODEL_SWAP;
+import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.SPELL_L;
+import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.SPELL_R;
+import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.TRIGGER_ITEM;
 import java.awt.AlphaComposite;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -910,23 +913,27 @@ class TransmogSetPanel extends JPanel
 					});
 				}
 			} else {
-				setIcon(new ImageIcon(plugin.getItemImage(itemId)));
-				setText(null);
-
 				plugin.clientThread.invoke(() -> {
-					String name = itemName(itemId);
-					SwingUtilities.invokeLater(() -> {
-						BufferedImage itemImage = plugin.getItemImage(itemId);
-						if (overlayString != null)
-						{
-							BufferedImage copy = new BufferedImage(itemImage.getWidth(), itemImage.getHeight(), itemImage.getType());
-							Graphics2D graphics = (Graphics2D) copy.getGraphics();
-							graphics.drawImage(itemImage, 0, 0, null);
-							graphics.drawString(overlayString, 0, 24);
-							setIcon(new ImageIcon(copy));
-						}
-						setToolTipText(name);
-					});
+					String name = plugin.itemDisplayName(itemId);
+					AsyncBufferedImage itemImage = plugin.getItemImage(Constants.getIconId(itemId));
+					Runnable processImage = () -> {
+						SwingUtilities.invokeLater(() -> {
+							if (overlayString != null)
+							{
+								BufferedImage copy = new BufferedImage(itemImage.getWidth(), itemImage.getHeight(), itemImage.getType());
+								Graphics2D graphics = (Graphics2D) copy.getGraphics();
+								graphics.drawImage(itemImage, 0, 0, null);
+								graphics.drawString(overlayString, 0, 24);
+								setIcon(new ImageIcon(copy));
+							} else {
+								setIcon(new ImageIcon(itemImage));
+							}
+							setToolTipText(name);
+						});
+					};
+					// Yes I might end up running it twice, this stupid asyncbufferedimage doesn't let you know if it's loaded and won't run listeners once it's already been loaded.
+					itemImage.onLoaded(processImage);
+					processImage.run();
 				});
 			}
 		}

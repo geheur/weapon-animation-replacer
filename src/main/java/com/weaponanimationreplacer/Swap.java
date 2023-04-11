@@ -25,6 +25,9 @@ import net.runelite.api.kit.KitType;
 public class Swap
 {
     private final List<Integer> itemRestrictions;
+    // Ideally this would be an array of size KitType.values().length where the index is the kit index. This would also
+	// deal with any possible issues where an item changes from equippable to unequippable in the wiki data or in my
+	// own slot data. But this change requires work and save format changes, so I'm not doing it for now.
 	private final List<Integer> modelSwaps;
 	public final List<AnimationReplacement> animationReplacements;
 	@Getter
@@ -113,19 +116,20 @@ public class Swap
 		// remove the item if it exists, and any item in the target slot.
 		final int finalSlot = newItemSlot;
 		modelSwaps.removeIf(id -> {
-			boolean match;
+			boolean remove;
 			if (id == itemId) {
-				match = true;
+				remove = true;
 			} else {
-				Integer slot = getModelSwapSlot(id, plugin);
-				match =
+				int slot = getModelSwapSlot(id, plugin);
+				remove =
+					slot == -1 || // ??? something must have changed in the wiki data or my own slot overrides.
 					slot == finalSlot ||
 					slot == EquipmentInventorySlot.RING.getSlotIdx() ||
 					slot == EquipmentInventorySlot.AMMO.getSlotIdx()
 				;
 			}
-			if (match) slotOverrides.remove(id);
-			return match;
+			if (remove) slotOverrides.remove(id);
+			return remove;
 		});
 
 		if (customSlot) slotOverrides.put(itemId, newItemSlot);
