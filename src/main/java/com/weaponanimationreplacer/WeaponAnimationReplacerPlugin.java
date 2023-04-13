@@ -975,7 +975,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	private static final int DEFAULT_FEMALE_HAIR = 256 + 45;
 	private static final int DEFAULT_MALE_JAW = 256 + 14;
 
-	public Integer getSlot(int itemId) {
+	public Integer getWikiScrapeSlot(int itemId) {
 		ItemStats itemStats = itemManager.getItemStats(itemId, false);
 		if (itemStats == null) return null;
 		ItemEquipmentStats equipment = itemStats.getEquipment();
@@ -991,7 +991,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		Map<Integer, Integer> specificTransmog = new HashMap<>();
 		for (Swap swap : swaps)
 		{
-			Map<Integer, Integer> transmogMap = swap.appliesSpecificallyToGear(equippedItemsFromKit, this::getSlot) ? specificTransmog : genericTransmog;
+			Map<Integer, Integer> transmogMap = swap.appliesSpecificallyToGear(equippedItemsFromKit, this) ? specificTransmog : genericTransmog;
 			for (Integer modelSwap : swap.getModelSwaps())
 			{
 				SlotAndKitId slotForItem = getSlotAndKitForItem(modelSwap, swap);
@@ -1019,7 +1019,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		return transmogSets.stream()
 			.filter(TransmogSet::isEnabled)
 			.flatMap(set -> set.getSwaps().stream())
-			.filter(swap -> swap.appliesToGear(equippedItemsFromKit, this::getSlot))
+			.filter(swap -> swap.appliesToGear(equippedItemsFromKit, this))
 			.collect(Collectors.toList());
 	}
 

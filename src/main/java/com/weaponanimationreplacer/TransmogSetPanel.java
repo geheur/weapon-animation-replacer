@@ -293,7 +293,7 @@ class TransmogSetPanel extends JPanel
 
 	private Component createItemRestrictionButton(Swap swap, int initialItemId)
 	{
-		return createItemSelectionButton(initialItemId, () -> swap.removeTriggerItem(initialItemId), (result, plugin) -> swap.addTriggerItem(result.itemId, plugin), TRIGGER_ITEM, "Any", null);
+		return createItemSelectionButton(initialItemId, () -> swap.removeTriggerItem(initialItemId), (result, plugin) -> swap.addTriggerItem(result.itemId, result.slot, plugin), TRIGGER_ITEM, "Any", null);
 	}
 
 	private Component createModelSwapButton(Swap swap, int initialItemId)

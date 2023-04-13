@@ -195,7 +195,17 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 							container,
 							x,
 							y,
-							se -> itemSelected(itemId), idx
+							se -> {
+								// Applies for worn items with no slot, e.g. new items that runelite's wiki scraper hasn't picked up yet.
+								if (searchType == TRIGGER_ITEM) {
+									Integer slot = triggerItemSlots.get(itemId);
+									if (slot != null && slot != plugin.getWikiScrapeSlot(itemId)) {
+										itemSelected(itemId, slot);
+										return;
+									}
+								}
+								itemSelected(itemId);
+							}, idx
 						);
 
 						x += ICON_WIDTH + PADDING;
@@ -677,6 +687,8 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 	/** For faster searches on pages past the first. */
 	private Map<Integer, Integer> filteredPageIndexes = new HashMap<>();
 
+	private Map<Integer, Integer> triggerItemSlots = new HashMap<>();
+
     private void filterResults()
     {
         results.clear();
@@ -690,11 +702,13 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
         		// Add equipped items to the list for easy access.
 				ItemContainer itemContainer = client.getItemContainer(InventoryID.EQUIPMENT);
 				Item[] items = itemContainer == null ? new Item[0] : itemContainer.getItems();
+				triggerItemSlots.clear();
 				for (int i = 0; i < items.length; i++)
 				{
 					if (items[i].getId() == -1 || i == EquipmentInventorySlot.RING.getSlotIdx() || i == EquipmentInventorySlot.AMMO.getSlotIdx()) continue;
 
 					ItemComposition itemComposition = itemManager.getItemComposition(itemManager.canonicalize(items[i].getId()));
+					triggerItemSlots.put(itemComposition.getId(), i);
 					results.put(itemComposition.getId(), itemComposition);
 				}
 				lastPage = 0; // Do not show page change arrows.
@@ -719,9 +733,9 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 		}
 
 		Integer start = filteredPageIndexes.getOrDefault(page - 1, 0);
-		boolean showUnequippableItems = config.showUnequippableItems();
 		if (searchType == TRIGGER_ITEM || searchType == MODEL_SWAP)
 		{
+			boolean showUnequippableItems = searchType == MODEL_SWAP && config.showUnequippableItems();
 			for (int i = start; i < client.getItemCount(); i++)
 			{
 				ItemComposition itemComposition = getItemCompositionIfUsable(i, showUnequippableItems);
@@ -837,9 +851,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 					.setTarget(ColorUtil.wrapWithColorTag(itemComposition.getName(), new Color(0xff9040)))
 					.setOption(value.name())
 					.onClick(me -> {
-						Consumer<SelectionResult> onItemSelected = getOnItemSelected();
-						if (onItemSelected == null) return;
-						onItemSelected.accept(new SelectionResult(widget.getItemId(), value.ordinal()));
+						itemSelected(widget.getItemId(), value.ordinal());
 					})
 				;
 			}

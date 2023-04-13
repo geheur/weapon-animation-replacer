@@ -8,13 +8,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import lombok.Data;
 import lombok.Getter;
 import net.runelite.api.EquipmentInventorySlot;
-import net.runelite.api.kit.KitType;
 
 /**
  * Represents a set of:
@@ -24,6 +22,17 @@ import net.runelite.api.kit.KitType;
  */
 public class Swap
 {
+	/*
+	Slot data:
+	this plugin has a lot of different concepts of what slot an item equips into:
+	Real equip slot:
+	- Actual item equip slot - the slot the item occupies when equipped. This information isn't available directly from the game unless you witness the item equipped on a player in-game, so the wiki scrape data has to be used most of the time.
+	- Wiki scrape data - what's available from ItemManager#getEquipment. Sometimes does not include items, especially new items.
+	Model swap equip slot - the slot that an item should be transmogged into, so that you can show multiple item models that normally equip into the same slot, at the same time:
+	- My equip slot - This is the slot that I assign to items that are not considered equippable by the wiki scrape data, or cannot be equipped in-game, but have player models that I like. Manually generated. Can affect equippable items too, such as the skis, which I marked into the shield slot, even though they equip into the weapon slot, back in a plugin version before users could customize the equip slot of an item.
+	- Custom equip slot - the slot the user wants an item to appear in.
+	 */
+
     private final List<Integer> itemRestrictions;
     // Ideally this would be an array of size KitType.values().length where the index is the kit index. This would also
 	// deal with any possible issues where an item changes from equippable to unequippable in the wiki data or in my
@@ -34,7 +43,16 @@ public class Swap
 	private final List<ProjectileSwap> projectileSwaps;
 	@Getter
 	private final List<GraphicEffect> graphicEffects;
+	/**
+	 * Model swap overrides. For equipping items into the wrong slot, or for equipping items that have no known slot.
+	 */
 	private final Map<Integer, Integer> slotOverrides;
+	/**
+	 * This is used for items that do not have a wiki scraped slot. These items should still be usable by players who
+	 * have them equipped at the time of the item being added, since we can grab the equip slot from the player's
+	 * current equipment, but they will have to have their slot recorded.
+	 */
+	private final Map<Integer, Integer> triggerItemSlotOverrides;
 
 	// This is necessary for the gson to not do its own dumb stuff where it ignores default values of fields that are
 	// normally assigned in the constructor, and assigns them to null.
@@ -49,7 +67,7 @@ public class Swap
 		List<ProjectileSwap> projectileSwaps,
 		List<GraphicEffect> graphicEffects
 	) {
-		this(itemRestrictions, modelSwaps, animationReplacements, projectileSwaps, graphicEffects, new HashMap<>());
+		this(itemRestrictions, modelSwaps, animationReplacements, projectileSwaps, graphicEffects, new HashMap<>(), new HashMap<>());
 	}
 
 	public Swap(
@@ -58,7 +76,8 @@ public class Swap
 		List<AnimationReplacement> animationReplacements,
 		List<ProjectileSwap> projectileSwaps,
 		List<GraphicEffect> graphicEffects,
-		Map<Integer, Integer> slotOverrides
+		Map<Integer, Integer> slotOverrides,
+		Map<Integer, Integer> triggerItemSlotOverrides
 	) {
 		this.itemRestrictions = new ArrayList<>(itemRestrictions);
 		this.modelSwaps = new ArrayList<>(modelSwaps);
@@ -66,6 +85,7 @@ public class Swap
 		this.projectileSwaps = new ArrayList<>(projectileSwaps);
 		this.graphicEffects = new ArrayList<>(graphicEffects);
 		this.slotOverrides = new HashMap<>(slotOverrides);
+		this.triggerItemSlotOverrides = new HashMap<>(triggerItemSlotOverrides);
     }
 
     public List<Integer> getItemRestrictions() {
@@ -88,6 +108,14 @@ public class Swap
 		return -1;
 	}
 
+	private int getTriggerItemSlot(int itemId, WeaponAnimationReplacerPlugin plugin) {
+		Integer integer = triggerItemSlotOverrides.get(itemId);
+		if (integer != null) return integer;
+		integer = plugin.getWikiScrapeSlot(itemId);
+		if (integer != null) return integer;
+		return -1;
+	}
+
 	public int getSlotOverride(int itemId) {
 		return slotOverrides.getOrDefault(itemId, -1);
 	}
@@ -99,22 +127,22 @@ public class Swap
 	}
 
 	/** for assigning item to a custom slot. */
-	public void addModelSwap(int itemId, WeaponAnimationReplacerPlugin plugin, int newItemSlot)
+	public void addModelSwap(int itemId, WeaponAnimationReplacerPlugin plugin, int customSlot)
 	{
 		if (itemId == -1) return;
 
-		boolean customSlot = newItemSlot != -1;
-		if (newItemSlot == -1)
+		final int targetSlot;
+		if (customSlot == -1)
 		{
-			Integer s = getModelSwapSlot(itemId, plugin);
+			Integer s = plugin.getMySlot(itemId);
 			if (s == null || s == EquipmentInventorySlot.RING.getSlotIdx() || s == EquipmentInventorySlot.AMMO.getSlotIdx())
 				return;
-			newItemSlot = s;
-			if (newItemSlot == -1) newItemSlot = KitType.WEAPON.getIndex();
+			targetSlot = s;
+		} else {
+			targetSlot = customSlot;
 		}
 
 		// remove the item if it exists, and any item in the target slot.
-		final int finalSlot = newItemSlot;
 		modelSwaps.removeIf(id -> {
 			boolean remove;
 			if (id == itemId) {
@@ -123,16 +151,16 @@ public class Swap
 				int slot = getModelSwapSlot(id, plugin);
 				remove =
 					slot == -1 || // ??? something must have changed in the wiki data or my own slot overrides.
-					slot == finalSlot ||
-					slot == EquipmentInventorySlot.RING.getSlotIdx() ||
-					slot == EquipmentInventorySlot.AMMO.getSlotIdx()
+					slot == targetSlot ||
+					slot == EquipmentInventorySlot.RING.getSlotIdx() || // do some housekeeping I guess?
+					slot == EquipmentInventorySlot.AMMO.getSlotIdx() // do some housekeeping I guess?
 				;
 			}
 			if (remove) slotOverrides.remove(id);
 			return remove;
 		});
 
-		if (customSlot) slotOverrides.put(itemId, newItemSlot);
+		if (customSlot != -1) slotOverrides.put(itemId, targetSlot);
 		int index = Collections.binarySearch(modelSwaps, itemId, itemComparator(i -> getModelSwapSlot(i, plugin)));
 		modelSwaps.add(~index, itemId);
 	}
@@ -149,26 +177,35 @@ public class Swap
 		addModelSwap(newItemId, plugin);
 	}
 
-	public void addTriggerItem(Integer itemId, WeaponAnimationReplacerPlugin plugin)
+	public void addTriggerItem(int itemId, WeaponAnimationReplacerPlugin plugin)
 	{
-		Function<Integer, Integer> getSlot = plugin::getSlot;
-		Integer newItemSlot = getSlot.apply(itemId);
-		if (newItemSlot == null || newItemSlot == EquipmentInventorySlot.RING.getSlotIdx() || newItemSlot == EquipmentInventorySlot.AMMO.getSlotIdx()) return;
+		addTriggerItem(itemId, -1, plugin);
+	}
 
-		int index = Collections.binarySearch(itemRestrictions, itemId, itemComparator(getSlot));
-		if (index >= 0) return; // no duplicates allowed in this list.
+	/**
+	 * Slot is necessary for items that do not have equip slots set from the runelite wiki scraper.
+	 */
+	public void addTriggerItem(int itemId, int slot, WeaponAnimationReplacerPlugin plugin)
+	{
+		removeTriggerItem(itemId);
+
+		if (slot == -1)
+		{
+			Integer newItemSlot = plugin.getWikiScrapeSlot(itemId);
+			if (newItemSlot == null || newItemSlot == EquipmentInventorySlot.RING.getSlotIdx() || newItemSlot == EquipmentInventorySlot.AMMO.getSlotIdx())
+				return;
+		} else {
+			triggerItemSlotOverrides.put(itemId, slot);
+		}
+
+		int index = Collections.binarySearch(itemRestrictions, itemId, itemComparator(i -> getTriggerItemSlot(i, plugin)));
 		itemRestrictions.add(~index, itemId);
 	}
 
-	public void removeTriggerItem(int prevItemId)
+	public void removeTriggerItem(int itemId)
 	{
-		itemRestrictions.remove((Integer) prevItemId); // Cast is necessary to use the right overload of the method.
-	}
-
-	public void replaceTriggerItem(int prevItemId, int newItemId, WeaponAnimationReplacerPlugin plugin)
-	{
-		removeTriggerItem(prevItemId);
-		addTriggerItem(newItemId, plugin);
+		itemRestrictions.remove((Integer) itemId); // Cast is necessary to use the right overload of the method.
+		triggerItemSlotOverrides.remove(itemId);
 	}
 
 	private static final int[] MY_SLOT_ORDER = new int[]{2, 5, 6, 0, 7, 1, 8, 9, 3, 10, 11, 4, 12, 13};
@@ -176,23 +213,21 @@ public class Swap
 	private Comparator<Integer> itemComparator(Function<Integer, Integer> getSlot)
 	{
 		return (id1, id2) -> {
-			Integer slotForItem1 = getSlot.apply(id1);
-			Integer slotForItem2 = getSlot.apply(id2);
-			if (slotForItem1 == null) {
-				if (slotForItem2 == null) {
-					return Integer.compare(id1, id2);
-				} else {
-					return -1;
-				}
-			} else if (slotForItem2 == null) {
-				return 1;
-			}
+			int slot1 = getSlot.apply(id1);
+			int slot2 = getSlot.apply(id2);
 
-			if (slotForItem1 == slotForItem2) {
+			if (slot1 == slot2) {
 				return Integer.compare(id1, id2);
 			}
 
-			return Integer.compare(MY_SLOT_ORDER[slotForItem1], MY_SLOT_ORDER[slotForItem2]);
+			// It shouldn't be possible for these to be -1, but just in case.
+			if (slot1 == -1) {
+				return -1;
+			} else if (slot2 == -1) {
+				return 1;
+			}
+
+			return Integer.compare(MY_SLOT_ORDER[slot1], MY_SLOT_ORDER[slot2]);
 		};
 	}
 
@@ -206,27 +241,30 @@ public class Swap
 		graphicEffects.add(GraphicEffect.createTemplate());
 	}
 
-	public boolean appliesToGear(List<Integer> equippedItemIds, Function<Integer, Integer> getSlot)
+	public boolean appliesToGear(List<Integer> equippedItemIds, WeaponAnimationReplacerPlugin plugin)
 	{
-		if (itemRestrictions.contains(-1)) return true;
-		return appliesSpecificallyToGear(equippedItemIds, getSlot);
+		// -1 used to represent "Any", I think. idk if this can still happen.
+		if (itemRestrictions.contains(-1) || itemRestrictions.isEmpty()) return true;
+		return appliesSpecificallyToGear(equippedItemIds, plugin);
 	}
 
 	/**
 	 * returns true if each slot of the equipped gear that has a corresponding trigger item matches at least one of the trigger items for that slot.
 	 * In other words, all trigger items must match unless there are multiple for the same slot in which case only one much match.
 	 */
-	public boolean appliesSpecificallyToGear(List<Integer> equippedItemIds, Function<Integer, Integer> getSlot)
+	public boolean appliesSpecificallyToGear(List<Integer> equippedItemIds, WeaponAnimationReplacerPlugin plugin)
 	{
+		if (itemRestrictions.isEmpty()) return false;
 		Set<Integer> slots = new HashSet<>();
 		Set<Integer> slotsSatisfied = new HashSet<>();
 		for (Integer itemRestriction : itemRestrictions)
 		{
+			// -1 used to represent "Any", I think. idk if this can still happen.
 			if (itemRestriction == -1) {
 				return false;
 			}
 
-			int slot = getSlot.apply(itemRestriction);
+			int slot = getTriggerItemSlot(itemRestriction, plugin);
 			slots.add(slot);
 			if (equippedItemIds.contains(itemRestriction)) {
 				slotsSatisfied.add(slot);
@@ -239,27 +277,6 @@ public class Swap
 			}
 		}
 		return true;
-	}
-
-	@Override
-	public boolean equals(Object o)
-	{
-		if (this == o)
-		{
-			return true;
-		}
-		if (o == null || getClass() != o.getClass())
-		{
-			return false;
-		}
-		Swap swap = (Swap) o;
-		return Objects.equals(itemRestrictions, swap.itemRestrictions) && Objects.equals(modelSwaps, swap.modelSwaps) && Objects.equals(animationReplacements, swap.animationReplacements) && Objects.equals(graphicEffects, swap.graphicEffects);
-	}
-
-	@Override
-	public int hashCode()
-	{
-		return Objects.hash(itemRestrictions, modelSwaps, animationReplacements, graphicEffects);
 	}
 
 	public void updateForSortOrderAndUniqueness(WeaponAnimationReplacerPlugin plugin)
