@@ -1,7 +1,10 @@
 package com.weaponanimationreplacer;
 
 import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
+import com.google.gson.reflect.TypeToken;
+import static com.weaponanimationreplacer.Constants.ARMS_SLOT;
 import static com.weaponanimationreplacer.Constants.ActorAnimation.IDLE;
 import static com.weaponanimationreplacer.Constants.ActorAnimation.IDLE_ROTATE_LEFT;
 import static com.weaponanimationreplacer.Constants.ActorAnimation.IDLE_ROTATE_RIGHT;
@@ -11,15 +14,29 @@ import static com.weaponanimationreplacer.Constants.ActorAnimation.WALK_ROTATE_1
 import static com.weaponanimationreplacer.Constants.ActorAnimation.WALK_ROTATE_LEFT;
 import static com.weaponanimationreplacer.Constants.ActorAnimation.WALK_ROTATE_RIGHT;
 import static com.weaponanimationreplacer.Constants.ActorAnimation.values;
+import static com.weaponanimationreplacer.Constants.HAIR_SLOT;
+import static com.weaponanimationreplacer.Constants.HEAD_SLOT;
+import static com.weaponanimationreplacer.Constants.JAW_SLOT;
+import static com.weaponanimationreplacer.Constants.SLOT_OVERRIDES;
+import static com.weaponanimationreplacer.Constants.TORSO_SLOT;
+import static com.weaponanimationreplacer.Constants.WEAPON_SLOT;
 import static com.weaponanimationreplacer.Constants.mapNegativeId;
 import java.awt.image.BufferedImage;
+import java.io.FileReader;
+import java.io.FileWriter;
+import static java.lang.Boolean.FALSE;
+import static java.lang.Boolean.TRUE;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
@@ -27,12 +44,16 @@ import net.runelite.api.Client;
 import net.runelite.api.ItemComposition;
 import net.runelite.api.ItemID;
 import net.runelite.api.Player;
+import net.runelite.api.PlayerComposition;
 import net.runelite.api.Projectile;
+import net.runelite.api.WorldType;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.CommandExecuted;
 import net.runelite.api.events.MenuOptionClicked;
+import net.runelite.api.events.PlayerChanged;
+import net.runelite.api.events.PlayerSpawned;
 import net.runelite.api.events.ProjectileMoved;
 import net.runelite.api.kit.KitType;
 import static net.runelite.api.kit.KitType.AMULET;
@@ -43,14 +64,16 @@ import static net.runelite.api.kit.KitType.LEGS;
 import static net.runelite.api.kit.KitType.SHIELD;
 import static net.runelite.api.kit.KitType.TORSO;
 import static net.runelite.api.kit.KitType.WEAPON;
+import net.runelite.client.RuneLite;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.ClientShutdown;
 import net.runelite.client.game.ItemManager;
+import net.runelite.client.game.ItemVariationMapping;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDependency;
 import net.runelite.client.plugins.PluginDescriptor;
-import net.runelite.client.util.Text;
 import net.runelite.http.api.item.ItemEquipmentStats;
 import net.runelite.http.api.item.ItemStats;
 
@@ -74,12 +97,84 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 	int demoanim = -1;
 	int demogfx = -1;
 
+	private final Set<Integer> hidesArms = new HashSet<>();
+	private final Set<Integer> hidesHair = new HashSet<>();
+	private final Set<Integer> hidesJaw = new HashSet<>();
+	private final Set<Integer> showsArms = new HashSet<>();
+	private final Set<Integer> showsHair = new HashSet<>();
+	private final Set<Integer> showsJaw = new HashSet<>();
+	private final Set<Integer> uhohList = new HashSet<>();
+	private Set<Integer>[] sets = new Set[]{hidesArms, hidesHair, hidesJaw, showsArms, showsHair, showsJaw, uhohList};
+	private String[] fileNames = new String[]{"hidesArms.json", "hidesHair.json", "hidesJaw.json", "showsArms.json", "showsHair.json", "showsJaw.json", "uhoh.json"};
+	private final Map<Integer, Set<List<Integer>>> poseanims = new HashMap<>();
+
 	@Override
-	public void startUp() {
-		clientThread.invokeLater(() -> onCommandExecuted(new CommandExecuted("testsortupdate", null)));
+	public void startUp()
+	{
 		SpellDataCollector sdc = new SpellDataCollector(plugin);
 		this.getInjector().injectMembers(sdc);
 		eventBus.register(sdc);
+
+		for (int i = 0; i < fileNames.length; i++)
+		{
+			String fileName = fileNames[i];
+			System.out.println("reading " + fileName);
+			Set<Integer> set = sets[i];
+			set.clear();
+			try
+			{
+				FileReader reader = new FileReader(RuneLite.RUNELITE_DIR.toPath().resolve(fileName).toFile());
+				set.addAll(plugin.getGson().fromJson(reader, new TypeToken<Set<Integer>>() {}.getType()));
+				System.out.println(set);
+				reader.close();
+			} catch (Exception e) {
+				// is ok, set is cleared.
+			}
+		}
+		poseanims.clear();
+		try
+		{
+			FileReader reader = new FileReader(RuneLite.RUNELITE_DIR.toPath().resolve("poseanims.json").toFile());
+			poseanims.putAll(plugin.getGson().fromJson(reader, new TypeToken<Map<Integer, Set<List<Integer>>>>() {}.getType()));
+			System.out.println(poseanims);
+			reader.close();
+		} catch (Exception e) {
+			// is ok, set is cleared.
+		}
+	}
+
+	@Override
+	public void shutDown() {
+		for (int i = 0; i < fileNames.length; i++)
+		{
+			String fileName = fileNames[i];
+			Set<Integer> set = sets[i];
+			System.out.println("writing " + fileName + " " + set);
+			try
+			{
+				FileWriter writer = new FileWriter(RuneLite.RUNELITE_DIR.toPath().resolve(fileName).toFile());
+				plugin.getGson().toJson(set, writer);
+				writer.close();
+			} catch (Exception e) {
+				e.printStackTrace(System.out);
+				System.out.println("exception");
+				// is ok, set is cleared.
+			}
+		}
+		try
+		{
+			FileWriter writer = new FileWriter(RuneLite.RUNELITE_DIR.toPath().resolve("poseanims.json").toFile());
+			plugin.getGson().toJson(poseanims, writer);
+			writer.close();
+		} catch (Exception e) {
+			System.out.println("exception");
+			// is ok, set is cleared.
+		}
+	}
+
+	@Subscribe
+	public void onClientShutdown(ClientShutdown e) {
+		shutDown();
 	}
 
 	@Subscribe
@@ -122,10 +217,303 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		}
 	}
 
+	@Subscribe(priority = 100)
+	public void onPlayerSpawned(PlayerSpawned e) {
+		if (e.getPlayer() == client.getLocalPlayer()) return; // Sometimes I get wrong data from transmog I have applied to myself.
+//		System.out.println("playerSpawned " + e.getPlayer().getName());
+		getPlayerData(e.getPlayer());
+	}
+
+	@Subscribe(priority = 100)
+	public void onPlayerChanged(PlayerChanged e) {
+//		System.out.println("playerchanged " + e.getPlayer().getName());
+		Player player = e.getPlayer();
+		getPlayerData(player);
+	}
+
+	private void getPlayerData(Player player)
+	{
+//		System.out.println(player.getName());
+		PlayerComposition comp = player.getPlayerComposition();
+		int[] kits = comp.getEquipmentIds();
+		int body = kits[TORSO_SLOT] - 512;
+		int arms = kits[ARMS_SLOT];
+		int head = kits[HEAD_SLOT] - 512;
+		int hair = kits[HAIR_SLOT];
+		int jaw = kits[JAW_SLOT];
+		boolean female = comp.getGender() == 1;
+//		System.out.println(plugin.itemName(body) + " " + arms + " " + plugin.itemName(head) + " " + hair + (female ? "" : (" " + jaw)));
+		boolean uhoh = false;
+		if (body >= 0) {
+			boolean b = updateLists(body, arms, hidesArms, showsArms, "arms", female);
+			if (b) uhohList.add(body);
+			uhoh |= b;
+		}
+		if (head >= 0) {
+			boolean b = updateLists(head, hair, hidesHair, showsHair, "hair", female);
+			if (b) uhohList.add(body);
+			uhoh |= b;
+			if (!female)
+			{
+				if (jaw < 1000) { // do not record stuff for blue icon smuggle.
+					boolean c = updateLists(head, jaw, hidesJaw, showsJaw, "jaw", female);
+					if (c) uhohList.add(body);
+					uhoh |= c;
+				}
+			}
+		}
+		if (uhoh) System.out.println("\tuhoh " + player.getName() + " " + Arrays.stream(kits).boxed().collect(Collectors.toList()) + " " + female);
+
+		int weapon = kits[WEAPON_SLOT] - 512;
+		if (weapon >= 0) {
+			if (plugin.itemManager.getItemComposition(weapon).isMembers() && !client.getWorldType().contains(WorldType.MEMBERS))
+				return;
+
+			int idlePoseAnimation = player.getIdlePoseAnimation();
+			if (
+				idlePoseAnimation == 8070 ||
+					idlePoseAnimation == 763 ||
+					idlePoseAnimation == 745 ||
+					idlePoseAnimation == 773 ||
+					idlePoseAnimation == 765 ||
+					idlePoseAnimation == 3418 ||
+					idlePoseAnimation == 6998 ||
+					idlePoseAnimation == 845
+			) {
+				return;
+			}
+
+			Set<List<Integer>> lists = poseanims.getOrDefault(weapon, new HashSet<>());
+//			int stand, int rotate, int walk, int walkBackwards, int shuffleLeft, int shuffleRight, int run) {
+			List<Integer> currentPoseanims = Arrays.asList(
+				player.getIdlePoseAnimation(),
+				player.getIdleRotateRight(),
+				player.getWalkAnimation(),
+				player.getWalkRotate180(),
+				player.getWalkRotateLeft(),
+				player.getWalkRotateRight(),
+				player.getRunAnimation(),
+				player.getIdleRotateLeft()
+			);
+			if (!lists.contains(currentPoseanims)) {
+				System.out.println("not duplicate: " + plugin.itemManager.getItemComposition(weapon).getName() + " " + currentPoseanims);
+			}
+//			System.out.println("not duplicate: " + plugin.itemManager.getItemComposition(weapon).getName() + " " + currentPoseanims);
+			lists.add(currentPoseanims);
+			poseanims.put(weapon, lists);
+		}
+	}
+
+	private boolean updateLists(int body, int arms, Set<Integer> hiddenSet, Set<Integer> shownSet, String name, boolean female)
+	{
+		boolean hidden = arms == 0;
+		boolean uhoh = false;
+		Set<Integer> wrongList = !hidden ? hiddenSet : shownSet;
+		Set<Integer> rightList = hidden ? hiddenSet : shownSet;
+		if (wrongList.contains(body)) {
+			System.out.println("(uh oh) " + name + " " + (hidden ? "hidden" : "shown") + " for " + plugin.itemName(body) + " " + body);
+			uhoh = true;
+			System.out.println(female);
+			new Exception().printStackTrace(System.out);
+			wrongList.remove(body);
+		} else {
+			if (!rightList.contains(body)) {
+				System.out.println(name + " " + (hidden ? "hidden" : "shown") + " for " + plugin.itemName(body) + " " + body);
+			} else {
+//				System.out.println(name + " " + (hidden ? "hidden" : "shown") + " for " + plugin.itemName(body));
+			}
+		}
+		rightList.add(body);
+		return uhoh;
+	}
+
 	@Subscribe
 	public void onCommandExecuted(CommandExecuted commandExecuted) {
 		String[] arguments = commandExecuted.getArguments();
 		String command = commandExecuted.getCommand();
+
+		if (command.equals("listunseen"))
+		{
+			System.out.println("arms");
+			listUnseen(showsArms, hidesArms, TORSO);
+
+			System.out.println("hair");
+			listUnseen(showsHair, hidesHair, HEAD);
+
+			System.out.println("jaw");
+			listUnseen(showsJaw, hidesJaw, HEAD);
+
+			for (Map.Entry<Integer, Set<List<Integer>>> entry : poseanims.entrySet())
+			{
+				int itemId = entry.getKey();
+				String name = itemManager.getItemComposition(itemId).getName();
+				Set<List<Integer>> poseanims = entry.getValue();
+				if (poseanims.size() > 1) {
+					System.out.println("more than 1: " + name + " " + itemId + " " + poseanims);
+				} else {
+					List<Integer> next = poseanims.iterator().next();
+					boolean foundMatch = false;
+					if (!Objects.equals(next.get(1), next.get(7))) {
+						System.out.println("different rotate animations! " + name + " " + itemId + " " + next.get(1) + " " + next.get(7));
+					}
+					for (AnimationSet animationSet : AnimationSet.animationSets)
+					{
+						if (
+							Objects.equals(animationSet.getAnimation(Swap.AnimationType.STAND), next.get(0))
+							&& Objects.equals(animationSet.getAnimation(Swap.AnimationType.ROTATE), next.get(1))
+							&& Objects.equals(animationSet.getAnimation(Swap.AnimationType.WALK), next.get(2))
+							&& Objects.equals(animationSet.getAnimation(Swap.AnimationType.WALK_BACKWARD), next.get(3))
+							&& Objects.equals(animationSet.getAnimation(Swap.AnimationType.SHUFFLE_LEFT), next.get(4))
+							&& Objects.equals(animationSet.getAnimation(Swap.AnimationType.SHUFFLE_RIGHT), next.get(5))
+							&& Objects.equals(animationSet.getAnimation(Swap.AnimationType.RUN), next.get(6))
+						) {
+							foundMatch = true;
+							break;
+						}
+					}
+					if (!foundMatch) {
+						System.out.println("no match: " + name + " " + itemId + " " + next);
+					}
+				}
+			}
+		}
+
+		if (command.equals("countslots"))
+		{
+			tempHidesHair = new HashSet<>(this.hidesHair);
+			tempHidesJaw = new HashSet<>(this.hidesJaw);
+			tempShowsHair = new HashSet<>(this.showsHair);
+			tempShowsJaw = new HashSet<>(this.showsJaw);
+			addHidesHairAndJaw();
+
+			int torso = 0;
+			int head = 0;
+			int weapon = 0;
+			int torsoSeen = 0;
+			int hairSeen = 0;
+			int jawSeen = 0;
+			int weaponSeen = 0;
+			int torsoVar = 0;
+			int hairVar = 0;
+			int jawVar = 0;
+			int weaponVar = 0;
+			for (int i = 0; i < client.getItemCount(); i++)
+			{
+				ItemComposition itemComposition = plugin.itemManager.getItemComposition(i);
+				if (itemComposition.getPlaceholderTemplateId() != -1 || itemComposition.getNote() != -1) continue;
+
+				Integer slot = SLOT_OVERRIDES.get(i);
+				if (slot == -1) continue;
+				if (slot == null) {
+					ItemStats itemStats = plugin.itemManager.getItemStats(i, false);
+					if (itemStats != null && itemStats.isEquipable())
+					{
+						slot = itemStats.getEquipment().getSlot();
+					}
+				}
+				if (slot == null) continue;
+
+				if (slot == TORSO.ordinal())
+				{
+					torso++;
+					if (hidesArms.contains(i) || showsArms.contains(i)) {
+						torsoSeen++;
+						torsoVar++;
+					} else {
+						Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
+						boolean found = false;
+						for (Integer variation : variations)
+						{
+							if (hidesArms.contains(variation) || showsArms.contains(variation)) {
+								found = true;
+								break;
+							}
+						}
+						if (found)
+						{
+							torsoVar++;
+						} else {
+//								System.out.println(itemManager.getItemComposition(i).getName() + " " + i);
+						}
+					}
+				}
+				else if (slot == HEAD.ordinal())
+				{
+					head++;
+					if (tempHidesHair.contains(i) || tempShowsHair.contains(i)) {
+						hairSeen++;
+						hairVar++;
+					} else {
+						Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
+						boolean found = false;
+						for (Integer variation : variations)
+						{
+							if (hidesHair.contains(variation) || showsHair.contains(variation)) {
+								found = true;
+								break;
+							}
+						}
+						if (found)
+						{
+							hairVar++;
+						} else {
+								System.out.println("hair: " + itemManager.getItemComposition(i).getName() + " " + i);
+						}
+					}
+					if (tempHidesJaw.contains(i) || tempShowsJaw.contains(i)) {
+						if (i == 27400) {
+
+							System.out.println("in here 2");
+						}
+						jawSeen++;
+						jawVar++;
+					} else {
+						Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
+						boolean found = false;
+						for (Integer variation : variations)
+						{
+							if (hidesJaw.contains(variation) || showsJaw.contains(variation)) {
+								found = true;
+								break;
+							}
+						}
+						if (found)
+						{
+							jawVar++;
+						} else {
+								System.out.println("jaw: " + itemManager.getItemComposition(i).getName() + " " + i);
+						}
+					}
+				}
+				else if (slot == WEAPON.ordinal())
+				{
+					weapon++;
+					if (poseanims.containsKey(i)) {
+						weaponSeen++;
+						weaponVar++;
+					} else {
+						Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
+						boolean found = false;
+						for (Integer variation : variations)
+						{
+							if (poseanims.containsKey(variation)) {
+								found = true;
+								break;
+							}
+						}
+						if (found)
+						{
+							weaponVar++;
+						} else {
+//							System.out.println(Constants.getName(i, itemComposition.getName()) + " " + i);
+						}
+					}
+				}
+			}
+			System.out.println(torso + " " + head + " " + weapon);
+			System.out.println(torsoVar + " (" + (torso - torsoVar) + ") " + hairVar + " (" + (head - hairVar) + ") " + jawVar + " (" + (head - jawVar) + ") " + weaponVar + " (" + (weapon - weaponVar) + ") ");
+			System.out.println(torsoSeen + " (" + (torso - torsoSeen) + ") " + hairSeen + " (" + (head - hairSeen) + ") " + jawSeen + " (" + (head - jawSeen) + ") " + weaponSeen + " (" + (weapon - weaponSeen) + ") ");
+		}
 
 		if (command.equals("json")) {
 			json();
@@ -145,21 +533,25 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 					System.out.println("item " + integerIntegerEntry.getKey() + " " + itemManager.getItemComposition(integerIntegerEntry.getKey()).getName() + " should be removed from constants.");
 				}
 			}
-			System.out.println("checking jaw slot items.");
-			for (Integer integer : Constants.JAW_SLOT)
-			{
-				ItemStats itemStats = itemManager.getItemStats(integer, false);
-				if (itemStats == null || !itemStats.isEquipable())
-					continue;
-				if (itemStats.getEquipment().getSlot() != KitType.JAW.getIndex()) {
-					System.out.println("item " + integer + " " + itemManager.getItemComposition(integer).getName() + " is in the wrong slot ");
-				} else {
-					System.out.println("item " + integer + " " + itemManager.getItemComposition(integer).getName() + " should be removed from constants.");
-				}
-			}
 		}
 
 		if (command.equals("bla")) {
+			for (TransmogSet transmogSet : plugin.transmogSets)
+			{
+				if (transmogSet.getName().equals("test")) {
+					Swap swap = transmogSet.getSwaps().get(0);
+//					swap.getModelSwaps().add(26700);
+//					swap.getModelSwaps().add(ItemID.SCYTHE_OF_VITUR);
+					System.out.println("here " + swap.getModelSwaps());
+				}
+			}
+			System.out.println(showsArms);
+			System.out.println(hidesArms);
+			System.out.println(uhohList);
+			showsArms.remove(21021);
+			hidesArms.add(21021);
+			uhohList.clear();
+			if (true) return;
 			List<Integer> unequippableWithModel = new ArrayList<>();
 			List<Integer> hashes = new ArrayList<>();
 			Multimap<Integer, Integer> hashToItemIds = ArrayListMultimap.create();
@@ -178,7 +570,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 					int itemId = mapNegativeId(new Constants.NegativeId(Constants.NegativeIdsMap.HIDE_SLOT, hiddenSlot.ordinal()));
 					swap.addModelSwap(itemId, plugin);
 				}
-				swap.addModelSwap(i, plugin, KitType.WEAPON.ordinal());
+				swap.addModelSwap(i, plugin, WEAPON.ordinal());
 				TransmogSet transmogSet = new TransmogSet(Collections.singletonList(swap));
 				plugin.transmogSets.clear();
 				plugin.transmogSets.add(transmogSet);
@@ -308,7 +700,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 			AnimationSet.loadAnimationSets();
 			ProjectileCast.initializeSpells();
 			SwingUtilities.invokeLater(plugin.pluginPanel::rebuild);
-			Constants.loadEquippableItemsNotMarkedAsEquippable(plugin.getGson());
+			Constants.loadData(plugin.getGson());
 			System.out.println("reloaded animations sets, projectiles, and equippable.");
 		}
 
@@ -427,6 +819,41 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		}
 	}
 
+	private void listUnseen(Set<Integer> shows, Set<Integer> hides, KitType kitType)
+	{
+		System.out.println("shows " + shows);
+		System.out.println("hides " + hides);
+		for (Integer showsArm : shows)
+		{
+			if (hides.contains(showsArm)) {
+
+				System.out.println("dupe id " + showsArm);
+			}
+		}
+		Set<Integer> s = new HashSet<>();
+		s.addAll(shows);
+		s.addAll(hides);
+		System.out.println(s.size() + " " + s);
+		int count = 0;
+		int countf2p = 0;
+		for (int i = 0; i < client.getItemCount(); i++)
+		{
+			if (s.contains(i)) continue;
+			ItemStats itemStats = itemManager.getItemStats(i, false);
+			if (
+				itemStats != null
+				&& itemStats.isEquipable()
+				&& itemStats.getEquipment().getSlot() == kitType.getIndex()
+				&& itemManager.getItemComposition(i).getPlaceholderTemplateId() == -1
+				&& itemManager.getItemComposition(i).getNote() == -1
+			) {
+				System.out.println(itemManager.getItemComposition(i).getName() + " " + i);
+				count++;
+			}
+		}
+		System.out.println(count);
+	}
+
 	public static final Map<Integer, Integer> OVERRIDE_EQUIPPABILITY_OR_SLOT = new HashMap<>();
 	public static final Map<Integer, Constants.NameAndIconId> EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT_NAMES = new HashMap<>();
 
@@ -434,6 +861,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 	{
 		OVERRIDE_EQUIPPABILITY_OR_SLOT.clear();
 		EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT_NAMES.clear();
+		Constants.Data data = new Constants.Data();
 
 		addUnequippable(48, WEAPON); // Longbow (u)
 		addUnequippable(50, WEAPON); // Shortbow (u)
@@ -574,7 +1002,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		addUnequippable(6451, WEAPON); // null
 		addUnequippable(6468, WEAPON); // Plant cure
 		addUnequippable(6470, WEAPON); // Compost potion(4)
-		addUnequippable(6565, WEAPON, "Bob the cat"); // null (item icon is invisible)
+		addUnequippable(6565, WEAPON, "Bob the cat", ItemID.PET_CAT_1564); // null (item icon is invisible)
 		addUnequippable(6573, WEAPON); // Onyx
 		addUnequippable(6635, WEAPON); // Commorb
 		addUnequippable(6657, TORSO); // Camo top (sleeveless)
@@ -910,6 +1338,21 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		addUnequippable(27546, WEAPON, "Ghommal's avernic defender 5 (mainhand)", 27550); // Anim offhand
 		addUnequippable(27548, WEAPON, "Ghommal's avernic defender 6 (mainhand)", 27552); // Anim offhand
 		addUnequippable(27873, WEAPON); // Eastfloor spade
+		addUnequippable(7414, WEAPON); // Paddle
+		addUnequippable(6123, WEAPON); // Beer glass
+		addUnequippable(9702, WEAPON); // Stick
+		addUnequippable(10840, WEAPON); // A jester stick
+		int[] shouldNotBeEquippable = {22664, 22665, 22666, 22812, 22814, 26686, 26686, 26687, 26687, 26688, 26688, 26698, 26698, 26699, 26699, 26700, 26700, 26701, 26701, 26702, 26702, 26703, 26703, 4284, 4285};
+		for (int i : shouldNotBeEquippable)
+		{
+			OVERRIDE_EQUIPPABILITY_OR_SLOT.put(i, -1);
+		}
+
+		Set<Integer> jawSlotItems = ImmutableSet.of(10556, 10557, 10558, 10559, 10567, 20802, 22308, 22309, 22310, 22311, 22312, 22313, 22314, 22315, 22337, 22338, 22339, 22340, 22341, 22342, 22343, 22344, 22345, 22346, 22347, 22348, 22349, 22721, 22722, 22723, 22724, 22725, 22726, 22727, 22728, 22729, 22730, 23460, 23461, 23462, 23463, 23464, 23465, 23466, 23467, 23468, 23469, 23470, 23471, 23472, 23473, 23474, 23475, 23476, 23477, 23478, 23479, 23480, 23481, 23482, 23483, 23484, 23485, 23486, 25228, 25229, 25230, 25231, 25232, 25233, 25234, 25235, 25236, 25237, 25238, 25239, 25240, 25241, 25242, 25243, 25212, 25213, 25214, 25215, 25216, 25217, 25218, 25219, 25220, 25221, 25222, 25223, 25224, 25225, 25226, 25227);
+		for (Integer itemId : jawSlotItems)
+		{
+			OVERRIDE_EQUIPPABILITY_OR_SLOT.put(itemId, Constants.JAW_SLOT);
+		}
 
 		Map<Integer, List<Integer>> kitIndexToItemIds = new HashMap<>();
 		for (Integer itemId : OVERRIDE_EQUIPPABILITY_OR_SLOT.keySet())
@@ -918,17 +1361,292 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 			itemIds.add(itemId);
 			kitIndexToItemIds.put(OVERRIDE_EQUIPPABILITY_OR_SLOT.get(itemId), itemIds);
 		}
-//		Multimap<Integer, Integer> kitIndexToItemIds = ArrayListMultimap.create();
-//		for (Map.Entry<Integer, Integer> entry : OVERRIDE_EQUIPPABILITY_OR_SLOT.entrySet())
-//		{
-//			System.out.println("adding it here " + entry.getValue() + " " + entry.getKey());
-//			kitIndexToItemIds.put(entry.getValue(), entry.getKey());
-//		}
-		String s = plugin.getGson().toJson(kitIndexToItemIds);
-		System.out.println("json is \n" + s);
 
-		String s1 = plugin.getGson().toJson(EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT_NAMES);
-		System.out.println("names json is " + s1);
+//		Set<Integer> showsArms = addShowsArms(this.showsArms); // nothing to add.
+		tempHidesHair = new HashSet<>(this.hidesHair);
+		tempHidesJaw = new HashSet<>(this.hidesJaw);
+		tempShowsHair = new HashSet<>(this.showsHair);
+		tempShowsJaw = new HashSet<>(this.showsJaw);
+		addHidesHairAndJaw();
+		data.showArms = showsArms;
+		data.hideHair = tempHidesHair;
+		data.hideJaw = tempHidesJaw;
+
+		Map<Integer, Set<List<Integer>>> poseanims = new HashMap<>(this.poseanims);
+//		addSlotData(showsArms, hidesHair, hidesJaw, poseanims);
+		data.slotOverrides = kitIndexToItemIds;
+		data.nameIconOverrides = EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT_NAMES;
+
+		String s = plugin.getGson().toJson(data);
+		System.out.println("your uhohlist is " + uhohList);
+		System.out.println("json is \n" + s);
+	}
+
+	Set<Integer> tempHidesHair;
+	Set<Integer> tempHidesJaw;
+	Set<Integer> tempShowsHair;
+	Set<Integer> tempShowsJaw;
+	private void addHidesHairAndJaw()
+	{
+		List<Integer> removeItem = new ArrayList<>();
+
+		follow(ItemID.OCHRE_SNELM_3341, ItemID.OCHRE_SNELM);
+		follow(ItemID.LAW_TIARA, ItemID.COSMIC_TIARA);
+		follow(ItemID.A_SPECIAL_TIARA, ItemID.COSMIC_TIARA);
+		follow(ItemID.ASTRAL_TIARA, ItemID.COSMIC_TIARA);
+		follow(ItemID.ORANGE_BOATER, ItemID.PURPLE_BOATER);
+		follow(ItemID.SWEET_NUTCRACKER_HAT, ItemID.FESTIVE_NUTCRACKER_HAT);
+		showAll(ItemID.MOUTH_GRIP);
+		showAll(ItemID.A_CHAIR);
+		showAll(ItemID.ONE_BARREL);
+		showAll(ItemID.TWO_BARRELS);
+		showAll(ItemID.THREE_BARRELS);
+		showAll(ItemID.FOUR_BARRELS);
+		showAll(ItemID.FIVE_BARRELS);
+		showAll(ItemID.PIRATE_HAT);
+		follow(ItemID.ADVENTURERS_HOOD_T1, ItemID.MAX_HOOD);
+		follow(ItemID.SARADOMIN_MAX_HOOD, ItemID.MAX_HOOD);
+		follow(ItemID.ZAMORAK_MAX_HOOD, ItemID.MAX_HOOD);
+		follow(ItemID.GUTHIX_MAX_HOOD, ItemID.MAX_HOOD);
+		follow(ItemID.ACCUMULATOR_MAX_HOOD, ItemID.MAX_HOOD);
+		removeItem.add(ItemID.SCYTHE_OF_VITUR_22664);
+		removeItem.add(ItemID.ARMADYL_GODSWORD_22665);
+		removeItem.add(ItemID.RUBBER_CHICKEN_22666);
+		removeItem.add(ItemID.DRAGON_KNIFE_22812);
+		removeItem.add(ItemID.DRAGON_KNIFE_22814);
+		// broken pvp arena gear. no model.
+		removeItem.addAll(Arrays.asList(26686, 26686, 26687, 26687, 26688, 26688, 26698, 26698, 26699, 26699, 26700, 26700, 26701, 26701, 26702, 26702, 26703, 26703));
+		for (int i = 0; i < client.getItemCount(); i++)
+		{
+			ItemComposition itemComposition = itemManager.getItemComposition(i);
+			if (itemComposition.getPlaceholderTemplateId() != -1 || itemComposition.getNote() != -1) continue;
+
+			Integer slot = SLOT_OVERRIDES.get(i);
+			if (slot == null) {
+				slot = plugin.getWikiScrapeSlot(i);
+			}
+			if (slot == null || slot != HEAD_SLOT) continue;
+			if (removeItem.contains(i)) continue;
+
+			Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
+			for (Integer variation : variations)
+			{
+				if (tempHidesHair.contains(variation)) {
+					tempHidesHair.add(i);
+				}
+				if (tempHidesJaw.contains(variation)) {
+					tempHidesJaw.add(i);
+				}
+				if (tempShowsHair.contains(variation)) {
+					tempShowsHair.add(i);
+				}
+				if (tempShowsJaw.contains(variation)) {
+					tempShowsJaw.add(i);
+				}
+			}
+
+			String name = itemComposition.getName().toLowerCase();
+			if (name.contains("bedsheet")) {
+				removeItem.add(i);
+			}
+			if (name.contains("tricorn hat")) {
+				showAll(i);
+			}
+			if (name.contains("saika's")) {
+				showHairJaw(i, false, !name.contains("shroud"));
+			}
+			if (name.contains("koriff's")) {
+				showHairJaw(i, false, !name.contains("cowl"));
+			}
+			if (name.contains("maoma's")) {
+				showHairJaw(i, false, name.contains("med"));
+			}
+		}
+		System.out.println(removeItem);
+	}
+
+	private void showAll(int itemId)
+	{
+		showHairJaw(itemId, true, true);
+	}
+
+	private void showHairJaw(int itemId, boolean showHair, boolean showJaw)
+	{
+		if (
+			((hidesHair.contains(itemId) && !showHair) || (showsHair.contains(itemId) && showHair)) &&
+			((hidesJaw.contains(itemId) && !showJaw) || (showsJaw.contains(itemId) && showJaw))
+		) {
+			System.out.println("superflous " + itemId);
+		}
+		if (
+			(hidesHair.contains(itemId) && showHair) ||
+			(showsHair.contains(itemId) && !showHair) ||
+			(hidesJaw.contains(itemId) && showJaw) ||
+			(showsJaw.contains(itemId) && !showJaw)
+		) {
+			System.out.println("goes against collected hair and jaw data " + itemId);
+		}
+		if (!showHair) tempHidesHair.add(itemId);
+		else tempShowsHair.add(itemId);
+		if (!showJaw) tempHidesJaw.add(itemId);
+		else tempShowsJaw.add(itemId);
+	}
+
+	private void follow(int itemId, int itemIdToCopy)
+	{
+		Boolean currentlyHidingHair = hidesHair.contains(itemId) ? TRUE : showsHair.contains(itemId) ? FALSE : null;
+		Boolean currentlyHidingJaw = hidesJaw.contains(itemId) ? TRUE : showsJaw.contains(itemId) ? FALSE : null;
+		Boolean hairToCopy = hidesHair.contains(itemIdToCopy) ? TRUE : showsHair.contains(itemIdToCopy) ? FALSE : null;
+		Boolean jawToCopy = hidesJaw.contains(itemIdToCopy) ? TRUE : showsJaw.contains(itemIdToCopy) ? FALSE : null;
+		if (hairToCopy == null || jawToCopy == null) {
+			System.out.println("copied item " + itemId + " didn't have enough data " + hairToCopy + " " + jawToCopy);
+			return;
+		}
+
+		boolean warnSuperfluous = false;
+		if (hairToCopy) {
+			if (currentlyHidingHair == null) {
+				tempHidesHair.add(itemId);
+			} else if (currentlyHidingHair) {
+				// skip;
+				warnSuperfluous = true;
+			} else {
+				System.out.println("item " + itemId + " was told to follow something that the data disagrees with.");
+			}
+		} else {
+			if (currentlyHidingHair == null) {
+				tempShowsHair.add(itemId);
+			} else if (currentlyHidingHair) {
+				System.out.println("item " + itemId + " was told to follow something that the data disagrees with.");
+			} else {
+				// skip;
+				warnSuperfluous = true;
+			}
+		}
+		if (jawToCopy) {
+			if (currentlyHidingJaw == null) {
+				tempHidesJaw.add(itemId);
+			} else if (currentlyHidingJaw) {
+				// skip;
+				if (warnSuperfluous) {
+					System.out.println("itemId " + itemId + " follow is superfluous.");
+				}
+			} else {
+				System.out.println("item " + itemId + " was told to follow something that the data disagrees with.");
+			}
+		} else {
+			if (currentlyHidingJaw == null) {
+				tempShowsJaw.add(itemId);
+			} else if (currentlyHidingJaw) {
+				System.out.println("item " + itemId + " was told to follow something that the data disagrees with.");
+			} else {
+				// skip;
+				if (warnSuperfluous) {
+					System.out.println("itemId " + itemId + " follow is superfluous.");
+				}
+			}
+		}
+	}
+
+	private void addSlotData(Set<Integer> showsArms, Set<Integer> hidesHair, Set<Integer> hidesJaw, Map<Integer, Set<List<Integer>>> poseanims)
+	{
+		for (int i = 0; i < client.getItemCount(); i++)
+		{
+			ItemComposition itemComposition = plugin.itemManager.getItemComposition(i);
+			if (itemComposition.getPlaceholderTemplateId() != -1 || itemComposition.getNote() != -1) continue;
+
+			Integer slot = SLOT_OVERRIDES.get(i);
+			if (slot == null) {
+				ItemStats itemStats = plugin.itemManager.getItemStats(i, false);
+				if (itemStats != null && itemStats.isEquipable())
+				{
+					slot = itemStats.getEquipment().getSlot();
+				}
+			}
+			if (slot == null) continue;
+
+			if (slot == TORSO_SLOT)
+			{
+				if (!hidesArms.contains(i) && !this.showsArms.contains(i))
+				{
+					Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
+					boolean shown = false;
+					for (Integer variation : variations)
+					{
+						if (this.showsArms.contains(variation)) {
+							shown = true;
+							break;
+						}
+					}
+					if (shown)
+					{
+						showsArms.add(i);
+					} else {
+//								System.out.println(itemManager.getItemComposition(i).getName() + " " + i);
+					}
+				}
+			}
+			else if (slot == HEAD_SLOT)
+			{
+				if (!hidesHair.contains(i) && !this.showsHair.contains(i))
+				{
+					Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
+					boolean hides = false;
+					for (Integer variation : variations)
+					{
+						if (this.hidesHair.contains(variation)) {
+							hides = true;
+							break;
+						}
+					}
+					if (hides)
+					{
+						hidesHair.add(i);
+					} else {
+//								System.out.println(itemManager.getItemComposition(i).getName() + " " + i);
+					}
+				}
+				if (!hidesJaw.contains(i) && !this.showsJaw.contains(i))
+				{
+					Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
+					boolean hides = false;
+					for (Integer variation : variations)
+					{
+						if (this.hidesJaw.contains(variation)) {
+							hides = true;
+							break;
+						}
+					}
+					if (hides)
+					{
+						hidesJaw.add(i);
+					} else {
+//								System.out.println(itemManager.getItemComposition(i).getName() + " " + i);
+					}
+				}
+			}
+//			else if (slot == WEAPON_SLOT)
+//			{
+//				if (!this.poseanims.containsKey(i))
+//				{
+//					Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
+//					boolean found = false;
+//					for (Integer variation : variations)
+//					{
+//						if (this.poseanims.containsKey(variation)) {
+//							poseanims.put(i, this.poseanims.get(variation));
+//							found = true;
+//							break;
+//						}
+//					}
+//					if (found)
+//					{
+//					} else {
+////						System.out.println(itemManager.getItemComposition(i).getName() + " " + i);
+//					}
+//				}
+//			}
+		}
 	}
 
 	private static void addUnequippable(int itemId, KitType kitType) {
@@ -996,7 +1714,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 				System.out.println("demo gfx " + demogfx);
 			}
 		}
-		System.out.println(menuOptionClicked.getMenuOption() + " " + Text.removeTags(menuOptionClicked.getMenuTarget()));
+//		System.out.println(menuOptionClicked.getMenuOption() + " " + Text.removeTags(menuOptionClicked.getMenuTarget()));
 	}
 
 }

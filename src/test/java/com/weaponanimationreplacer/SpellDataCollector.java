@@ -9,6 +9,7 @@ import javax.inject.Inject;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import net.runelite.api.Client;
+import net.runelite.api.NPC;
 import net.runelite.api.Player;
 import net.runelite.api.Projectile;
 import net.runelite.api.coords.LocalPoint;
@@ -75,24 +76,24 @@ public class SpellDataCollector
 				animation == 8977 // arceuus spells.
 		) {
 			System.out.println(client.getGameCycle() + " !!! spell start (animation) !!!");
-			spellStart(null);
+			spellStart(null, client.getLocalPlayer());
 		}
 	}
 
-	private void spellStart(Projectile projectile)
+	private void spellStart(Projectile projectile, Player player)
 	{
 		System.out.println(client.getGameCycle() + " !!! spell start (projectile) !!!");
 
 		spellStart = client.getGameCycle();
-		currentSpellChebyshevDistance = plugin.chebyshevDistance(client.getLocalPlayer(), plugin.client.getLocalPlayer().getInteracting(), false);
+		currentSpellChebyshevDistance = plugin.chebyshevDistance(player, player.getInteracting(), false);
 
 		currentProjectile = new ProjectileData();
 		currentProjectile.name = lastSpellCastName;
 		lastSpellCastName = null;
-		currentProjectile.castAnimation = client.getLocalPlayer().getAnimation();
-		currentProjectile.castGfx = client.getLocalPlayer().getGraphic();
-		if (client.getLocalPlayer().getSpotAnimFrame() != 1) {
-			System.out.println("!!!!!!!!!!!!!!!! graphic did not start at step 1, started at " + client.getLocalPlayer().getSpotAnimFrame());
+		currentProjectile.castAnimation = player.getAnimation();
+		currentProjectile.castGfx = player.getGraphic();
+		if (player.getSpotAnimFrame() != 1) {
+			System.out.println("!!!!!!!!!!!!!!!! graphic did not start at step 1, started at " + player.getSpotAnimFrame());
 		}
 		if (projectile != null)
 		{
@@ -105,7 +106,7 @@ public class SpellDataCollector
 			currentProjectile.height = projectile.getHeight();
 		}
 		System.out.println("\tprojectile: " +
-			"castAnimation: " + client.getLocalPlayer().getAnimation() + " " +
+			"castAnimation: " + player.getAnimation() + " " +
 			"id: " + projectile.getId() + " " +
 			"startCycle: " + (projectile.getStartCycle() - client.getGameCycle()) + "(" + projectile.getStartCycle() + ") " +
 			"endCycle: " + (projectile.getEndCycle() - client.getGameCycle()) + "(" + projectile.getEndCycle() + ") " +
@@ -117,14 +118,26 @@ public class SpellDataCollector
 			"");
 
 		System.out.println("\tspelldata: " +
-			"chebyshev: " + plugin.chebyshevDistance(client.getLocalPlayer(), plugin.client.getLocalPlayer().getInteracting(), false) + " (" + plugin.chebyshevDistance(client.getLocalPlayer(), plugin.client.getLocalPlayer().getInteracting(), true) + ") " +
-			"cast gfx: " + client.getLocalPlayer().getGraphic() + " (" + client.getLocalPlayer().getGraphicHeight() + " " + client.getLocalPlayer().getSpotAnimFrame() + ") " +
+			"chebyshev: " + plugin.chebyshevDistance(player, player.getInteracting(), false) + " (" + plugin.chebyshevDistance(player, player.getInteracting(), true) + ") " +
+			"cast gfx: " + player.getGraphic() + " (" + player.getGraphicHeight() + " " + player.getSpotAnimFrame() + ") " +
 		"");
 	}
 
 	@Subscribe
 	public void onClientTick(ClientTick event)
 	{
+		for (NPC npc : client.getNpcs())
+		{
+			if (npc.getGraphic() != -1) {
+//				System.out.println(client.getGameCycle() + " " + npc.getGraphic() + " " + npc.getSpotAnimFrame() + " " + npc.getGraphicHeight() + " " + npc.getName());
+			}
+		}
+		for (Player player : client.getPlayers())
+		{
+			if (player.getGraphic() != -1) {
+//				System.out.println(client.getGameCycle() + " " + player.getGraphic() + " " + player.getSpotAnimFrame() + " " + player.getGraphicHeight() + " " + player.getName());
+			}
+		}
 		if (plugin.client.getLocalPlayer().getInteracting() != null)
 		{
 			int spotAnimFrame = plugin.client.getLocalPlayer().getInteracting().getSpotAnimFrame();
@@ -237,30 +250,61 @@ public class SpellDataCollector
 			return;
 		}
 
-		// This is the player's actual location which is what projectiles use as their start position. Player#getX, #getSceneX, etc., do not work here.
-		Player player = client.getLocalPlayer();
-		final WorldPoint playerPos = player.getWorldLocation();
-		if (playerPos == null)
+		Player player = null;
+		for (Player p : client.getPlayers())
 		{
-			return;
+			// This is the player's actual location which is what projectiles use as their start position. Player#getX, #getSceneX, etc., do not work here.
+			final WorldPoint playerPos = p.getWorldLocation();
+			if (playerPos == null)
+			{
+				return;
+			}
+
+			final LocalPoint playerPosLocal = LocalPoint.fromWorld(client, playerPos);
+			if (playerPosLocal.equals(p.getLocalLocation())) {
+
+//			System.out.println("equal");
+			} else {
+
+//			System.out.println("not equal");
+			}
+			if (playerPosLocal == null)
+			{
+				return;
+			}
+
+			if (projectile.getX1() == playerPosLocal.getX() && projectile.getY1() == playerPosLocal.getY()) {
+				player = p;
+				break;
+			}
 		}
 
-		final LocalPoint playerPosLocal = LocalPoint.fromWorld(client, playerPos);
-		if (playerPosLocal.equals(player.getLocalLocation())) {
+		spellStart(projectile, player);
 
-			System.out.println("equal");
-		} else {
-
-			System.out.println("not equal");
-		}
-		if (playerPosLocal == null)
-		{
-			return;
-		}
-
-		if (projectile.getX1() == playerPosLocal.getX() && projectile.getY1() == playerPosLocal.getY()) {
-			spellStart(projectile);
-		}
+//		// This is the player's actual location which is what projectiles use as their start position. Player#getX, #getSceneX, etc., do not work here.
+//		Player player = client.getLocalPlayer();
+//		final WorldPoint playerPos = player.getWorldLocation();
+//		if (playerPos == null)
+//		{
+//			return;
+//		}
+//
+//		final LocalPoint playerPosLocal = LocalPoint.fromWorld(client, playerPos);
+//		if (playerPosLocal.equals(player.getLocalLocation())) {
+//
+////			System.out.println("equal");
+//		} else {
+//
+////			System.out.println("not equal");
+//		}
+//		if (playerPosLocal == null)
+//		{
+//			return;
+//		}
+//
+//		if (projectile.getX1() == playerPosLocal.getX() && projectile.getY1() == playerPosLocal.getY()) {
+//			spellStart(projectile, p);
+//		}
 	}
 
 	private int lastplayerspotanimframe = -1;
@@ -268,7 +312,7 @@ public class SpellDataCollector
 
 	@Subscribe
 	public void onGraphicChanged(GraphicChanged graphicChanged) {
-//		System.out.println("ongraphicchanged " + client.getGameCycle());
+//		System.out.println("ongraphicchanged " + client.getGameCycle() + " " + graphicChanged.getActor().getGraphicHeight() + " " + graphicChanged.getActor().getGraphic() + " " + graphicChanged.getActor().getName());
 		Player player = client.getLocalPlayer();
 		if (graphicChanged.getActor().equals(player)) {
 			if (player.getSpotAnimFrame() == 1 && lastplayerspotanimframe != 1) {

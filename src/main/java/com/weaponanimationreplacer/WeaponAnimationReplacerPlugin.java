@@ -12,6 +12,9 @@ import com.google.gson.JsonSerializer;
 import com.google.gson.reflect.TypeToken;
 import com.google.inject.Provides;
 import com.weaponanimationreplacer.ChatBoxFilterableSearch.SelectionResult;
+import static com.weaponanimationreplacer.Constants.NegativeIdsMap.HIDE_SLOT;
+import static com.weaponanimationreplacer.Constants.NegativeIdsMap.SHOW_SLOT;
+import static com.weaponanimationreplacer.Constants.WEAPON_SLOT;
 import static com.weaponanimationreplacer.Constants.mapNegativeId;
 import com.weaponanimationreplacer.Swap.AnimationReplacement;
 import com.weaponanimationreplacer.Swap.AnimationType;
@@ -56,6 +59,7 @@ import net.runelite.api.events.ProjectileMoved;
 import net.runelite.api.kit.KitType;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ProfileChanged;
 import net.runelite.client.game.ItemManager;
@@ -86,6 +90,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	private static final String TRANSMOG_SET_KEY = "transmogSets";
 
 	@Inject Client client;
+	@Inject private EventBus eventBus;
 	@Inject private ChatBoxFilterableSearch itemSearch;
 	@Inject private ClientToolbar clientToolbar;
 	@Inject private ConfigManager configManager;
@@ -98,9 +103,8 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	@Inject ColorPickerManager colorPickerManager;
 	@Inject private ChatboxPanelManager chatboxPanelManager;
 
-
 	@Getter
-	List<TransmogSet> transmogSets;
+	List<TransmogSet> transmogSets = new ArrayList<>();
 
 	WeaponAnimationReplacerPluginPanel pluginPanel;
 	private NavigationButton navigationButton;
@@ -167,7 +171,10 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
     protected void startUp()
     {
         clientThread.invokeLater(() -> {
-        	Constants.loadEquippableItemsNotMarkedAsEquippable(getGson());
+			transmogManager.startUp();
+			eventBus.register(transmogManager);
+
+        	Constants.loadData(getGson());
 
 			reloadTransmogSetsFromConfig();
 
@@ -286,6 +293,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		navigationButton = null;
 
 		clientThread.invokeLater(() -> {
+			eventBus.unregister(transmogManager);
 			transmogManager.shutDown();
 
 			if (!naturalPlayerPoseAnimations.isEmpty())
@@ -1013,12 +1021,6 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		}
     }
 
-	private static final int DEFAULT_MALE_ARMS = 256 + 28;
-	private static final int DEFAULT_FEMALE_ARMS = 256 + 64;
-	private static final int DEFAULT_MALE_HAIR = 256 + 0;
-	private static final int DEFAULT_FEMALE_HAIR = 256 + 45;
-	private static final int DEFAULT_MALE_JAW = 256 + 14;
-
 	public Integer getWikiScrapeSlot(int itemId) {
 		ItemStats itemStats = itemManager.getItemStats(itemId, false);
 		if (itemStats == null) return null;
@@ -1027,32 +1029,36 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		return equipment.getSlot();
 	}
 
-	public Map<Integer, Integer> getApplicableModelSwaps()
+	public Integer[] getApplicableModelSwaps()
 	{
-		List<Swap> swaps = getApplicableSwaps();
+		Integer[] genericTransmog = new Integer[KitType.values().length];
+		Integer[] specificTransmog = new Integer[KitType.values().length];
 
-		Map<Integer, Integer> genericTransmog = new HashMap<>();
-		Map<Integer, Integer> specificTransmog = new HashMap<>();
-		for (Swap swap : swaps)
+		for (Swap swap : getApplicableSwaps())
 		{
-			Map<Integer, Integer> transmogMap = swap.appliesSpecificallyToGear(equippedItemsFromKit, this) ? specificTransmog : genericTransmog;
+			Integer[] transmogMap = swap.appliesSpecificallyToGear(equippedItemsFromKit, this) ? specificTransmog : genericTransmog;
 			for (Integer modelSwap : swap.getModelSwaps())
 			{
 				SlotAndKitId slotForItem = getSlotAndKitForItem(modelSwap, swap);
-				if (slotForItem != null && !transmogMap.containsKey(slotForItem.slot)) {
-					transmogMap.put(slotForItem.slot, slotForItem.kitId);
+				if (slotForItem != null && transmogMap[slotForItem.slot] == null) {
+					transmogMap[slotForItem.slot] = slotForItem.kitId;
 				}
 			}
 		}
 
-		for (Map.Entry<Integer, Integer> entry : specificTransmog.entrySet())
+		for (int i = 0; i < specificTransmog.length; i++)
 		{
-			genericTransmog.put(entry.getKey(), entry.getValue());
+			if (specificTransmog[i] != null)
+			{
+				genericTransmog[i] = specificTransmog[i];
+			}
 		}
 
 		if (previewItem != -1) {
 			SlotAndKitId slotForItem = getSlotAndKitForItem(previewItem, null);
-			if (slotForItem != null) genericTransmog.put(slotForItem.slot, slotForItem.kitId);
+			if (slotForItem != null) {
+				genericTransmog[slotForItem.slot] = slotForItem.kitId;
+			}
 		}
 
 		return genericTransmog;
@@ -1077,7 +1083,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	{
 		if (modelSwap < 0) {
 			Constants.NegativeId negativeId = mapNegativeId(modelSwap);
-			if (negativeId.type == Constants.NegativeIdsMap.HIDE_SLOT || negativeId.type == Constants.NegativeIdsMap.SHOW_SLOT) {
+			if (negativeId.type == HIDE_SLOT || negativeId.type == SHOW_SLOT) {
 				return negativeId.id;
 			}
 			else
@@ -1089,19 +1095,14 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		{
 			return getSlotForNonNegativeModelId(modelSwap);
 		}
-
 	}
 
 	private Integer getSlotForNonNegativeModelId(int modelSwap)
 	{
 		Integer slot = Constants.SLOT_OVERRIDES.get(modelSwap);
-		if (slot != null) {
+		// if the slot is -1, use the wiki slot to prevent messing up people's transmogs if they added the item prior to me making it -1.
+		if (slot != null && slot != -1) {
 			return slot;
-		}
-
-		if (Constants.JAW_SLOT.contains(modelSwap))
-		{
-			return KitType.JAW.getIndex();
 		}
 
 		ItemStats itemStats = itemManager.getItemStats(modelSwap, false);
@@ -1113,19 +1114,11 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	{
 		if (modelSwap < 0) {
 			Constants.NegativeId negativeId = mapNegativeId(modelSwap);
-			if (negativeId.type == Constants.NegativeIdsMap.HIDE_SLOT) {
+			if (negativeId.type == HIDE_SLOT) {
 				return new SlotAndKitId(negativeId.id, 0);
-			}
-			else if (negativeId.type == Constants.NegativeIdsMap.SHOW_SLOT) {
-				modelSwap =
-					negativeId.id == KitType.ARMS.getIndex() ? (TransmogrificationManager.baseArmsKit == -1 ? (client.getLocalPlayer().getPlayerComposition().getGender() == 1 ? DEFAULT_FEMALE_ARMS : DEFAULT_MALE_ARMS) : TransmogrificationManager.baseArmsKit) :
-					negativeId.id == KitType.HAIR.getIndex() ? (TransmogrificationManager.baseHairKit == -1 ? (client.getLocalPlayer().getPlayerComposition().getGender() == 1 ? DEFAULT_FEMALE_HAIR : DEFAULT_MALE_HAIR) : TransmogrificationManager.baseHairKit) :
-					(TransmogrificationManager.baseJawKit == -1 ? (client.getLocalPlayer().getPlayerComposition().getGender() == 1 /* female */ ? 0 : DEFAULT_MALE_JAW) : TransmogrificationManager.baseJawKit)
-				;
-				return new SlotAndKitId(negativeId.id, modelSwap - 512);
-			}
-			else
-			{
+			} else if (negativeId.type == SHOW_SLOT) {
+				return new SlotAndKitId(negativeId.id, TransmogrificationManager.SHOW_SLOT);
+			} else {
 				return null;
 			}
 		}
@@ -1133,7 +1126,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		int slotOverride = swap != null ? swap.getSlotOverride(modelSwap) : -1;
 		if (slotOverride == -1) {
 			Integer slot = getSlotForNonNegativeModelId(modelSwap);
-			slotOverride = slot != null ? slot : KitType.WEAPON.getIndex();
+			slotOverride = slot != null ? slot : WEAPON_SLOT;
 		}
 		return new SlotAndKitId(slotOverride, modelSwap);
 	}

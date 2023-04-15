@@ -1,8 +1,6 @@
 package com.weaponanimationreplacer;
 
-import com.google.common.collect.ImmutableSet;
 import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import static com.weaponanimationreplacer.Swap.AnimationType.ROTATE;
 import static com.weaponanimationreplacer.Swap.AnimationType.SHUFFLE_LEFT;
 import static com.weaponanimationreplacer.Swap.AnimationType.SHUFFLE_RIGHT;
@@ -10,9 +8,8 @@ import static com.weaponanimationreplacer.Swap.AnimationType.STAND;
 import static com.weaponanimationreplacer.Swap.AnimationType.WALK_BACKWARD;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.Getter;
@@ -25,25 +22,45 @@ import static net.runelite.api.kit.KitType.SHIELD;
 
 public class Constants
 {
-	public static final Set<Integer> JAW_SLOT = ImmutableSet.of(10556, 10557, 10558, 10559, 10567, 20802, 22308, 22309, 22310, 22311, 22312, 22313, 22314, 22315, 22337, 22338, 22339, 22340, 22341, 22342, 22343, 22344, 22345, 22346, 22347, 22348, 22349, 22721, 22722, 22723, 22724, 22725, 22726, 22727, 22728, 22729, 22730, 23460, 23461, 23462, 23463, 23464, 23465, 23466, 23467, 23468, 23469, 23470, 23471, 23472, 23473, 23474, 23475, 23476, 23477, 23478, 23479, 23480, 23481, 23482, 23483, 23484, 23485, 23486, 25228, 25229, 25230, 25231, 25232, 25233, 25234, 25235, 25236, 25237, 25238, 25239, 25240, 25241, 25242, 25243, 25212, 25213, 25214, 25215, 25216, 25217, 25218, 25219, 25220, 25221, 25222, 25223, 25224, 25225, 25226, 25227);
+	public static final int HEAD_SLOT = KitType.HEAD.getIndex();
+	public static final int CAPE_SLOT = KitType.CAPE.getIndex();
+	public static final int AMULET_SLOT = KitType.AMULET.getIndex();
+	public static final int WEAPON_SLOT = KitType.WEAPON.getIndex();
+	public static final int TORSO_SLOT = KitType.TORSO.getIndex();
+	public static final int SHIELD_SLOT = KitType.SHIELD.getIndex();
+	public static final int ARMS_SLOT = KitType.ARMS.getIndex();
+	public static final int LEGS_SLOT = KitType.LEGS.getIndex();
+	public static final int HAIR_SLOT = KitType.HAIR.getIndex();
+	public static final int HANDS_SLOT = KitType.HANDS.getIndex();
+	public static final int BOOTS_SLOT = KitType.BOOTS.getIndex();
+	public static final int JAW_SLOT = KitType.JAW.getIndex();
 
-	// key is item id, value is the slot id it should go in.
-	public static final Map<Integer, Integer> SLOT_OVERRIDES = new HashMap<>();
-	public static final Map<Integer, NameAndIconId> NAME_ICON_OVERRIDES = new HashMap<>();
+	public static Set<Integer> SHOWS_ARMS;
+	public static Set<Integer> HIDES_HAIR;
+	public static Set<Integer> HIDES_JAW;
 
-	public static void loadEquippableItemsNotMarkedAsEquippable(Gson gson)
+	// key is item id, value is the slot id it should go in. A slot id of -1 means the item should be considered unequippable.
+	public static Map<Integer, Integer> SLOT_OVERRIDES = new HashMap<>();
+	public static Map<Integer, NameAndIconId> NAME_ICON_OVERRIDES = new HashMap<>();
+
+	static final class Data
+	{
+		Set<Integer> showArms;
+		Set<Integer> hideHair;
+		Set<Integer> hideJaw;
+		Map<Integer, List<Integer>> slotOverrides;
+		Map<Integer, NameAndIconId> nameIconOverrides;
+	}
+
+	public static void loadData(Gson gson)
 	{
 		if (SLOT_OVERRIDES.size() > 0) return; // Already loaded.
 
-		// skis (I want them in the shield slot not the weapon slot. They are marked as equippable though). This is in
-		// here as a grandfathered in thing from before you could choose custom slots for items, and it remains here to
-		// avoid messing up existing transmog sets.
-		addUnequippable(ItemID.SKIS, SHIELD);
+		InputStream resourceAsStream = Constants.class.getResourceAsStream("data.json");
+		Data data = gson.fromJson(new InputStreamReader(resourceAsStream), Data.class);
 
 		// Load slot overrides.
-		InputStream resourceAsStream = Constants.class.getResourceAsStream("slotOverrides.json");
-		Map<Integer, ArrayList<Integer>> slotOverrides = gson.fromJson(new InputStreamReader(resourceAsStream), new TypeToken<Map<Integer, ArrayList<Integer>>>(){}.getType());
-		for (Map.Entry<Integer, ArrayList<Integer>> entry : slotOverrides.entrySet())
+		for (Map.Entry<Integer, List<Integer>> entry : data.slotOverrides.entrySet())
 		{
 			int kitIndex = entry.getKey();
 			for (Integer itemId : entry.getValue())
@@ -52,9 +69,15 @@ public class Constants
 			}
 		}
 
-		InputStream resourceAsStream2 = Constants.class.getResourceAsStream("nameAndIconOverrides.json");
-		Map<Integer, NameAndIconId> names = gson.fromJson(new InputStreamReader(resourceAsStream2), new TypeToken<Map<Integer, NameAndIconId>>(){}.getType());
-		NAME_ICON_OVERRIDES.putAll(names);
+		// skis (I want them in the shield slot not the weapon slot. They are marked as equippable though). This is in
+		// here as a grandfathered in thing from before you could choose custom slots for items, and it remains here to
+		// avoid messing up existing transmog sets.
+		addUnequippable(ItemID.SKIS, SHIELD);
+
+		SHOWS_ARMS = data.showArms;
+		HIDES_HAIR = data.hideHair;
+		HIDES_JAW = data.hideJaw;
+		NAME_ICON_OVERRIDES = data.nameIconOverrides;
 	}
 
 	private static void addUnequippable(int itemId, KitType kitType) {
@@ -98,38 +121,40 @@ public class Constants
 		}
 	}
 
-	public static final Set<Integer> showSleeves = new HashSet<>();
-
 	public static Constants.NegativeId mapNegativeId(int id) {
 		if (id == -1) return new Constants.NegativeId(Constants.NegativeIdsMap.NULL, -1);
 		else if (id <= -2 && id > -2 - KitType.values().length) {
 			return new Constants.NegativeId(Constants.NegativeIdsMap.HIDE_SLOT, id * -1 - 2);
 		}
 		else if (id == -14) {
-			return new Constants.NegativeId(Constants.NegativeIdsMap.SHOW_SLOT, KitType.ARMS.getIndex());
+			return new Constants.NegativeId(Constants.NegativeIdsMap.SHOW_SLOT, ARMS_SLOT);
 		}
 		else if (id == -15) {
-			return new Constants.NegativeId(Constants.NegativeIdsMap.SHOW_SLOT, KitType.HAIR.getIndex());
+			return new Constants.NegativeId(Constants.NegativeIdsMap.SHOW_SLOT, HAIR_SLOT);
 		}
 		else if (id == -16) {
-			return new Constants.NegativeId(Constants.NegativeIdsMap.SHOW_SLOT, KitType.JAW.getIndex());
+			return new Constants.NegativeId(Constants.NegativeIdsMap.SHOW_SLOT, JAW_SLOT);
 		}
 		throw new IllegalArgumentException();
 	}
 
 	public static int mapNegativeId(Constants.NegativeId id) {
-		if (id.type == Constants.NegativeIdsMap.NULL) return -1;
-		else if (id.type == Constants.NegativeIdsMap.HIDE_SLOT) {
-			return -2 - id.id;
+		return mapNegativeId(id.type, id.id);
+	}
+
+	public static int mapNegativeId(Constants.NegativeIdsMap type, int id) {
+		if (type == Constants.NegativeIdsMap.NULL) return -1;
+		else if (type == Constants.NegativeIdsMap.HIDE_SLOT) {
+			return -2 - id;
 		}
-		else if (id.type == Constants.NegativeIdsMap.SHOW_SLOT) {
-			if (id.id == KitType.ARMS.getIndex()) {
+		else if (type == Constants.NegativeIdsMap.SHOW_SLOT) {
+			if (id == ARMS_SLOT) {
 				return -14;
 			}
-			else if (id.id == KitType.HAIR.getIndex()) {
+			else if (id == HAIR_SLOT) {
 				return -15;
 			}
-			else if (id.id == KitType.JAW.getIndex()) {
+			else if (id == JAW_SLOT) {
 				return -16;
 			}
 		}

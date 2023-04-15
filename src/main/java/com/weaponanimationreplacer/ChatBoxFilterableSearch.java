@@ -28,7 +28,10 @@ package com.weaponanimationreplacer;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.primitives.Ints;
 import com.google.inject.Inject;
+import static com.weaponanimationreplacer.Constants.ARMS_SLOT;
+import static com.weaponanimationreplacer.Constants.HAIR_SLOT;
 import static com.weaponanimationreplacer.Constants.HiddenSlot;
+import static com.weaponanimationreplacer.Constants.JAW_SLOT;
 import static com.weaponanimationreplacer.Constants.NegativeId;
 import static com.weaponanimationreplacer.Constants.NegativeIdsMap;
 import static com.weaponanimationreplacer.Constants.ShownSlot;
@@ -233,13 +236,13 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 
 				iconIds.add(ShownSlot.ARMS.iconIdToShow);
 				names.add("Show arms");
-				hideSlotIds.add(mapNegativeId(new NegativeId(NegativeIdsMap.SHOW_SLOT, KitType.ARMS.getIndex())));
+				hideSlotIds.add(mapNegativeId(new NegativeId(NegativeIdsMap.SHOW_SLOT, ARMS_SLOT)));
 				iconIds.add(ShownSlot.HAIR.iconIdToShow);
 				names.add("Show hair");
-				hideSlotIds.add(mapNegativeId(new NegativeId(NegativeIdsMap.SHOW_SLOT, KitType.HAIR.getIndex())));
+				hideSlotIds.add(mapNegativeId(new NegativeId(NegativeIdsMap.SHOW_SLOT, HAIR_SLOT)));
 				iconIds.add(ShownSlot.JAW.iconIdToShow);
 				names.add("Show jaw");
-				hideSlotIds.add(mapNegativeId(new NegativeId(NegativeIdsMap.SHOW_SLOT, KitType.JAW.getIndex())));
+				hideSlotIds.add(mapNegativeId(new NegativeId(NegativeIdsMap.SHOW_SLOT, JAW_SLOT)));
 				for (int i = 0; i < iconIds.size(); i++)
 				{
 					final int finalI = i;
@@ -787,9 +790,10 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 			return null;
 		}
 
-		if (Constants.SLOT_OVERRIDES.containsKey(i))
+		Integer slotOverride = Constants.SLOT_OVERRIDES.get(i);
+		if (slotOverride != null)
 		{
-			return itemComposition;
+			return slotOverride == -1 ? null : itemComposition;
 		}
 
 		ItemStats itemStats = itemManager.getItemStats(itemComposition.getId(), false);
