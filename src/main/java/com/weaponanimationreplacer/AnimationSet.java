@@ -633,29 +633,29 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			.put(DEFEND, 9348)
 			.build();
 		new AnimationSetBuilder("Colossal Blade")
-			.poseAnims(9460, 823, 9461, 9461, 9461, 9461, 9459)
+			.poseAnims(9460, 10055, 9461, 9461, 10055, 10054, 9459)
 			.put(ATTACK_CRUSH, 7516)
 			.put(ATTACK_SLASH, 7516)
 			.put(DEFEND, 7517)
 			.build();
 		new AnimationSetBuilder("Tumeken's Shadow")
-			.poseAnims(1713, 1702, 1703, 1704, 1706, 1705, 1707)
+			.poseAnims(9494, 1702, 1703, 1704, 1706, 1705, 1707)
 			.put(ATTACK, 9493)
 			.put(DEFEND, 1709) // Not sure, haven't seen this one in-game.
 			.build();
 		new AnimationSetBuilder("Osmumten's Fang")
 			.poseAnims(809, 823, 819, 820, 821, 822, 824) // not sure
-			.put(ATTACK, 9471) // correct
-			.put(ATTACK_SPEC, 9544) // correct
-			.put(DEFEND, 388) // Not sure, haven't seen this one in-game.
+			.put(ATTACK, 9471) // Seen in-game.
+			.put(ATTACK_SPEC, 6118) // Seen in-game. Used to be 9544 but for some reason jagex changed it. gfx 2124
+			.put(DEFEND, 4177) // Seen in-game.
 			.build();
 		new AnimationSetBuilder("Venator Bow")
-			.poseAnims(9857, 823, 9859, 9863, 9861, 9862, 9860) // unconfirmed
+			.poseAnims(9857, 9863, 9859, 9859, 9861, 9862, 9860) // unconfirmed
 			.put(ATTACK, 9858) // unconfirmed
 			.put(DEFEND, 424) // unconfirmed
 			.build();
 		new AnimationSetBuilder("Mystic cards")
-			.poseAnims(9847, 9847, 9849, 9849, 9851, 9852, 9850)
+			.poseAnims(9847, 823, 9849, 820, 9851, 9852, 9850)
 			.put(ATTACK, 9848)
 			.put(DEFEND, 9853)
 			.build();

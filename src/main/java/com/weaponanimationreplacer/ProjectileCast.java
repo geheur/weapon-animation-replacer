@@ -158,7 +158,7 @@ public final class ProjectileCast
 		projectiles.add(p().name("Dragon knife (p++) (spec)").itemId(ItemID.DRAGON_KNIFEP_22808).ids(8292, -1, 1629, -1, 25, 11, 144, 15, -1).build());
 
 		// Darts.
-		projectiles.add(p().itemId(ItemID.BRONZE_DART).ids(7553, -1, 226, -1, 32, 11, 144, 15, 0).build());
+		projectiles.add(p().itemId(ItemID.BRONZE_DART).ids(7554, -1, 226, -1, 32, 11, 144, 15, 0).build());
 		projectiles.add(p().itemId(ItemID.IRON_DART).ids(7554, -1, 227, -1, 32, 11, 144, 15, 0).build());
 		projectiles.add(p().itemId(ItemID.STEEL_DART).ids(7554, -1, 228, -1, 32, 11, 144, 15, 0).build());
 		projectiles.add(p().itemId(ItemID.BLACK_DART).ids(7554, -1, 32, -1, 32, 11, 144, 15, 0).build());
@@ -228,6 +228,8 @@ public final class ProjectileCast
 		projectiles.add(p().name("Dragon breath (large)").sprite(SpriteID.SPELL_FIRE_SURGE).ids(7855, 1464, 54, 1466, 51, 64, 124, 16).build());
 		projectiles.add(p().name("Dark Strike").sprite(SpriteID.SPELL_WIND_STRIKE).ids(1162, 194, 195, 196, 51, 64, 124, 16).build());
 		projectiles.add(p().name("Tempoross harpoonfish").itemId(ItemID.HARPOONFISH).ids(426, 18, 1837, 3, 41, 11, 144, 15).build());
+
+		projectiles.add(p().itemId(ItemID.TUMEKENS_SHADOW).ids(9493, 2125, 2126, 2127, 56, 40, 124, 32).build());
 	}
 
 	@Getter(AccessLevel.NONE)
