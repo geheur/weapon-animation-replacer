@@ -186,21 +186,31 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			previewItem = -1;
 			norecurse = false;
 
-			SwingUtilities.invokeLater(() -> {
-				pluginPanel = new WeaponAnimationReplacerPluginPanel(this);
-				pluginPanel.rebuild();
+			if (client.getGameState().getState() >= GameState.LOGIN_SCREEN.getState())
+			{
+				addSidePanel();
+			}
+		});
+	}
 
-				final BufferedImage icon = ImageUtil.loadImageResource(WeaponAnimationReplacerPlugin.class, "panel_icon.png");
+	private void addSidePanel()
+	{
+		SwingUtilities.invokeLater(() -> {
+			if (pluginPanel != null) return;
 
-				navigationButton = NavigationButton.builder()
-					.tooltip("Weapon Animation Replacer")
-					.icon(icon)
-					.priority(5)
-					.panel(pluginPanel)
-					.build();
+			pluginPanel = new WeaponAnimationReplacerPluginPanel(this);
+			pluginPanel.rebuild();
 
-				clientToolbar.addNavigation(navigationButton);
-			});
+			final BufferedImage icon = ImageUtil.loadImageResource(WeaponAnimationReplacerPlugin.class, "panel_icon.png");
+
+			navigationButton = NavigationButton.builder()
+				.tooltip("Weapon Animation Replacer")
+				.icon(icon)
+				.priority(5)
+				.panel(pluginPanel)
+				.build();
+
+			clientToolbar.addNavigation(navigationButton);
 		});
 	}
 
@@ -271,18 +281,20 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	@Override
 	protected void shutDown() {
 		pluginPanel = null;
+		clientToolbar.removeNavigation(navigationButton);
+		navigationButton = null;
 
-        transmogManager.shutDown();
+		clientThread.invokeLater(() -> {
+			transmogManager.shutDown();
 
-        if (!naturalPlayerPoseAnimations.isEmpty())
-		{
-			for (Constants.ActorAnimation animation : Constants.ActorAnimation.values())
+			if (!naturalPlayerPoseAnimations.isEmpty())
 			{
-				animation.setAnimation(client.getLocalPlayer(), naturalPlayerPoseAnimations.get(animation.ordinal()));
+				for (Constants.ActorAnimation animation : Constants.ActorAnimation.values())
+				{
+					animation.setAnimation(client.getLocalPlayer(), naturalPlayerPoseAnimations.get(animation.ordinal()));
+				}
 			}
-		}
-
-        clientToolbar.removeNavigation(navigationButton);
+		});
     }
 
     @Subscribe
@@ -944,14 +956,13 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			;
 	}
 
-	public boolean clientLoaded = false;
-
     @Subscribe
     public void onGameStateChanged(GameStateChanged event)
     {
         if (event.getGameState() == GameState.LOGIN_SCREEN) {
-            if (!clientLoaded && pluginPanel != null) SwingUtilities.invokeLater(pluginPanel::rebuild);
-            clientLoaded = true;
+			if (transmogSets != null) { // Can be null during plugin startup.
+				addSidePanel();
+			}
         } else if (event.getGameState() == GameState.LOGGED_IN) {
         	// This is necessary for transmog to show up on teleports.
 			if (client.getLocalPlayer() == null) return; // happens during dcs?

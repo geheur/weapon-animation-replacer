@@ -963,11 +963,6 @@ class TransmogSetPanel extends JPanel
 		}
 	}
 
-	private String itemName(int itemId) {
-	    if (!plugin.clientLoaded) return null;
-		return plugin.itemManager.getItemComposition(itemId).getName();
-	}
-
 	private JPanel createNamePanel() {
 		JPanel nameWrapper = new JPanel(new BorderLayout());
 		nameWrapper.setBackground(ColorScheme.DARKER_GRAY_COLOR);
