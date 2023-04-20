@@ -411,11 +411,15 @@ public class Swap
         }
 
         public boolean appliesTo(AnimationType type) {
-            return this == type || (children != null && children.stream().anyMatch(child -> child.appliesTo(type)));
+            return this == type || children.stream().anyMatch(child -> child.appliesTo(type));
         }
 
-        public boolean hasChild(AnimationType type) {
-            return (children != null && children.stream().anyMatch(child -> child.appliesTo(type)));
+		public boolean hasChildren() {
+			return !children.isEmpty();
+		}
+
+		public boolean hasChild(AnimationType type) {
+            return children.stream().anyMatch(child -> child.appliesTo(type));
         }
 
         public String getComboBoxName() {

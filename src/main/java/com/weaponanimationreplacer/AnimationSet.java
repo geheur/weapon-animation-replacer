@@ -757,42 +757,10 @@ public class AnimationSet implements Comparable<AnimationSet> {
 		return animation == null ? null : animation.id;
 	}
 
-	public void applyReplacement(Swap.AnimationReplacement replacement) {
-		replaceAnimations(
-			replacement.getAnimationSet(),
-			replacement.getAnimationtypeToReplace(),
-			replacement.animationtypeReplacement
-		);
-	}
-
-	private void replaceAnimations(AnimationSet animationSet, AnimationType toReplace, Animation replacement) {
-		AnimationType type = replacement == null ? toReplace : replacement.type;
-		if (toReplace.children == null || toReplace.children.isEmpty()) {
-			if (replacement != null) {
-				animations.put(toReplace, replacement);
-			} else {
-				Integer id = animationSet.getAnimation(type);
-				if (id != null) {
-					animations.put(toReplace, new Animation(type, id, null));
-				}
-			}
-		} else {
-			for (AnimationType child : toReplace.children) {
-				replaceAnimations(animationSet, child, replacement);
-			}
-		}
-	}
-
 	public Integer getAnimation(AnimationType type) {
 		if (ATTACK.appliesTo(type)) {
 			Integer attack = getInt(type);
-			if (attack != null) return attack;
-			attack = getInt(ATTACK);
-			if (attack != null) return attack;
-
-			return animations.entrySet().stream()
-				.filter(entry -> ATTACK.appliesTo(entry.getKey()) && entry.getValue() != null) // TODO why is the value sometimes null?
-				.map(entry -> entry.getValue().id).findFirst().orElse(null);
+			return attack != null ? attack : getInt(ATTACK);
 		} else {
 			return getInt(type);
 		}

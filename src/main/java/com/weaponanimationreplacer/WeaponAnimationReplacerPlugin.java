@@ -15,6 +15,7 @@ import com.weaponanimationreplacer.ChatBoxFilterableSearch.SelectionResult;
 import static com.weaponanimationreplacer.Constants.mapNegativeId;
 import com.weaponanimationreplacer.Swap.AnimationReplacement;
 import com.weaponanimationreplacer.Swap.AnimationType;
+import static com.weaponanimationreplacer.Swap.AnimationType.ATTACK;
 import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.MODEL_SWAP;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
@@ -109,7 +110,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	 */
 	private List<Integer> equippedItemsFromKit = new ArrayList<>();
 	private final List<Integer> naturalPlayerPoseAnimations = new ArrayList<>();
-	private AnimationSet currentAnimationSet = new AnimationSet();
+	private AnimationReplacements currentAnimations = new AnimationReplacements();
 	private GraphicEffect currentScytheGraphicEffect = null;
 	int scytheSwingCountdown = -1;
 	int delayedGfxToApply = -1;
@@ -178,7 +179,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			{
 				equippedItemsFromKit.clear();
 				naturalPlayerPoseAnimations.clear();
-				currentAnimationSet = new AnimationSet();
+				currentAnimations = new AnimationReplacements();
 			}
 
 			currentScytheGraphicEffect = null;
@@ -408,7 +409,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			.findFirst();
 		if (!type.isPresent()) return;
 
-		Integer replacementAnim = currentAnimationSet.getAnimation(type.get());
+		Integer replacementAnim = currentAnimations.getAnimation(type.get());
 		if (replacementAnim != null)
 		{
 			log.debug("replacing animation {} with {}", playerAnimation, replacementAnim);
@@ -753,9 +754,52 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		runeLiteObject.setActive(true);
 	}
 
-    private void updateAnimations() { // TODO cache maybe based on the current gear.
-        AnimationSet currentSet = new AnimationSet();
+	private static final class AnimationReplacements {
+		private final Map<AnimationType, Integer> replacements = new HashMap<>();
 
+		public AnimationReplacements() {
+			this(Collections.emptyList());
+		}
+
+		public AnimationReplacements(List<AnimationReplacement> replacements) {
+			for (int i = replacements.size() - 1; i >= 0; i--)
+			{
+				applyReplacement(replacements.get(i));
+			}
+		}
+
+		public void applyReplacement(Swap.AnimationReplacement replacement) {
+			replaceAnimations(
+				replacement.getAnimationSet(),
+				replacement.getAnimationtypeToReplace(),
+				replacement.animationtypeReplacement
+			);
+		}
+
+		private void replaceAnimations(AnimationSet animationSet, AnimationType toReplace, AnimationSet.Animation replacement) {
+			if (!toReplace.hasChildren() || toReplace == ATTACK) {
+				if (replacement == null) {
+					Integer id = animationSet.getAnimation(toReplace);
+					if (id != null) {
+						replacements.put(toReplace, id);
+					}
+				} else {
+					replacements.put(toReplace, replacement.id);
+				}
+			}
+			if (toReplace.hasChildren()) {
+				for (AnimationType child : toReplace.children) {
+					replaceAnimations(animationSet, child, replacement);
+				}
+			}
+		}
+
+		public Integer getAnimation(AnimationType type) {
+			return replacements.get(type);
+		}
+	}
+
+    private void updateAnimations() { // TODO cache maybe based on the current gear.
 		List<Swap> matchingSwaps = getApplicableSwaps();
 
 		List<AnimationReplacement> replacements = matchingSwaps.stream()
@@ -764,18 +808,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 				.sorted()
 			)
 			.collect(Collectors.toList());
-
-		for (int i = replacements.size() - 1; i >= 0; i--)
-		{
-			currentSet.applyReplacement(replacements.get(i));
-		}
-
-//		if (!currentSet.equals(currentAnimationSet))
-//		{
-//			log.debug("animation set change: {} {} {}", currentSet, currentAnimationSet, replacements);
-//		}
-
-		currentAnimationSet = currentSet;
+		currentAnimations = new AnimationReplacements(replacements);
 		setPlayerPoseAnimations();
 
 		projectileSwaps = matchingSwaps.stream().flatMap(swap -> swap.getProjectileSwaps().stream()).filter(swap -> swap.getToReplace() != null && swap.getToReplaceWith() != null).collect(Collectors.toList());
@@ -812,7 +845,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
 		for (Constants.ActorAnimation animation : Constants.ActorAnimation.values())
 		{
-			Integer animationId = currentAnimationSet.getAnimation(animation.getType());
+			Integer animationId = currentAnimations.getAnimation(animation.getType());
 			if (animationId == null) animationId = naturalPlayerPoseAnimations.get(animation.ordinal());
 			animation.setAnimation(player, animationId);
 		}
