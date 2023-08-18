@@ -18,6 +18,7 @@ import static com.weaponanimationreplacer.Constants.WEAPON_SLOT;
 import static com.weaponanimationreplacer.Constants.mapNegativeId;
 import com.weaponanimationreplacer.Swap.AnimationReplacement;
 import com.weaponanimationreplacer.Swap.AnimationType;
+import static com.weaponanimationreplacer.Swap.AnimationType.ALL;
 import static com.weaponanimationreplacer.Swap.AnimationType.ATTACK;
 import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.MODEL_SWAP;
 import java.awt.Color;
@@ -127,6 +128,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	private List<ProjectileSwap> projectileSwaps = Collections.emptyList();
 
 	int previewItem = -1;
+	AnimationReplacements previewAnimationReplacements = null;
 
 	private Gson customGson = null; // Lazy initialized due to timing of @Injected runeliteGson and not being able to use constructor injection.
 	Gson getGson()
@@ -819,7 +821,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 				.sorted()
 			)
 			.collect(Collectors.toList());
-		currentAnimations = new AnimationReplacements(replacements);
+		currentAnimations = previewAnimationReplacements != null ? previewAnimationReplacements : new AnimationReplacements(replacements);
 		setPlayerPoseAnimations();
 
 		projectileSwaps = matchingSwaps.stream().flatMap(swap -> swap.getProjectileSwaps().stream()).filter(swap -> swap.getToReplace() != null && swap.getToReplaceWith() != null).collect(Collectors.toList());
@@ -961,6 +963,10 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	 * @param onItemDeleted
 	 */
 	public void doItemSearch(Consumer<SelectionResult> onItemChosen, Runnable onItemDeleted, SearchType searchType) {
+		doItemSearch(onItemChosen, onItemDeleted, searchType, null);
+	}
+
+	public void doItemSearch(Consumer<SelectionResult> onItemChosen, Runnable onItemDeleted, SearchType searchType, Swap swap) {
         if (client.getGameState() != GameState.LOGGED_IN)
         {
             JOptionPane.showMessageDialog(pluginPanel,
@@ -977,17 +983,22 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			itemSearch.onItemSelected(onItemChosen);
 			itemSearch.onItemDeleted(onItemDeleted);
 			itemSearch.setType(searchType);
-			itemSearch.onItemMouseOvered(searchType == MODEL_SWAP ? this::setPreviewItem : null);
+			itemSearch.onItemMouseOvered(searchType == MODEL_SWAP ? itemId -> setPreviewItem(itemId, swap != null && (swap.animationReplacements.isEmpty() || swap.animationReplacements.size() == 1 && swap.animationReplacements.get(0).auto != -1)) : null);
 			itemSearch.build();
 			clientUI.requestFocus();
 		});
 	}
 
-	private void setPreviewItem(Integer itemId)
+	private void setPreviewItem(Integer itemId, boolean previewAnimations)
 	{
 		previewItem = itemId;
 		transmogManager.changeTransmog();
+
+		AnimationSet animationSet = Constants.getAnimationSet(itemId);
+		previewAnimationReplacements = animationSet == null || !previewAnimations ? null : new AnimationReplacements(Collections.singletonList(new AnimationReplacement(animationSet, ALL)));
+		updateAnimations();
 	}
+
 	public AsyncBufferedImage getItemImage(int itemId) {
         return itemManager.getImage(itemId);
     }

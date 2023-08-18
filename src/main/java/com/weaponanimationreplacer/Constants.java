@@ -8,6 +8,7 @@ import static com.weaponanimationreplacer.Swap.AnimationType.STAND;
 import static com.weaponanimationreplacer.Swap.AnimationType.WALK_BACKWARD;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +20,7 @@ import net.runelite.api.Actor;
 import net.runelite.api.ItemID;
 import net.runelite.api.kit.KitType;
 import static net.runelite.api.kit.KitType.SHIELD;
+import net.runelite.client.game.ItemVariationMapping;
 
 public class Constants
 {
@@ -38,10 +40,26 @@ public class Constants
 	public static Set<Integer> SHOWS_ARMS;
 	public static Set<Integer> HIDES_HAIR;
 	public static Set<Integer> HIDES_JAW;
+	public static Map<String, int[]> poseanims;
 
 	// key is item id, value is the slot id it should go in. A slot id of -1 means the item should be considered unequippable.
 	public static Map<Integer, Integer> SLOT_OVERRIDES = new HashMap<>();
 	public static Map<Integer, NameAndIconId> NAME_ICON_OVERRIDES = new HashMap<>();
+
+	public static AnimationSet getAnimationSet(int itemId)
+	{
+		Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(itemId));
+		for (Map.Entry<String, int[]> entry : poseanims.entrySet())
+		{
+			for (int itemId2 : entry.getValue())
+			{
+				if (variations.contains(itemId2)) {
+					return AnimationSet.getAnimationSet(entry.getKey());
+				}
+			}
+		}
+		return null;
+	}
 
 	static final class Data
 	{
@@ -50,6 +68,7 @@ public class Constants
 		Set<Integer> hideJaw;
 		Map<Integer, List<Integer>> slotOverrides;
 		Map<Integer, NameAndIconId> nameIconOverrides;
+		Map<String, int[]> poseanims;
 	}
 
 	public static void loadData(Gson gson)
@@ -77,6 +96,7 @@ public class Constants
 		SHOWS_ARMS = data.showArms;
 		HIDES_HAIR = data.hideHair;
 		HIDES_JAW = data.hideJaw;
+		poseanims = data.poseanims;
 		NAME_ICON_OVERRIDES = data.nameIconOverrides;
 	}
 

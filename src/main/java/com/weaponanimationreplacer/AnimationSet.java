@@ -418,6 +418,12 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			.put(ATTACK_SLASH, 1658)
 			.put(DEFEND, 1659)
 			.build();
+		new AnimationSetBuilder("Sarachnis cudgel")
+			.poseAnims(809, 823, 819, 820, 821, 822, 824)
+			.put(ATTACK_CRUSH, 401)
+			.put(ATTACK_STAB, 400)
+			.put(DEFEND, 403)
+			.build();
 		new AnimationSetBuilder("Dragon mace")
 			.poseAnims(808, 823, 819, 820, 821, 822, 824)
 			.put(ATTACK_CRUSH, 401)
@@ -426,17 +432,11 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			.put(ATTACK_SPEC, 1060)
 			.build();
 		new AnimationSetBuilder("Ancient mace")
-			.poseAnims(808, 823, 819, 820, 821, 822, 824)
-			.put(ATTACK_CRUSH, 401)
-			.put(ATTACK_STAB, 400)
-			.put(DEFEND, 403)
+			.copy("Dragon mace")
 			.put(ATTACK_SPEC, 6147)
 			.build();
 		new AnimationSetBuilder("Dragon warhammer")
-			.poseAnims(808, 823, 819, 820, 821, 822, 824)
-			.put(ATTACK_CRUSH, 401)
-			.put(ATTACK_STAB, 400)
-			.put(DEFEND, 403)
+			.copy("Dragon mace")
 			.put(ATTACK_SPEC, 1378)
 			.build();
 		new AnimationSetBuilder("Dragon axe")
@@ -448,11 +448,7 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			.put(ATTACK_SPEC, 2876)
 			.build();
 		new AnimationSetBuilder("Dragon battleaxe")
-			.poseAnims(808, 823, 819, 820, 821, 822, 824)
-			.put(ATTACK_SLASH, 395)
-			.put(ATTACK_CRUSH, 401)
-			.put(ATTACK_STAB, 400)
-			.put(DEFEND, 397)
+			.copy("Dragon axe")
 			.put(ATTACK_SPEC, 1056)
 			.build();
 		new AnimationSetBuilder("Spear")
@@ -659,6 +655,26 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			.put(ATTACK, 9848)
 			.put(DEFEND, 9853)
 			.build();
+		new AnimationSetBuilder("Tzhaar-ket-om")
+			.poseAnims(2065, 823, 2064, 2064, 2064, 2064, 824)
+			.put(ATTACK, 2661)
+			.put(DEFEND, 1661)
+			.build();
+		new AnimationSetBuilder("Toktz-xil-ul (obsidian ring)")
+			.poseAnims(808, 823, 819, 820, 821, 822, 824)
+			.put(ATTACK, 7558)
+			.put(DEFEND, 424)
+			.build();
+		new AnimationSetBuilder("Thammaron's sceptre")
+			.poseAnims(813, 1205, 1205, 1206, 1207, 1208, 1210)
+			.put(ATTACK, 419) // not sure
+			.put(DEFEND, 420) // not sure
+			.build();
+		new AnimationSetBuilder("2h axe")
+			.poseAnims(10075, 1205, 10076, 10076, 10076, 10076, 10077)
+			.put(ATTACK, 419) // not sure
+			.put(DEFEND, 420) // not sure
+			.build();
 
 		Collections.sort(animationSets);
 	}
@@ -726,6 +742,13 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			put(STAND, stand);
 			put(ROTATE, stand);
 			movement(movement);
+			return this;
+		}
+
+		public AnimationSetBuilder copy(String setToCopy)
+		{
+			AnimationSet animationSet = getAnimationSet(setToCopy);
+			this.animations.putAll(animationSet.animations);
 			return this;
 		}
 	}
