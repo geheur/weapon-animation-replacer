@@ -204,7 +204,10 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	private void addSidePanel()
 	{
 		SwingUtilities.invokeLater(() -> {
-			if (pluginPanel != null) return;
+			if (pluginPanel != null) {
+				pluginPanel.rebuild(); // Update the panel regardless of whether we're creating it or not.
+				return;
+			}
 
 			pluginPanel = new WeaponAnimationReplacerPluginPanel(this);
 			pluginPanel.rebuild();
