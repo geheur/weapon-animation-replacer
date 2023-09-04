@@ -173,7 +173,7 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			.build();
 		new AnimationSetBuilder("Cursed banana")
 			.poseAnims(4646, 823, 4682, 6276, 6268, 6275, 6277)
-			.put(ATTACK_SLASH, 6278)
+			.put(ATTACK_CRUSH, 6278)
 			.put(DEFEND, 6279)
 			.build();
 		new AnimationSetBuilder("Elder maul")
@@ -672,8 +672,16 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			.build();
 		new AnimationSetBuilder("2h axe")
 			.poseAnims(10075, 1205, 10076, 10076, 10076, 10076, 10077)
-			.put(ATTACK, 419) // not sure
-			.put(DEFEND, 420) // not sure
+			.put(ATTACK, 10079)
+			.put(ATTACK_SPEC, 10078)
+			.put(DEFEND, 10080)
+			.build();
+		new AnimationSetBuilder("Soulreaper axe")
+			.poseAnims(10169, 823, 10170, 10170, 10170, 10170, 824)
+			.put(ATTACK_SLASH, 10172)
+			.put(ATTACK_CRUSH, 10171)
+			.put(ATTACK_SPEC, 10173)
+			.put(DEFEND, 424)
 			.build();
 
 		Collections.sort(animationSets);

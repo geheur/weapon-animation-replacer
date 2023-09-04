@@ -248,7 +248,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			updateForSortOrder();
 		}
 
-		configManager.setConfiguration(GROUP_NAME, "serialVersion", 1);
+		configManager.setConfiguration(GROUP_NAME, "serialVersion", 2);
 	}
 
 	private void updateForSortOrder()
