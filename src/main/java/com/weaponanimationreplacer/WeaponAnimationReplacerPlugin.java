@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSerializationContext;
@@ -164,6 +165,13 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			}
 		};
 		gsonBuilder.registerTypeAdapter(animationSetTypeToken, deserializer);
+		gsonBuilder.registerTypeAdapter(new TypeToken<AnimationType>(){}.getType(), (JsonDeserializer<AnimationType>) (jsonElement, type, jsonDeserializationContext) -> {
+			// there used to be an object here instead of just the enum.
+			if (jsonElement instanceof JsonObject) {
+				jsonElement = ((JsonObject) jsonElement).get("type");
+			}
+			return AnimationType.valueOf(jsonElement.getAsString());
+		});
 
 		customGson = gsonBuilder.create();
 		return customGson;
@@ -229,26 +237,56 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
 	private void migrate()
 	{
-		// I did a big format change at some point, this handles that.
-		if (configManager.getConfiguration("WeaponAnimationReplacer", TRANSMOG_SET_KEY) == null)
-		{
-			String configuration = configManager.getConfiguration("WeaponAnimationReplacer", "rules");
-			if (configuration == null) return; // do nothing. No existing rules, nothing to convert to new format.
+		String serialVersionString = configManager.getConfiguration(GROUP_NAME, "serialVersion");
+		int serialVersion = serialVersionString != null ? Integer.parseInt(serialVersionString) : -1;
 
-			List<TransmogSet> transmogSets = migrate(configuration);
+		if (serialVersion == -1) {
+			// I did a big format change at some point, this handles that.
+			if (configManager.getConfiguration("WeaponAnimationReplacer", TRANSMOG_SET_KEY) == null)
+			{
+				String configuration = configManager.getConfiguration("WeaponAnimationReplacer", "rules");
+				if (configuration == null) return; // do nothing. No existing rules, nothing to convert to new format.
 
-			this.transmogSets = transmogSets;
-			saveTransmogSets();
-			configManager.setConfiguration(GROUP_NAME, "rulesbackup", configuration); // just in case!
-			configManager.unsetConfiguration(GROUP_NAME, "rules");
-		}
+				List<TransmogSet> transmogSets = migrate(configuration);
 
-		// update old stuff for the new sort order and model swap one item per slot.
-		if (configManager.getConfiguration(GROUP_NAME, "serialVersion") == null) {
+				this.transmogSets = transmogSets;
+				saveTransmogSets();
+				configManager.setConfiguration(GROUP_NAME, "rulesbackup", configuration); // just in case!
+				configManager.unsetConfiguration(GROUP_NAME, "rules");
+			}
+
+			// update old stuff for the new sort order and model swap one item per slot.
 			updateForSortOrder();
 		}
 
+		if (serialVersion <= 1) {
+			// I accidentally put the replacement animation as ALL in the auto animation swaps, when it should be null.
+			fixBadAutoAnimationReplacements();
+		}
+
 		configManager.setConfiguration(GROUP_NAME, "serialVersion", 2);
+	}
+
+	private void fixBadAutoAnimationReplacements()
+	{
+		List<TransmogSet> transmogSets;
+		try {
+			transmogSets = getTransmogSetsFromConfig();
+		} catch (JsonParseException | IllegalStateException e) {
+			log.error("issue parsing json: " + configManager.getConfiguration(GROUP_NAME, TRANSMOG_SET_KEY), e);
+			return;
+		}
+		for (TransmogSet transmogSet : transmogSets) {
+			for (Swap swap : transmogSet.getSwaps()) {
+				for (AnimationReplacement animationReplacement : swap.animationReplacements) {
+					if (animationReplacement.animationtypeReplacement != null && !ATTACK.appliesTo(animationReplacement.animationtypeReplacement)) {
+						animationReplacement.animationtypeReplacement = null;
+					}
+				}
+			}
+		}
+		this.transmogSets = transmogSets;
+		saveTransmogSets();
 	}
 
 	private void updateForSortOrder()
@@ -783,24 +821,36 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
 		public void applyReplacement(Swap.AnimationReplacement replacement) {
 			replaceAnimations(
-				replacement.getAnimationSet(),
-				replacement.getAnimationtypeToReplace(),
+				replacement.animationSet,
+				replacement.animationtypeToReplace,
 				replacement.animationtypeReplacement
 			);
 		}
 
-		private void replaceAnimations(AnimationSet animationSet, AnimationType toReplace, AnimationSet.Animation replacement) {
-			if (!toReplace.hasChildren() || toReplace == ATTACK) {
-				if (replacement == null) {
-					Integer id = animationSet.getAnimation(toReplace);
-					if (id != null) {
-						replacements.put(toReplace, id);
-					}
-				} else {
-					replacements.put(toReplace, replacement.id);
+		private void replaceAnimations(AnimationSet animationSet, AnimationType toReplace, AnimationType replacement) {
+			if (toReplace == ATTACK) {
+				int defaultAttack = -1;
+				for (AnimationType attackAnimation : animationSet.getAttackAnimations())
+				{
+					defaultAttack = animationSet.getAnimation(attackAnimation);
+					if (defaultAttack != -1) break;
 				}
-			}
-			if (toReplace.hasChildren()) {
+				for (AnimationType child : ATTACK.children)
+				{
+					int id = animationSet.getAnimation(replacement == null ? child : replacement);
+					if (id == -1) {
+						id = defaultAttack;
+					}
+					if (id != -1) {
+						replacements.put(child, id);
+					}
+				}
+			} else if (!toReplace.hasChildren()) {
+				int id = animationSet.getAnimation(replacement == null ? toReplace : replacement);
+				if (id != -1) {
+					replacements.put(toReplace, id);
+				}
+			} else {
 				for (AnimationType child : toReplace.children) {
 					replaceAnimations(animationSet, child, replacement);
 				}

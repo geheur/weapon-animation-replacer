@@ -63,7 +63,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultListCellRenderer;
@@ -667,12 +666,8 @@ class TransmogSetPanel extends JPanel
 				animationReplacement.auto = -1;
 				if (ATTACK.appliesTo(animationReplacement.animationtypeToReplace) && animationReplacement.animationSet != null)
 				{
-					List<AnimationSet.Animation> actions = animationReplacement.animationSet.animations.entrySet().stream()
-						.filter(t -> ATTACK.appliesTo(t.getKey()))
-						.map(entry -> entry.getValue())
-						.collect(Collectors.toList());
-					AnimationType currentAttackStyle = animationReplacement.animationtypeReplacement == null ? null : animationReplacement.animationtypeReplacement.type;
-					Optional<AnimationSet.Animation> match = actions.stream().filter(action -> action.type.equals(currentAttackStyle)).findAny();
+					List<AnimationType> actions = animationReplacement.animationSet.getAttackAnimations();
+					Optional<AnimationType> match = actions.stream().filter(action -> action == animationReplacement.animationtypeReplacement).findAny();
 					if (match.isPresent()) {
 						animationReplacement.animationtypeReplacement = match.get();
 					} else if (!actions.isEmpty()) {
@@ -691,12 +686,9 @@ class TransmogSetPanel extends JPanel
 			row3.setLayout(new BoxLayout(row3, BoxLayout.X_AXIS));
 			row3.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 			row3.add(new JLabel("attack animation:"));
-			List<AnimationSet.Animation> actions = animationReplacement.animationSet.animations.entrySet().stream()
-					.filter(t -> ATTACK.appliesTo(t.getKey()))
-					.map(e -> e.getValue())
-					.collect(Collectors.toList());
+			List<AnimationType> actions = animationReplacement.animationSet.getAttackAnimations();
 			log.debug("actions is : " + actions);
-			JComboBox<AnimationSet.Animation> attackToUse = new JComboBox<>(actions.toArray(new AnimationSet.Animation[] {})); // TODO remove indenting?
+			JComboBox<AnimationType> attackToUse = new JComboBox<>(actions.toArray(new AnimationType[] {})); // TODO remove indenting?
             // TODO add "automatic" option.
 			attackToUse.setRenderer(new DefaultListCellRenderer() {
 				@Override
@@ -705,26 +697,21 @@ class TransmogSetPanel extends JPanel
 					if (value == null || !actions.contains(value)) {
 						setText("<choose>");
 					} else {
-						AnimationSet.Animation animation = (AnimationSet.Animation) value;
-						String comboBoxName = animation.type.getComboBoxName();
-						setText(animation.description != null ? animation.description : comboBoxName);
+						setText(AnimationSet.getDescription(animationReplacement.animationSet, (AnimationType) value));
 					}
 					return rendererComponent;
 				}
 			});
 			attackToUse.setSelectedItem(animationReplacement.animationtypeReplacement);
 			// Update the rule to reflect the dropdown. This is relevant if the list of items in the dropdown does not contain the original replacement.
-			animationReplacement.animationtypeReplacement = ((AnimationSet.Animation) attackToUse.getSelectedItem());
+			animationReplacement.animationtypeReplacement = ((AnimationType) attackToUse.getSelectedItem());
 			attackToUse.addActionListener((e) -> {
 				plugin.clientThread.invokeLater(() -> {
-					animationReplacement.animationtypeReplacement = ((AnimationSet.Animation) attackToUse.getSelectedItem());
+					animationReplacement.animationtypeReplacement = ((AnimationType) attackToUse.getSelectedItem());
 					animationReplacement.auto = -1;
 					plugin.handleTransmogSetChange();
 
-					Integer animation = animationReplacement.animationtypeReplacement.id;
-					if (animation != null) {
-					    plugin.demoAnimation(animation);
-					}
+					plugin.demoAnimation(animationReplacement.animationSet.getAnimation(animationReplacement.animationtypeReplacement));
 				});
 			});
 			row3.add(attackToUse);

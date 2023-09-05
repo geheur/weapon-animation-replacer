@@ -3,17 +3,28 @@ package com.weaponanimationreplacer;
 import com.weaponanimationreplacer.Swap.AnimationType;
 import static com.weaponanimationreplacer.Swap.AnimationType.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import lombok.Data;
+import java.util.stream.Collectors;
 
 public class AnimationSet implements Comparable<AnimationSet> {
 	public static final List<AnimationSet> animationSets = new ArrayList<>();
 	public static final List<Integer> doNotReplaceIdles = new ArrayList<>();
-	private final AnimationSetType animationSetType;
+	private static final Map<Integer, String> descriptions = new HashMap<>();
+
+	public static String getDescription(AnimationSet animationSet, AnimationType animation)
+	{
+		int animationId = animationSet.getAnimation(animation);
+		if (animationId != -1) {
+			String s = descriptions.get(animationId);
+			if (s != null) return s;
+		}
+		return animation.getComboBoxName();
+	}
 
 	public static AnimationSet getAnimationSet(String name) {
 		return animationSets.stream().filter(a -> name.equals(a.name)).findAny().orElse(null);
@@ -24,6 +35,21 @@ public class AnimationSet implements Comparable<AnimationSet> {
 //        int typeComparison = animationSetType.compareTo(o.animationSetType);
 //        return typeComparison == 0 ? name.compareTo(o.name) : typeComparison;
 		return name.compareTo(o.name);
+	}
+
+	public List<AnimationType> getAttackAnimations()
+	{
+		List<AnimationType> result = new ArrayList<>();
+		if (animations[ATTACK.ordinal()] != -1) {
+			result.add(AnimationType.values()[ATTACK.ordinal()]);
+		}
+		for (AnimationType child : ATTACK.children)
+		{
+			if (animations[child.ordinal()] != -1) {
+				result.add(AnimationType.values()[child.ordinal()]);
+			}
+		}
+		return result;
 	}
 
 	// used for ordering, so declaration order matters.
@@ -38,6 +64,7 @@ public class AnimationSet implements Comparable<AnimationSet> {
 	static void loadAnimationSets() {
 		animationSets.clear();
 		doNotReplaceIdles.clear();
+		descriptions.clear();
 
 		new AnimationSetBuilder("Scythe of Vitur")
 			.poseAnims(8057, 823, 819, 820, 821, 822, 824)
@@ -688,7 +715,10 @@ public class AnimationSet implements Comparable<AnimationSet> {
 	}
 
 	private static class AnimationSetBuilder {
-		public final Map<AnimationType, Animation> animations = new HashMap<>();
+		public int[] animations = new int[AnimationType.values().length];
+		{
+			Arrays.fill(animations, -1);
+		}
 		private AnimationSetType type;
 		private String name;
 		// This flag should be true for animations that are not the result of equipped weapons, such as the animations when the player crosses a tightrope. This animation is implemented as a pose animation but it should not be replaced by the player's current animation override.
@@ -708,7 +738,10 @@ public class AnimationSet implements Comparable<AnimationSet> {
 		}
 
 		public AnimationSetBuilder put(AnimationType type, int id, String description) {
-			if (id != -1) animations.put(type, new Animation(type, id, description));
+			if (description != null) {
+				descriptions.put(id, description);
+			}
+			if (id != -1) animations[type.ordinal()] = id;
 			return this;
 		}
 
@@ -737,10 +770,10 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			return this;
 		}
 
-		public void build(Object... data) {
+		public void build() {
 			if (doNotReplace) {
-				Animation animation = animations.get(STAND);
-				if (animation != null) doNotReplaceIdles.add(animation.id);
+				int animation = animations[STAND.ordinal()];
+				if (animation > 0) doNotReplaceIdles.add(animation);
 			}
 			animationSets.add(new AnimationSet(name, type, doNotReplace, animations));
 		}
@@ -756,52 +789,38 @@ public class AnimationSet implements Comparable<AnimationSet> {
 		public AnimationSetBuilder copy(String setToCopy)
 		{
 			AnimationSet animationSet = getAnimationSet(setToCopy);
-			this.animations.putAll(animationSet.animations);
+			this.animations = Arrays.copyOf(animationSet.animations, animationSet.animations.length);
 			return this;
 		}
 	}
 
 	public String name;
-	public final Map<AnimationType, Animation> animations;
+	public final int[] animations;
 	public final boolean doNotReplace;
+	private final AnimationSetType animationSetType;
 
 	AnimationSet() {
-		this("", AnimationSetType.MELEE_GENERIC, false, new HashMap<>());
+		this("", AnimationSetType.MELEE_GENERIC, false, new int[AnimationType.values().length]);
 	}
 
-	@Data
-	public static final class Animation {
-		public final AnimationType type;
-		public final int id;
-		public final transient String description;
-	}
-
-	AnimationSet(String name, AnimationSetType animationSetType, boolean doNotReplace, Map<AnimationType, Animation> animations) {
+	AnimationSet(String name, AnimationSetType animationSetType, boolean doNotReplace, int[] animations) {
 		this.name = name;
 		this.animationSetType = animationSetType;
 		this.doNotReplace = doNotReplace;
+		assert animations.length == AnimationType.values().length;
 		this.animations = animations;
 	}
 
-	private Integer getInt(AnimationType type) {
-		Animation animation = animations.get(type);
-		return animation == null ? null : animation.id;
-	}
-
-	public Integer getAnimation(AnimationType type) {
-		if (ATTACK.appliesTo(type)) {
-			Integer attack = getInt(type);
-			return attack != null ? attack : getInt(ATTACK);
-		} else {
-			return getInt(type);
-		}
+	public int getAnimation(AnimationType type) {
+		return animations[type.ordinal()];
 	}
 
 	public AnimationType getType(int animationId) {
-		for (Map.Entry<AnimationType, Animation> entry : animations.entrySet()) {
-			Animation animation = entry.getValue();
-			if (animation != null && animation.id == animationId) {
-				return entry.getKey();
+		for (int i = 0; i < animations.length; i++)
+		{
+			int animation = animations[i];
+			if (animation > 0 && animation == animationId) {
+				return AnimationType.values()[i];
 			}
 		}
 		return null;
@@ -809,7 +828,7 @@ public class AnimationSet implements Comparable<AnimationSet> {
 
 	@Override
 	public String toString() {
-		return name + " " + animations;
+		return name + " " + Arrays.stream(animations).boxed().collect(Collectors.toList());
 	}
 
 	@Override
