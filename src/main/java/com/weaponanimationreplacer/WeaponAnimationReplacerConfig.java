@@ -19,4 +19,15 @@ public interface WeaponAnimationReplacerConfig extends Config
 	{
 		return false;
 	}
+
+	@ConfigItem(
+		keyName = "hideSidePanel",
+		name = "Hide side panel",
+		description = "",
+		position = 1
+	)
+	default boolean hideSidePanel()
+	{
+		return false;
+	}
 }

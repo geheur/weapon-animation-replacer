@@ -63,6 +63,7 @@ import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.events.ProfileChanged;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.SpriteManager;
@@ -104,9 +105,10 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	@Inject ClientThread clientThread;
 	@Inject ColorPickerManager colorPickerManager;
 	@Inject private ChatboxPanelManager chatboxPanelManager;
+	@Inject private WeaponAnimationReplacerConfig config;
 
 	@Getter
-	List<TransmogSet> transmogSets = new ArrayList<>();
+	List<TransmogSet> transmogSets = null;
 
 	WeaponAnimationReplacerPluginPanel pluginPanel;
 	private NavigationButton navigationButton;
@@ -206,32 +208,8 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
 			if (client.getGameState().getState() >= GameState.LOGIN_SCREEN.getState())
 			{
-				addSidePanel();
+				showSidePanel(!config.hideSidePanel());
 			}
-		});
-	}
-
-	private void addSidePanel()
-	{
-		SwingUtilities.invokeLater(() -> {
-			if (pluginPanel != null) {
-				pluginPanel.rebuild(); // Update the panel regardless of whether we're creating it or not.
-				return;
-			}
-
-			pluginPanel = new WeaponAnimationReplacerPluginPanel(this);
-			pluginPanel.rebuild();
-
-			final BufferedImage icon = ImageUtil.loadImageResource(WeaponAnimationReplacerPlugin.class, "panel_icon.png");
-
-			navigationButton = NavigationButton.builder()
-				.tooltip("Weapon Animation Replacer")
-				.icon(icon)
-				.priority(5)
-				.panel(pluginPanel)
-				.build();
-
-			clientToolbar.addNavigation(navigationButton);
 		});
 	}
 
@@ -331,9 +309,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
 	@Override
 	protected void shutDown() {
-		pluginPanel = null;
-		clientToolbar.removeNavigation(navigationButton);
-		navigationButton = null;
+		showSidePanel(false);
 
 		clientThread.invokeLater(() -> {
 			eventBus.unregister(transmogManager);
@@ -347,6 +323,8 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 				}
 			}
 		});
+
+		transmogSets = null;
     }
 
     @Subscribe
@@ -355,7 +333,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		clientThread.invokeLater(() -> {
 			reloadTransmogSetsFromConfig();
 			if (client.getLocalPlayer() != null) handleTransmogSetChange();
-			SwingUtilities.invokeLater(pluginPanel::rebuild);
+			if (pluginPanel != null) SwingUtilities.invokeLater(pluginPanel::rebuild);
 		});
 	}
 
@@ -1066,7 +1044,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
     {
         if (event.getGameState() == GameState.LOGIN_SCREEN) {
 			if (transmogSets != null) { // Can be null during plugin startup.
-				addSidePanel();
+				showSidePanel(!config.hideSidePanel());
 			}
         } else if (event.getGameState() == GameState.LOGGED_IN) {
         	// This is necessary for transmog to show up on teleports.
@@ -1193,5 +1171,43 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			slotOverride = slot != null ? slot : WEAPON_SLOT;
 		}
 		return new SlotAndKitId(slotOverride, modelSwap);
+	}
+
+	@Subscribe
+	public void onConfigChanged(ConfigChanged e) {
+		if (e.getGroup().equals(GROUP_NAME)) {
+			if (e.getKey().equals("hideSidePanel")) {
+				showSidePanel(!config.hideSidePanel());
+			}
+		}
+	}
+
+	private void showSidePanel(boolean showSidePanel)
+	{
+		SwingUtilities.invokeLater(() -> {
+			if (showSidePanel) {
+				if (navigationButton != null) return;
+
+				pluginPanel = new WeaponAnimationReplacerPluginPanel(this);
+				pluginPanel.rebuild();
+
+				final BufferedImage icon = ImageUtil.loadImageResource(WeaponAnimationReplacerPlugin.class, "panel_icon.png");
+
+				navigationButton = NavigationButton.builder()
+					.tooltip("Weapon Animation Replacer")
+					.icon(icon)
+					.priority(5)
+					.panel(pluginPanel)
+					.build();
+
+				clientToolbar.addNavigation(navigationButton);
+			} else {
+				if (navigationButton == null) return;
+
+				clientToolbar.removeNavigation(navigationButton);
+				navigationButton = null;
+				pluginPanel = null;
+			}
+		});
 	}
 }
