@@ -1510,7 +1510,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		String keris = "Spear";
 		// keris is actually a different crush animation than the spear, but it looks the same (419 vs 382)
 		// with shield it also uses 419.
-		String sarasword = "Godsword (Saradomin)"; // TODO
+		String sarasword = "Saradomin sword";
 		String axe = "Dragon axe";
 		String pickaxe = axe;
 		String cane = mace;
