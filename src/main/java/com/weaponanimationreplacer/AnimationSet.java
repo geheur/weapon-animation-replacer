@@ -652,7 +652,8 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			.build();
 		new AnimationSetBuilder("Osmumten's Fang")
 			.poseAnims(809, 823, 819, 820, 821, 822, 824) // not sure
-			.put(ATTACK, 9471) // Seen in-game.
+			.put(ATTACK_STAB, 9471) // Seen in-game.
+			.put(ATTACK_SLASH, 390)
 			.put(ATTACK_SPEC, 6118) // Seen in-game. Used to be 9544 but for some reason jagex changed it. gfx 2124
 			.put(DEFEND, 4177) // Seen in-game.
 			.build();
