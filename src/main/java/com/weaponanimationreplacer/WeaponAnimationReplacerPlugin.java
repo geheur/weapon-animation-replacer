@@ -372,10 +372,14 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		if (configuration.startsWith("NOT_JSON")) {
 			configuration = configuration.substring("NOT_JSON".length());
 		}
-		return getGson().fromJson(configuration, new TypeToken<ArrayList<TransmogSet>>() {}.getType());
+		List<TransmogSet> transmogSets = getGson().fromJson(configuration, new TypeToken<ArrayList<TransmogSet>>() {}.getType());
+		if (transmogSets == null) transmogSets = new ArrayList<>();
+		return transmogSets;
     }
 
     public void saveTransmogSets() {
+		if (transmogSets == null) return; // not sure how this could happen, but I've had people report it and I don't want to write null into the config.
+
     	// Runelite won't store config values that are valid json with a nested depth of 8 or higher. Adding "NOT_JSON"
 		// makes the string not be valid json, circumventing this.
 		// This might not be necessary anymore but I don't feel like updating it; it works fine as is.
