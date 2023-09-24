@@ -171,8 +171,9 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 		createDeleteItemWidget(container);
 		createPageButtons(container);
 		if (searchType == MODEL_SWAP) {
-			createHideSlotWidget(container, "Items", 0, 10, 50);
-			createHideSlotWidget(container, "Hide/Show slot", 1, 60, 80);
+			createHideSlotWidget(container, "Items:", 0, 10, 40);
+			createHideSlotWidget(container, " (" + (slotToShow == null ? "all" : slotToShow.name().toLowerCase()) + ")", 0, 50, 70);
+			createHideSlotWidget(container, "Hide/Show", 1, 110, 80);
 		}
 
 		int x = PADDING;
@@ -538,6 +539,10 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 
 	@Getter
 	private int mode = 0; // 0 items, 1 hide slots.
+	/**
+	 * null indicates to show all items.
+	 */
+	private KitType slotToShow = null;
 
 	private Widget createHideSlotWidget(Widget container, String name, int modeToSwitchTo, int x, int width)
 	{
@@ -699,16 +704,20 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
         index = -1;
 
         String search = getValue().toLowerCase();
-        if (search.isEmpty())
-        {
-        	if (searchType == TRIGGER_ITEM) {
-        		// Add equipped items to the list for easy access.
+		if (search.isEmpty() && (slotToShow == null || mode != 0))
+		{
+			if (searchType == TRIGGER_ITEM)
+			{
+				// Add equipped items to the list for easy access.
 				ItemContainer itemContainer = client.getItemContainer(InventoryID.EQUIPMENT);
 				Item[] items = itemContainer == null ? new Item[0] : itemContainer.getItems();
 				triggerItemSlots.clear();
 				for (int i = 0; i < items.length; i++)
 				{
-					if (items[i].getId() == -1 || i == EquipmentInventorySlot.RING.getSlotIdx() || i == EquipmentInventorySlot.AMMO.getSlotIdx()) continue;
+					if (items[i].getId() == -1 || i == EquipmentInventorySlot.RING.getSlotIdx() || i == EquipmentInventorySlot.AMMO.getSlotIdx())
+					{
+						continue;
+					}
 
 					ItemComposition itemComposition = itemManager.getItemComposition(itemManager.canonicalize(items[i].getId()));
 					triggerItemSlots.put(itemComposition.getId(), i);
@@ -742,10 +751,32 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 			for (int i = start; i < client.getItemCount(); i++)
 			{
 				ItemComposition itemComposition = getItemCompositionIfUsable(i, showUnequippableItems);
-				if (itemComposition == null) continue;
+				if (itemComposition == null)
+				{
+					continue;
+				}
 
 				String name = Constants.getName(i, itemComposition.getName()).toLowerCase();
-				if (i == integer || name.contains(search))
+				boolean matchesSlotFilter = false;
+				if (slotToShow == null)
+				{
+					matchesSlotFilter = true;
+				}
+				else
+				{
+					ItemStats itemStats = itemManager.getItemStats(i, false);
+					if (itemStats != null && itemStats.getEquipment() != null)
+					{
+						if (itemStats.getEquipment().getSlot() <= 11)
+						{
+							if (KitType.values()[itemStats.getEquipment().getSlot()] == slotToShow)
+							{
+								matchesSlotFilter = true;
+							}
+						}
+					}
+				}
+				if ((i == integer || name.contains(search)) && matchesSlotFilter)
 				{
 					if (results.size() == RESULTS_PER_PAGE)
 					{
@@ -814,16 +845,23 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 
 	@Subscribe
 	public void onMenuShouldLeftClick(MenuShouldLeftClick e) {
-    	// items that do not have a default/known equip slot should require the user to select a slot, so force the
-		// right-click menu open.
-		if (getSearchType() != MODEL_SWAP || getMode() == 1 /* hide/show slots */) return;
-
 		for (MenuEntry menuEntry : client.getMenuEntries())
 		{
 			Widget widget = menuEntry.getWidget();
-			if (widget == null || widget.getId() != WidgetInfo.PACK(162, 37)) continue;
+			if (widget == null || widget.getId() != WidgetInfo.PACK(162, 37))
+			{
+				continue;
+			}
 
-			if (widget.getItemId() != -1 && !menuEntry.getTarget().equals("delete") && plugin.getMySlot(widget.getItemId()) == null) {
+			// items that do not have a default/known equip slot should require the user to select a slot, so force the
+			// right-click menu open.
+			if (getSearchType() == MODEL_SWAP && getMode() == 0 && widget.getItemId() != -1 && !menuEntry.getTarget().equals("delete") && plugin.getMySlot(widget.getItemId()) == null)
+			{
+				e.setForceRightClick(true);
+				return;
+			}
+			if (widget.getText().startsWith(" ("))
+			{
 				e.setForceRightClick(true);
 				return;
 			}
@@ -833,33 +871,65 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 	@Subscribe
 	public void onMenuOpened(MenuOpened e) {
     	// there is a limit of 10 actions on a widget which is less than we need, so add menu entries here instead.
-		// Additionally, if the item has no default/known equip slot, remove the default option since there is no
-		// default. I cannot just not add this option to the widget because then there would be no menu options and
-		// neither menushouldleftclick nor this one will get called.
-		if (getSearchType() != MODEL_SWAP || getMode() == 1 /* hide/show slots */) return;
-
 		for (MenuEntry menuEntry : e.getMenuEntries())
 		{
 			Widget widget = menuEntry.getWidget();
-			if (widget == null || widget.getId() != WidgetInfo.PACK(162, 37)) continue;
+			if (widget == null || widget.getId() != WidgetInfo.PACK(162, 37))
+			{
+				continue;
+			}
 
-			if (widget.getItemId() != -1 && !menuEntry.getTarget().equals("delete") && plugin.getMySlot(widget.getItemId()) == null) {
+			if (widget.getText().startsWith(" ("))
+			{
+				client.createMenuEntry(1).setOption("Show all").onClick(me -> {
+					mode = 0;
+					slotToShow = null;
+					resetPage();
+					filterResults();
+					update();
+				});
+				for (EquipmentInventorySlot slot : EquipmentInventorySlot.values())
+				{
+					if (slot == EquipmentInventorySlot.AMMO || slot == EquipmentInventorySlot.RING)
+					{
+						continue;
+					}
+					client.createMenuEntry(1).setOption("Show only").setTarget(slot.name().toLowerCase()).onClick(me -> {
+						mode = 0;
+						slotToShow = KitType.values()[slot.getSlotIdx()];
+						resetPage();
+						filterResults();
+						update();
+					});
+				}
 				MenuEntry[] newMenuEntries = Arrays.stream(client.getMenuEntries()).filter(me -> !me.getOption().equals(tooltipText)).toArray(i -> new MenuEntry[i]);
 				client.setMenuEntries(newMenuEntries);
+				return;
 			}
-
-			ItemComposition itemComposition = itemManager.getItemComposition(widget.getItemId());
-			for (KitType value : KitType.values())
+			else if (getSearchType() == MODEL_SWAP && getMode() == 0 && widget.getItemId() != -1)
 			{
-				client.createMenuEntry(1)
-					.setTarget(ColorUtil.wrapWithColorTag(itemComposition.getName(), new Color(0xff9040)))
-					.setOption(value.name())
-					.onClick(me -> {
-						itemSelected(widget.getItemId(), value.ordinal());
-					})
-				;
+				// If the item has no default/known equip slot, remove the default option since there is no
+				// default. I cannot just not add this option to the widget because then there would be no menu options and
+				// neither menushouldleftclick nor this one will get called.
+				if (!menuEntry.getTarget().equals("delete") && plugin.getMySlot(widget.getItemId()) == null)
+				{
+					MenuEntry[] newMenuEntries = Arrays.stream(client.getMenuEntries()).filter(me -> !me.getOption().equals(tooltipText)).toArray(i -> new MenuEntry[i]);
+					client.setMenuEntries(newMenuEntries);
+				}
+
+				ItemComposition itemComposition = itemManager.getItemComposition(widget.getItemId());
+				for (KitType value : KitType.values())
+				{
+					client.createMenuEntry(1)
+						.setTarget(ColorUtil.wrapWithColorTag(itemComposition.getName(), new Color(0xff9040)))
+						.setOption(value.name())
+						.onClick(me -> {
+							itemSelected(widget.getItemId(), value.ordinal());
+						})
+					;
+				}
+				return;
 			}
-			return;
 		}
 	}
 
