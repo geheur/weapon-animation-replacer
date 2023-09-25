@@ -50,6 +50,7 @@ import net.runelite.api.Projectile;
 import net.runelite.api.WorldType;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.dbtable.DBRowConfig;
 import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.CommandExecuted;
 import net.runelite.api.events.MenuOptionClicked;
@@ -330,6 +331,16 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 
 	@Subscribe
 	public void onCommandExecuted(CommandExecuted commandExecuted) {
+		DBRowConfig dbRowConfig = client.getDBRowConfig(client.getEnum(496).getIntValue(0));
+		for (int i : client.getEnum(496).getIntVals())
+		{
+			String name = (String) client.getDBTableField(i, 0, 0)[0];
+			int i1 = (int) client.getDBTableField(i, 1, 0)[0];
+			int i2 = (int) client.getDBTableField(i, 2, 0)[0];
+			int modelId = (int) client.getDBTableField(i, 3, 0)[0];
+			System.out.println(name + " " + i1 + " " + i2 + " " + modelId);
+		}
+		System.out.println("here");
 		Player player2 = client.getLocalPlayer();
 		final WorldPoint playerPos = player2.getWorldLocation();
 		if (playerPos == null)

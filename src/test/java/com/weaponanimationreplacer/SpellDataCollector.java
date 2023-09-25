@@ -279,6 +279,8 @@ public class SpellDataCollector
 			}
 		}
 
+		if (player == null) return;
+
 		spellStart(projectile, player);
 
 //		// This is the player's actual location which is what projectiles use as their start position. Player#getX, #getSceneX, etc., do not work here.

@@ -100,6 +100,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 	private final WeaponAnimationReplacerPlugin plugin;
 
 	private final Map<Integer, ItemComposition> results = new LinkedHashMap<>();
+	private final List<Integer> baseModelResults = new ArrayList<>();
 	private final List<String> spells = new ArrayList<>();
 	private String tooltipText;
     private int index = -1;
@@ -174,6 +175,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 			createHideSlotWidget(container, "Items:", 0, 10, 40);
 			createHideSlotWidget(container, " (" + (slotToShow == null ? "all" : slotToShow.name().toLowerCase()) + ")", 0, 50, 70);
 			createHideSlotWidget(container, "Hide/Show", 1, 110, 80);
+			createHideSlotWidget(container, "Base model", 2, 170, 80);
 		}
 
 		int x = PADDING;
@@ -265,6 +267,44 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 					}
 
 					++idx;
+				}
+			}
+			else if (mode == 2)
+			{
+				if (baseModelResults.size() == 0)
+				{
+					addText(container, getValue().isEmpty() ? "Type to search items." : "No results.", 0xff000000, 170, 50);
+				}
+				else
+				{
+					System.out.println("count " + baseModelResults);
+					for (Integer id : baseModelResults)
+					{
+						String name = (String) client.getDBTableField(id, 0, 0)[0];
+						int modelId = (Integer) client.getDBTableField(id, 3, 0)[0];
+						addItemWidgetModel(0, modelId, "name", container, x, y,
+							se -> {
+								// Applies for worn items with no slot, e.g. new items that runelite's wiki scraper hasn't picked up yet.
+								if (searchType == TRIGGER_ITEM) {
+									Integer slot = triggerItemSlots.get(modelId);
+									if (slot != null && slot != plugin.getWikiScrapeSlot(modelId)) {
+										itemSelected(modelId, slot);
+										return;
+									}
+								}
+								itemSelected(modelId);
+							}, idx
+						);
+
+						x += ICON_WIDTH + PADDING;
+						if (x + ICON_WIDTH >= container.getWidth())
+						{
+							y += ICON_HEIGHT + PADDING;
+							x = PADDING;
+						}
+
+						++idx;
+					}
 				}
 			}
 		} else { // spell
@@ -400,17 +440,22 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 
 	private void addItemWidgetSprite(int id, int spriteId, String name, Widget container, int x, int y, JavaScriptCallback onOpListener, int idx)
 	{
-		addItemWidget(id, -1, spriteId, name, container, x, y, onOpListener, idx);
+		addItemWidget(1, id, spriteId, name, container, x, y, onOpListener, idx);
 	}
 
 	private void addItemWidgetItem(int id, int iconId, String name, Widget container, int x, int y, JavaScriptCallback onOpListener, int idx)
 	{
-		addItemWidget(id, iconId, -1, name, container, x, y, onOpListener, idx);
+		addItemWidget(0, id, iconId, name, container, x, y, onOpListener, idx);
 	}
 
-	private void addItemWidget(int id, int iconId, int spriteId, String name, Widget container, int x, int y, JavaScriptCallback onOpListener, int idx)
+	private void addItemWidgetModel(int id, int modelId, String name, Widget container, int x, int y, JavaScriptCallback onOpListener, int idx)
 	{
-		Widget item = container.createChild(-1, WidgetType.GRAPHIC);
+		addItemWidget(2, id, modelId, name, container, x, y, onOpListener, idx);
+	}
+
+	private void addItemWidget(int type, int id, int iconId, String name, Widget container, int x, int y, JavaScriptCallback onOpListener, int idx)
+	{
+		Widget item = container.createChild(-1, type == 2 ? WidgetType.MODEL : WidgetType.GRAPHIC);
 		item.setXPositionMode(WidgetPositionMode.ABSOLUTE_LEFT);
 		item.setYPositionMode(WidgetPositionMode.ABSOLUTE_TOP);
 		item.setOriginalX(x);
@@ -418,10 +463,17 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 		item.setOriginalHeight(ICON_HEIGHT);
 		item.setOriginalWidth(ICON_WIDTH);
 		item.setName(JagexColors.MENU_TARGET_TAG + name);
-		if (iconId != -1) item.setItemId(iconId);
-		else if (spriteId != -1) item.setSpriteId(spriteId);
-		item.setItemQuantity(10000);
-		item.setItemQuantityMode(ItemQuantityMode.NEVER);
+		if (type == 0) {
+			item.setItemId(iconId);
+			item.setItemQuantity(10000);
+			item.setItemQuantityMode(ItemQuantityMode.NEVER);
+		} else if (type == 1) {
+			item.setSpriteId(iconId);
+		} else if (type == 2) {
+			item.setModelId(iconId);
+			item.setModelZoom(400);
+			item.setRotationZ(200);
+		}
 		item.setBorderType(1);
 		item.setAction(0, tooltipText);
 		item.setHasListener(true);
@@ -538,7 +590,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 	}
 
 	@Getter
-	private int mode = 0; // 0 items, 1 hide slots.
+	private int mode = 0; // 0 items, 1 hide slots, 2 base model.
 	/**
 	 * null indicates to show all items.
 	 */
@@ -700,24 +752,20 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
     private void filterResults()
     {
         results.clear();
+        baseModelResults.clear();
         spells.clear();
         index = -1;
 
         String search = getValue().toLowerCase();
-		if (search.isEmpty() && (slotToShow == null || mode != 0))
-		{
-			if (searchType == TRIGGER_ITEM)
-			{
+		if (search.isEmpty() && (slotToShow == null || mode != 0)) {
+			if (searchType == TRIGGER_ITEM) {
 				// Add equipped items to the list for easy access.
 				ItemContainer itemContainer = client.getItemContainer(InventoryID.EQUIPMENT);
 				Item[] items = itemContainer == null ? new Item[0] : itemContainer.getItems();
 				triggerItemSlots.clear();
 				for (int i = 0; i < items.length; i++)
 				{
-					if (items[i].getId() == -1 || i == EquipmentInventorySlot.RING.getSlotIdx() || i == EquipmentInventorySlot.AMMO.getSlotIdx())
-					{
-						continue;
-					}
+					if (items[i].getId() == -1 || i == EquipmentInventorySlot.RING.getSlotIdx() || i == EquipmentInventorySlot.AMMO.getSlotIdx()) continue;
 
 					ItemComposition itemComposition = itemManager.getItemComposition(itemManager.canonicalize(items[i].getId()));
 					triggerItemSlots.put(itemComposition.getId(), i);
@@ -725,7 +773,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 				}
 				lastPage = 0; // Do not show page change arrows.
 				return;
-			} else if (searchType == MODEL_SWAP) {
+			} else if (searchType == MODEL_SWAP && mode != 2) {
 				lastPage = 0; // Do not show page change arrows.
 				return;
 			} else if (searchType == SPELL_L) {
@@ -747,43 +795,56 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 		Integer start = filteredPageIndexes.getOrDefault(page - 1, 0);
 		if (searchType == TRIGGER_ITEM || searchType == MODEL_SWAP)
 		{
-			boolean showUnequippableItems = searchType == MODEL_SWAP && config.showUnequippableItems();
-			for (int i = start; i < client.getItemCount(); i++)
+			if (mode == 2)
 			{
-				ItemComposition itemComposition = getItemCompositionIfUsable(i, showUnequippableItems);
-				if (itemComposition == null)
+				for (int i : client.getEnum(496).getIntVals())
 				{
-					continue;
-				}
-
-				String name = Constants.getName(i, itemComposition.getName()).toLowerCase();
-				boolean matchesSlotFilter = false;
-				if (slotToShow == null)
-				{
-					matchesSlotFilter = true;
-				}
-				else
-				{
-					ItemStats itemStats = itemManager.getItemStats(i, false);
-					if (itemStats != null && itemStats.getEquipment() != null)
-					{
-						if (itemStats.getEquipment().getSlot() <= 11)
-						{
-							if (KitType.values()[itemStats.getEquipment().getSlot()] == slotToShow)
-							{
-								matchesSlotFilter = true;
-							}
-						}
-					}
-				}
-				if ((i == integer || name.contains(search)) && matchesSlotFilter)
-				{
-					if (results.size() == RESULTS_PER_PAGE)
+					System.out.println("here " + i);
+					if (baseModelResults.size() == RESULTS_PER_PAGE)
 					{
 						filteredPageIndexes.put(page, i);
 						return; // skip the lastPage setting, since there is at least 1 item on the next page.
 					}
-					results.put(itemComposition.getId(), itemComposition);
+					baseModelResults.add(i);
+				}
+			}
+			else
+			{
+				boolean showUnequippableItems = searchType == MODEL_SWAP && config.showUnequippableItems();
+				for (int i = start; i < client.getItemCount(); i++)
+				{
+					ItemComposition itemComposition = getItemCompositionIfUsable(i, showUnequippableItems);
+					if (itemComposition == null) continue;
+
+					String name = Constants.getName(i, itemComposition.getName()).toLowerCase();
+					boolean matchesSlotFilter = false;
+					if (slotToShow == null)
+					{
+						matchesSlotFilter = true;
+					}
+					else
+					{
+						ItemStats itemStats = itemManager.getItemStats(i, false);
+						if (itemStats != null && itemStats.getEquipment() != null)
+						{
+							if (itemStats.getEquipment().getSlot() <= 11)
+							{
+								if (KitType.values()[itemStats.getEquipment().getSlot()] == slotToShow)
+								{
+									matchesSlotFilter = true;
+								}
+							}
+						}
+					}
+					if ((i == integer || name.contains(search)) && matchesSlotFilter)
+					{
+						if (results.size() == RESULTS_PER_PAGE)
+						{
+							filteredPageIndexes.put(page, i);
+							return; // skip the lastPage setting, since there is at least 1 item on the next page.
+						}
+						results.put(itemComposition.getId(), itemComposition);
+					}
 				}
 			}
 			// We ran out of items to search.
@@ -865,6 +926,10 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 				e.setForceRightClick(true);
 				return;
 			}
+			if ("Base model".equals(widget.getText())) {
+				e.setForceRightClick(true);
+				return;
+			}
 		}
 	}
 
@@ -928,6 +993,16 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 						})
 					;
 				}
+				return;
+			}
+			else if ("Base model".equals(widget.getText()))
+			{
+				client.createMenuEntry(1).setOption("Change").setTarget("Hair").onClick(me -> {
+					mode = 2;
+					slotToShow = KitType.HAIR;
+					filterResults();
+					update();
+				});
 				return;
 			}
 		}

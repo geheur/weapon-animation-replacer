@@ -400,14 +400,16 @@ public class Swap
 
         public static final List<AnimationType> comboBoxOrder = new ArrayList<>();
         static {
-            comboBoxOrder.add(ALL);
-            comboBoxOrder.add(STAND_PLUS_MOVEMENT);
-            comboBoxOrder.add(STAND);
-            comboBoxOrder.add(MOVEMENT);
+			comboBoxOrder.add(ALL);
+			comboBoxOrder.add(STAND_PLUS_MOVEMENT);
+			comboBoxOrder.add(STAND);
+			comboBoxOrder.add(MOVEMENT);
+			comboBoxOrder.add(RUN);
+			comboBoxOrder.add(WALK);
 //            addItems(MOVEMENT, comboBoxOrder);
-            comboBoxOrder.add(ATTACK);
-            addItems(ATTACK, comboBoxOrder);
-        }
+			comboBoxOrder.add(ATTACK);
+			addItems(ATTACK, comboBoxOrder);
+		}
 
         private static void addItems(AnimationType animationType, List<AnimationType> comboBoxOrder) {
             animationType.children.forEach(comboBoxOrder::add);
