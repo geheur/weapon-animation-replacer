@@ -1145,7 +1145,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		}
 	}
 
-	private Integer getSlotForNonNegativeModelId(int modelSwap)
+	public Integer getSlotForNonNegativeModelId(int modelSwap)
 	{
 		Integer slot = Constants.SLOT_OVERRIDES.get(modelSwap);
 		// if the slot is -1, use the wiki slot to prevent messing up people's transmogs if they added the item prior to me making it -1.
