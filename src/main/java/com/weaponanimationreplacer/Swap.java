@@ -378,23 +378,9 @@ public class Swap
         STAND, WALK, RUN, WALK_BACKWARD, SHUFFLE_LEFT, SHUFFLE_RIGHT, ROTATE, ATTACK_STAB("Stab"),
         ATTACK_SLASH("Slash"), ATTACK_CRUSH("Crush"), ATTACK_SPEC("Special"), DEFEND,
         ATTACK_SLASH2("Slash2"), ATTACK_CRUSH2("Crush2"),
-
-//        MAGIC_LOW_LEVEL_SPELL_UNARMED, MAGIC_LOW_LEVEL_SPELL_STAFF, // strike,bolt,blast spells.
-//        MAGIC_UNARMED_WAVE_SPELL, MAGIC_STAFF_WAVE_SPELL,
-//        MAGIC_GOD_SPELL,
-//        MAGIC_CRUMBLE_UNDEAD_UNARMED, MAGIC_CRUMBLE_UNDEAD_STAFF,
-//        MAGIC_CONFUSE_UNARMED, MAGIC_CONFUSE_STAFF,
-//        MAGIC_WEAKEN_UNARMED, MAGIC_WEAKEN_STAFF,
-//        MAGIC_CURSE_VULNERABILITY_UNARMED, MAGIC_CURSE_VULNERABILITY_STAFF,
-//        MAGIC_ENFEEBLE_UNARMED, MAGIC_ENFEEBLE_STAFF,
-//        MAGIC_STUN_UNARMED, MAGIC_STUN_STAFF,
-//        MAGIC_BIND_UNARMED, MAGIC_BIND_STAFF,
-//        MAGIC_ANCIENT_SINGLE_TARGET,
-//        MAGIC_ANCIENT_MULTI_TARGET,
-
         ATTACK(ATTACK_STAB, ATTACK_SLASH, ATTACK_SLASH2, ATTACK_CRUSH, ATTACK_CRUSH2, ATTACK_SPEC),
-//        MAGIC(),
-        MOVEMENT(WALK, RUN, WALK_BACKWARD, SHUFFLE_LEFT, SHUFFLE_RIGHT, ROTATE),
+		SHUFFLE(WALK_BACKWARD, SHUFFLE_LEFT, SHUFFLE_RIGHT, ROTATE),
+        MOVEMENT(WALK, RUN, SHUFFLE),
         STAND_PLUS_MOVEMENT("Stand/Move", STAND, MOVEMENT),
         ALL(ATTACK, STAND_PLUS_MOVEMENT, DEFEND);
 
@@ -404,16 +390,14 @@ public class Swap
             comboBoxOrder.add(STAND_PLUS_MOVEMENT);
             comboBoxOrder.add(STAND);
             comboBoxOrder.add(MOVEMENT);
-//            addItems(MOVEMENT, comboBoxOrder);
+			comboBoxOrder.add(WALK);
+			comboBoxOrder.add(RUN);
+			comboBoxOrder.add(SHUFFLE);
             comboBoxOrder.add(ATTACK);
-            addItems(ATTACK, comboBoxOrder);
-        }
+			ATTACK.children.forEach(comboBoxOrder::add);
+		}
 
-        private static void addItems(AnimationType animationType, List<AnimationType> comboBoxOrder) {
-            animationType.children.forEach(comboBoxOrder::add);
-        }
-
-        public final List<AnimationType> children;
+		public final List<AnimationType> children;
         public final String prettyName;
 
         AnimationType(AnimationType... children) {
