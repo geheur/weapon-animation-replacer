@@ -817,7 +817,9 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 					defaultAttack = animationSet.getAnimation(attackAnimation);
 					if (defaultAttack != -1) break;
 				}
-				for (AnimationType child : ATTACK.children)
+				List<AnimationType> children = new ArrayList<>(ATTACK.children);
+				children.add(ATTACK);
+				for (AnimationType child : children)
 				{
 					int id = animationSet.getAnimation(replacement == null ? child : replacement);
 					if (id == -1) {
