@@ -2,6 +2,7 @@ package com.weaponanimationreplacer;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonElement;
@@ -140,6 +141,37 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
 		GsonBuilder gsonBuilder = runeliteGson.newBuilder();
 
+		// Do not serialize empty maps.
+		// Map must not use generics or the serializer will not be called.
+		gsonBuilder.registerTypeAdapter(new TypeToken<Map>() {}.getType(), new JsonSerializer<Map<?, ?>>() {
+			@Override
+			public JsonElement serialize(Map<?, ?> map, Type typeOfSrc, JsonSerializationContext context) {
+				if (map.isEmpty()) return null;
+
+				JsonObject object = new JsonObject();
+				for (Map.Entry<?, ?> entry : map.entrySet())
+				{
+					JsonElement element = context.serialize(entry.getValue());
+					object.add(String.valueOf(entry.getKey()), element);
+				}
+				return object;
+			}
+		});
+		// Do not serialize empty lists.
+		// List must not use generics or the serializer will not be called.
+		gsonBuilder.registerTypeAdapter(new TypeToken<List>() {}.getType(), new JsonSerializer<List<?>>() {
+			@Override
+			public JsonElement serialize(List<?> list, Type typeOfSrc, JsonSerializationContext context) {
+				if (list.isEmpty()) return null;
+
+				JsonArray array = new JsonArray();
+				for (Object child : list) {
+					JsonElement element = context.serialize(child);
+					array.add(element);
+				}
+				return array;
+			}
+		});
 		Type animationSetTypeToken = new TypeToken<AnimationSet>() {}.getType();
 		JsonSerializer<AnimationSet> serializer = new JsonSerializer<AnimationSet>() {
 			@Override
