@@ -45,7 +45,10 @@ public class WeaponAnimationReplacerPluginPanel extends PluginPanel {
     @Getter
     private int selectedBorderThickness = DEFAULT_BORDER_THICKNESS;
 
-    static
+	Swap currentlyEditingThisSwap = null;
+	int currentlyEditingThisProjectileSwapIndex = -1;
+
+	static
     {
         final BufferedImage addIcon = ImageUtil.loadImageResource(ScreenMarkerPlugin.class, "add_icon.png");
         ADD_ICON = new ImageIcon(addIcon);
@@ -127,7 +130,7 @@ public class WeaponAnimationReplacerPluginPanel extends PluginPanel {
         int index = 0;
         for (TransmogSet transmogSet : plugin.getTransmogSets())
         {
-            markerView.add(new TransmogSetPanel(plugin, transmogSet, () -> rebuild(), index++), constraints);
+            markerView.add(new TransmogSetPanel(plugin, transmogSet, () -> rebuild(), this, index++), constraints);
             constraints.gridy++;
 
             markerView.add(Box.createRigidArea(new Dimension(0, 10)), constraints);

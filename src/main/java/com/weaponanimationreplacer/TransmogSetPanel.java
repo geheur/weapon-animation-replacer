@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2018, Kamiel, <https://github.com/Kamielvf>
  * Copyright (c) 2018, Psikoi <https://github.com/psikoi>
+ * Copyright (c) 2017, Adam <Adam@sigterm.info>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,6 +27,7 @@
 
 package com.weaponanimationreplacer;
 
+import com.google.common.primitives.Ints;
 import com.weaponanimationreplacer.ChatBoxFilterableSearch.SelectionResult;
 import static com.weaponanimationreplacer.Constants.HiddenSlot;
 import static com.weaponanimationreplacer.Constants.NegativeId;
@@ -57,7 +59,10 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -71,18 +76,29 @@ import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
+import javax.swing.JFormattedTextField;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
+import javax.swing.JSpinner;
+import javax.swing.SpinnerModel;
+import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
 import javax.swing.border.Border;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
+import javax.swing.event.ChangeListener;
+import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ItemID;
+import net.runelite.api.Projectile;
+import net.runelite.api.events.ClientTick;
+import net.runelite.api.events.ProjectileMoved;
 import net.runelite.api.kit.KitType;
+import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.components.ColorJButton;
@@ -129,6 +145,8 @@ class TransmogSetPanel extends JPanel
 
 	private final FlatTextField nameInput = new FlatTextField();
 
+	private WeaponAnimationReplacerPluginPanel pluginPanel;
+
 	static
 	{
 		final BufferedImage upImg = ImageUtil.loadImageResource(TransmogSetPanel.class, "up_small.png");
@@ -162,11 +180,12 @@ class TransmogSetPanel extends JPanel
 		INVISIBLE_ICON = new ImageIcon(invisibleIcon);
 	}
 
-	TransmogSetPanel(WeaponAnimationReplacerPlugin plugin, TransmogSet transmogSet, Runnable rebuild, int index)
+	TransmogSetPanel(WeaponAnimationReplacerPlugin plugin, TransmogSet transmogSet, Runnable rebuild, WeaponAnimationReplacerPluginPanel pluginPanel, int index)
 	{
 		this.rebuild = rebuild;
 		this.plugin = plugin;
 		this.transmogSet = transmogSet;
+		this.pluginPanel = pluginPanel;
 		this.index = index;
 
 		setLayout(new BorderLayout());
@@ -313,7 +332,7 @@ class TransmogSetPanel extends JPanel
 
 	private Component createSpellSwapRButton(ProjectileSwap swap)
 	{
-		return createItemSelectionButton(swap.toReplaceWith, () -> swap.toReplaceWith = 01, (result, plugin) -> swap.toReplaceWith = result.itemId, SPELL_R, "None", null, null);
+		return createItemSelectionButton(swap.toReplaceWith, () -> swap.toReplaceWith = 01, (result, plugin) -> {swap.toReplaceWith = result.itemId; swap.toReplaceWithCustom = null;}, SPELL_R, "None", swap.toReplaceWithCustom != null ? "c" : null, null);
 	}
 
 	private ItemSelectionButton createItemSelectionButton(int initialId, Runnable onRemove, BiConsumer<SelectionResult, WeaponAnimationReplacerPlugin> onAdd, SearchType type, String whenEmpty, String overlayString, Swap swap)
@@ -746,15 +765,19 @@ class TransmogSetPanel extends JPanel
 		JPanel row1 = new JPanel();
 		row1.setLayout(new BoxLayout(row1, BoxLayout.X_AXIS));
 		row1.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		row1.add(new JLabel("Projectile "));
 
 		JPanel projectileSwapPanel = getRestrictionAndModelSwapPanel();
 		projectileSwapPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		projectileSwapPanel.add(createSpellSwapLButton(projectileSwap));
 		projectileSwapPanel.add(new JLabel("->"));
 		projectileSwapPanel.add(createSpellSwapRButton(projectileSwap));
+		projectileSwapPanel.add(createSpellEditPanel(projectileSwap, swap, i));
 		row1.add(projectileSwapPanel);
 		animationReplacementPanel.add(row1);
+		if (pluginPanel.currentlyEditingThisSwap == swap && pluginPanel.currentlyEditingThisProjectileSwapIndex == i) {
+			JPanel row = createProjectileEditPanel(projectileSwap);
+			animationReplacementPanel.add(row);
+		}
 
 		return new EntryPanel(false, true, true, i == size - 1, animationReplacementPanel, () -> {
 			swap.getProjectileSwaps().remove(i);
@@ -769,6 +792,250 @@ class TransmogSetPanel extends JPanel
 		}, (enabled) -> {
 			plugin.clientThread.invoke(plugin::handleTransmogSetChange);
 		});
+	}
+
+	private JPanel createProjectileEditPanel(ProjectileSwap projectileSwap)
+	{
+		JPanel panel = new JPanel();
+		panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+
+		createProjectileEditPanelRow("projectile id", ce -> {
+			projectileSwap.createCustomIfNull();
+			projectileSwap.toReplaceWithCustom.setProjectileId((int) ((JSpinner) ce.getSource()).getValue());
+			plugin.saveTransmogSets();
+			plugin.demoCast(projectileSwap.getToReplaceWith());
+		}, projectileSwap.getToReplaceWith().projectileId, panel);
+		createProjectileEditPanelRow("anim id", ce -> {
+			projectileSwap.createCustomIfNull();
+			projectileSwap.toReplaceWithCustom.setCastAnimation((int) ((JSpinner) ce.getSource()).getValue());
+			plugin.saveTransmogSets();
+			plugin.demoCast(projectileSwap.getToReplaceWith());
+		}, projectileSwap.getToReplaceWith().castAnimation, panel);
+		createProjectileEditPanelRow("cast gfx", ce -> {
+			projectileSwap.createCustomIfNull();
+			projectileSwap.toReplaceWithCustom.setCastGfx((int) ((JSpinner) ce.getSource()).getValue());
+			plugin.saveTransmogSets();
+			plugin.demoCast(projectileSwap.getToReplaceWith());
+		}, projectileSwap.getToReplaceWith().castGfx, panel);
+		createProjectileEditPanelRow("hit gfx", ce -> {
+			projectileSwap.createCustomIfNull();
+			projectileSwap.toReplaceWithCustom.setHitGfx((int) ((JSpinner) ce.getSource()).getValue());
+			plugin.saveTransmogSets();
+			plugin.client.getLocalPlayer().createSpotAnim("demo".hashCode(), projectileSwap.toReplaceWithCustom.hitGfx, 0, 0);
+		}, projectileSwap.getToReplaceWith().hitGfx, panel);
+		createProjectileEditPanelRow("delay", ce -> {
+			projectileSwap.createCustomIfNull();
+			projectileSwap.toReplaceWithCustom.setStartMovement((int) ((JSpinner) ce.getSource()).getValue());
+			plugin.saveTransmogSets();
+			plugin.demoCast(projectileSwap.getToReplaceWith());
+		}, projectileSwap.getToReplaceWith().startMovement, panel);
+		createProjectileEditPanelRow("start height", ce -> {
+			projectileSwap.createCustomIfNull();
+			projectileSwap.toReplaceWithCustom.setStartHeight((int) ((JSpinner) ce.getSource()).getValue());
+			plugin.saveTransmogSets();
+			plugin.demoCast(projectileSwap.getToReplaceWith());
+		}, projectileSwap.getToReplaceWith().startHeight, panel);
+		createProjectileEditPanelRow("end height", ce -> {
+			projectileSwap.createCustomIfNull();
+			projectileSwap.toReplaceWithCustom.setEndHeight((int) ((JSpinner) ce.getSource()).getValue());
+			plugin.saveTransmogSets();
+			plugin.demoCast(projectileSwap.getToReplaceWith());
+		}, projectileSwap.getToReplaceWith().endHeight, panel);
+		createProjectileEditPanelRow("slope", ce -> {
+			projectileSwap.createCustomIfNull();
+			projectileSwap.toReplaceWithCustom.setSlope((int) ((JSpinner) ce.getSource()).getValue());
+			plugin.saveTransmogSets();
+			plugin.demoCast(projectileSwap.getToReplaceWith());
+		}, projectileSwap.getToReplaceWith().slope, panel);
+		JButton demo = new JButton("demo");
+		demo.addActionListener(al -> plugin.demoCast(projectileSwap.getToReplaceWith()));
+		panel.add(demo);
+		JButton projectileIdsButton = new JButton("projectile ids");
+		projectileIdsButton.addActionListener(al -> {
+			new ProjectileIdsFrame().setVisible(true);
+		});
+		panel.add(projectileIdsButton);
+
+		return panel;
+	}
+
+	private class ProjectileIdsFrame extends JFrame {
+		private JPanel panel;
+
+		public ProjectileIdsFrame() {
+			super("Projectile ids, most recently seen last");
+			setSize(500, 500);
+			setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+			addWindowListener(new WindowAdapter()
+			{
+				@Override
+				public void windowClosing(WindowEvent e)
+				{
+					plugin.eventBus.unregister(this);
+				}
+			});
+			panel = new JPanel();
+			panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+			plugin.eventBus.register(this);
+			add(panel);
+		}
+
+		@Value
+		private class PCwI {
+			ProjectileCast pc;
+			int i;
+		}
+
+		private final List<PCwI> liveProjectiles = new ArrayList<>();
+		private final List<PCwI> finishedProjectiles = new ArrayList<>();
+
+		@Subscribe
+		public void onProjectileMoved(ProjectileMoved e) {
+			if (paused) return;
+			Projectile projectile = e.getProjectile();
+
+			// skip already seen projectiles.
+			if (plugin.client.getGameCycle() >= projectile.getStartCycle()) return;
+
+			liveProjectiles.add(new PCwI(new ProjectileCast(
+				"",
+				-1,
+				-1,
+				-1,
+				-1,
+				projectile.getId(),
+				projectile.getInteracting() != null ? projectile.getInteracting().getGraphic() : -1,
+				projectile.getStartCycle() - plugin.client.getGameCycle(),
+				projectile.getStartHeight(),
+				projectile.getEndHeight(),
+				projectile.getSlope(),
+				true
+			), projectile.getEndCycle()));
+		}
+
+		private boolean paused = false;
+
+		@Subscribe
+		public void onClientTick(ClientTick e) {
+			boolean redraw = false;
+
+			outer:
+			for (int j = 0; j < liveProjectiles.size(); j++)
+			{
+				PCwI liveProjectile = liveProjectiles.get(j);
+				if (liveProjectile.i > plugin.client.getGameCycle()) continue;
+				liveProjectiles.remove(j);
+				j--;
+				for (int i = 0; i < finishedProjectiles.size(); i++)
+				{
+					PCwI finishedProjectile = finishedProjectiles.get(i);
+					if (finishedProjectile.pc.equals(liveProjectile.pc)) {
+						PCwI remove = finishedProjectiles.remove(i);
+						finishedProjectiles.add(new PCwI(remove.pc, remove.i + 1));
+						redraw = true;
+						continue outer;
+					}
+				}
+				finishedProjectiles.add(new PCwI(liveProjectile.pc, 1));
+			}
+
+			if (redraw)
+			{
+				SwingUtilities.invokeLater(() -> {
+					panel.removeAll();
+					JCheckBox pause = new JCheckBox("pause", paused);
+					pause.addChangeListener(ce -> {
+						paused = ((JCheckBox) ce.getSource()).isSelected();
+					});
+					panel.add(pause);
+					for (PCwI projectile : finishedProjectiles)
+					{
+						JPanel panel1 = new JPanel();
+						panel1.setLayout(new BoxLayout(panel1, BoxLayout.X_AXIS));
+						JButton demo = new JButton("demo");
+						demo.addActionListener(al -> plugin.demoCast(projectile.pc));
+						panel1.add(demo);
+						JButton use = new JButton("use");
+						use.addActionListener(al -> {
+							if (pluginPanel.currentlyEditingThisSwap == null || pluginPanel.currentlyEditingThisProjectileSwapIndex == -1)
+							{
+								panel.add(new JLabel("not editing a projectile swap"));
+								panel.revalidate();
+								panel.repaint();
+								return;
+							}
+							ProjectileSwap projectileSwap = pluginPanel.currentlyEditingThisSwap.getProjectileSwaps().get(pluginPanel.currentlyEditingThisProjectileSwapIndex);
+							projectileSwap.createCustomIfNull();
+							projectileSwap.toReplaceWithCustom.projectileId = projectile.pc.projectileId;
+							if (projectile.pc.hitGfx != -1) projectileSwap.toReplaceWithCustom.hitGfx = projectile.pc.hitGfx;
+							projectileSwap.toReplaceWithCustom.startMovement = projectile.pc.startMovement;
+							projectileSwap.toReplaceWithCustom.startHeight = projectile.pc.startHeight;
+							projectileSwap.toReplaceWithCustom.endHeight = projectile.pc.endHeight;
+							projectileSwap.toReplaceWithCustom.slope = projectile.pc.slope;
+							pluginPanel.rebuild();
+						});
+						panel1.add(use);
+						panel1.add(new JLabel("id " + projectile.pc.projectileId + " hitGfx " + projectile.pc.hitGfx + " (seen " + projectile.i + " times)"));
+
+						panel.add(panel1);
+					}
+					panel.revalidate();
+					panel.repaint();
+				});
+			}
+		}
+	}
+
+	private void createProjectileEditPanelRow(String labelName, ChangeListener cl, int initialValue, JPanel panel)
+	{
+		JPanel row = new JPanel();
+		row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
+		JLabel label = new JLabel(labelName);
+		row.add(label);
+		JSpinner input = createIntSpinner(initialValue, cl);
+		row.add(input);
+		panel.add(row);
+	}
+
+	// Copied from runelite's ConfigPanel class.
+	private JSpinner createIntSpinner(int value, ChangeListener onChange)
+	{
+		int min = 0, max = Integer.MAX_VALUE;
+
+		// Config may previously have been out of range
+		value = Ints.constrainToRange(value, min, max);
+
+		SpinnerModel model = new SpinnerNumberModel(value, min, max, 1);
+		JSpinner spinner = new JSpinner(model);
+		Component editor = spinner.getEditor();
+		JFormattedTextField spinnerTextField = ((JSpinner.DefaultEditor) editor).getTextField();
+		int SPINNER_FIELD_WIDTH = 6;
+		spinnerTextField.setColumns(SPINNER_FIELD_WIDTH);
+		spinner.addChangeListener(onChange);
+
+//		Units units = cid.getUnits();
+//		if (units != null)
+//		{
+//			spinnerTextField.setFormatterFactory(new UnitFormatterFactory(units));
+//		}
+//
+		return spinner;
+	}
+
+	private Component createSpellEditPanel(ProjectileSwap projectileSwap, Swap swap, int index)
+	{
+		JButton button = new JButton("", EDIT_ICON);
+		button.addActionListener(e -> {
+			if (pluginPanel.currentlyEditingThisSwap == swap && pluginPanel.currentlyEditingThisProjectileSwapIndex == index) {
+				pluginPanel.currentlyEditingThisSwap = null;
+				pluginPanel.currentlyEditingThisProjectileSwapIndex = -1;
+			} else {
+				pluginPanel.currentlyEditingThisSwap = swap;
+				pluginPanel.currentlyEditingThisProjectileSwapIndex = index;
+			}
+			rebuild.run();
+		});
+		return button;
 	}
 
 	private Component createGraphicsEffectPanel(Swap swap, int i, int size)
@@ -957,10 +1224,21 @@ class TransmogSetPanel extends JPanel
 				setText(null);
 
 				plugin.clientThread.invoke(() -> {
-					setIcon(new ImageIcon(plugin.getSpellImage(projectileCast)));
+					BufferedImage spellImage = plugin.getSpellImage(projectileCast);
+					setIcon(new ImageIcon(spellImage));
 					String name = projectileCast.getName(plugin.itemManager);
 					SwingUtilities.invokeLater(() ->
 					{
+						if (overlayString != null)
+						{
+							BufferedImage copy = new BufferedImage(spellImage.getWidth(), spellImage.getHeight(), spellImage.getType());
+							Graphics2D graphics = (Graphics2D) copy.getGraphics();
+							graphics.drawImage(spellImage, 0, 0, null);
+							graphics.drawString(overlayString, 0, 10);
+							setIcon(new ImageIcon(copy));
+						} else {
+							setIcon(new ImageIcon(spellImage));
+						}
 						setToolTipText(name);
 					});
 				});

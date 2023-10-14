@@ -3,13 +3,15 @@ package com.weaponanimationreplacer;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.Getter;
-import lombok.Value;
 import net.runelite.api.ItemID;
 import net.runelite.api.SpriteID;
 import net.runelite.client.game.ItemManager;
 
-@Value
+@AllArgsConstructor
+@Data
 public final class ProjectileCast
 {
 	/*
@@ -248,6 +250,11 @@ public final class ProjectileCast
 	int slope;
 
 	boolean artificial;
+
+	public static ProjectileCast copy(ProjectileCast toCopy)
+	{
+		return new ProjectileCast(toCopy.name, toCopy.itemIdIcon, toCopy.spriteIdIcon, toCopy.castAnimation, toCopy.castGfx, toCopy.projectileId, toCopy.hitGfx, toCopy.startMovement, toCopy.startHeight, toCopy.endHeight, toCopy.slope, true);
+	}
 
 	public String getName(ItemManager itemManager) {
 		return name != null ? name : itemManager.getItemComposition(itemIdIcon).getName() + itemIdIcon;

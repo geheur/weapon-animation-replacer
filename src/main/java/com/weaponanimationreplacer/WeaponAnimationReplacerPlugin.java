@@ -94,7 +94,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	private static final String TRANSMOG_SET_KEY = "transmogSets";
 
 	@Inject Client client;
-	@Inject private EventBus eventBus;
+	@Inject EventBus eventBus;
 	@Inject private ChatBoxFilterableSearch itemSearch;
 	@Inject private ClientToolbar clientToolbar;
 	@Inject private ConfigManager configManager;
@@ -705,8 +705,8 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 				playerPosLocal.getX(), playerPosLocal.getY(),
 				startHeight,
 				startCycle, endCycle,
-				toReplace.getSlope(),
-				toReplace.getStartHeight(), toReplace.getEndHeight(),
+				toReplaceWith.getSlope(),
+				toReplaceWith.getStartHeight(), toReplaceWith.getEndHeight(),
 				interacting,
 				targetX, targetY);
 			client.getProjectiles().addLast(p);
@@ -817,6 +817,23 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		runeLiteObject.setLocation(localPoint, client.getPlane());
 		// TODO should I set these to inactive at some point?
 		runeLiteObject.setActive(true);
+	}
+
+	public void demoCast(ProjectileCast pc)
+	{
+		Player p = client.getLocalPlayer();
+		if (p == null) return;
+		WorldPoint wl = p.getWorldLocation();
+		LocalPoint ll = p.getLocalLocation();
+		norecurse = true;
+		int targetx = ll.getX() + (int) (700 * Math.cos((-512 - p.getOrientation()) / 2048d * 2 * Math.PI));
+		int targety = ll.getY() + (int) (700 * Math.sin((-512 - p.getOrientation()) / 2048d * 2 * Math.PI));
+		Projectile projectile = client.createProjectile(pc.projectileId, wl.getPlane(), ll.getX(), ll.getY(), -412, client.getGameCycle() + pc.startMovement, client.getGameCycle() + 100, pc.slope, pc.startHeight, pc.endHeight, null, targetx, targety);
+		client.getProjectiles().addLast(projectile);
+		norecurse = false;
+		p.setAnimation(pc.castAnimation);
+		p.setAnimationFrame(0);
+		p.createSpotAnim("demo".hashCode(), pc.castGfx, 92, 0);
 	}
 
 	private static final class AnimationReplacements {
