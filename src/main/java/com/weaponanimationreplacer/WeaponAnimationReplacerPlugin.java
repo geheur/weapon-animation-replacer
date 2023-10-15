@@ -364,7 +364,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		chatboxPanelManager.close();
 		clientThread.invokeLater(() -> {
 			reloadTransmogSetsFromConfig();
-			if (client.getLocalPlayer() != null) handleTransmogSetChange();
+			handleTransmogSetChange();
 			if (pluginPanel != null) SwingUtilities.invokeLater(pluginPanel::rebuild);
 		});
 	}
@@ -423,38 +423,33 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	 * Saves transmog sets to config, reapplies transmog and pose animations.
 	 */
 	public void handleTransmogSetChange() {
-        saveTransmogSets();
+		saveTransmogSets();
 
-        transmogManager.changeTransmog();
-		updateAnimations();
+		if (client.getLocalPlayer() != null)
+		{
+			transmogManager.changeTransmog();
+			updateAnimations();
+		}
     }
 
     public void deleteTransmogSet(int index) {
-        int delete = JOptionPane.showConfirmDialog(pluginPanel,
-                "Are you sure you want to delete that?",
-                "Delete?", JOptionPane.OK_CANCEL_OPTION);
-        if (delete != JOptionPane.YES_OPTION) return;
-
-		clientThread.invokeLater(() -> {
-			transmogSets.remove(index);
-			SwingUtilities.invokeLater(() -> pluginPanel.rebuild());
-			saveTransmogSets();
-			handleTransmogSetChange();
-		});
-    }
+		transmogSets.remove(index);
+		handleTransmogSetChange();
+		SwingUtilities.invokeLater(pluginPanel::rebuild);
+	}
 
     public void addNewTransmogSet(int index) {
         transmogSets.add(index, TransmogSet.createTemplate());
-        SwingUtilities.invokeLater(() -> pluginPanel.rebuild());
         saveTransmogSets();
-    }
+		SwingUtilities.invokeLater(pluginPanel::rebuild);
+	}
 
     public void moveTransmogSet(int index, boolean up) {
         if ((!up && index == transmogSets.size() - 1) || (up && index == 0)) return;
         TransmogSet swap = transmogSets.remove(index);
         transmogSets.add(index + (up ? -1 : 1), swap);
-        SwingUtilities.invokeLater(() -> pluginPanel.rebuild());
-        saveTransmogSets();
+        handleTransmogSetChange();
+        SwingUtilities.invokeLater(pluginPanel::rebuild);
     }
 
     private List<TransmogSet> getDefaultTransmogSets() {

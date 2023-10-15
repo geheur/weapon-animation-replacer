@@ -81,6 +81,7 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JSpinner;
@@ -141,8 +142,6 @@ class TransmogSetPanel extends JPanel
 	private final int index;
 	private final TransmogSet transmogSet;
 
-	private final Runnable rebuild;
-
 	private final FlatTextField nameInput = new FlatTextField();
 
 	private WeaponAnimationReplacerPluginPanel pluginPanel;
@@ -180,9 +179,8 @@ class TransmogSetPanel extends JPanel
 		INVISIBLE_ICON = new ImageIcon(invisibleIcon);
 	}
 
-	TransmogSetPanel(WeaponAnimationReplacerPlugin plugin, TransmogSet transmogSet, Runnable rebuild, WeaponAnimationReplacerPluginPanel pluginPanel, int index)
+	TransmogSetPanel(WeaponAnimationReplacerPlugin plugin, TransmogSet transmogSet, WeaponAnimationReplacerPluginPanel pluginPanel, int index)
 	{
-		this.rebuild = rebuild;
 		this.plugin = plugin;
 		this.transmogSet = transmogSet;
 		this.pluginPanel = pluginPanel;
@@ -213,6 +211,7 @@ class TransmogSetPanel extends JPanel
 		p.add(addSwapButton);
 		bottomContainer.add(p);
 
+		bottomPanel = bottomContainer;
 		return bottomContainer;
 	}
 
@@ -345,7 +344,7 @@ class TransmogSetPanel extends JPanel
 			plugin.clientThread.invoke(() -> {
 				onRemove.run();
 				plugin.handleTransmogSetChange();
-				SwingUtilities.invokeLater(rebuild::run);
+				SwingUtilities.invokeLater(this::rebuild);
 			}
 		);
 		Runnable addItem = () -> {
@@ -353,7 +352,7 @@ class TransmogSetPanel extends JPanel
 				result -> {
 					onAdd.accept(result, plugin);
 					plugin.handleTransmogSetChange();
-					SwingUtilities.invokeLater(rebuild::run);
+					SwingUtilities.invokeLater(this::rebuild);
 				},
 				deleteItem,
 				type,
@@ -424,21 +423,21 @@ class TransmogSetPanel extends JPanel
 	private void addNewSwap(TransmogSet transmogSet)
 	{
 		transmogSet.addNewSwap();
-		SwingUtilities.invokeLater(rebuild::run);
+		SwingUtilities.invokeLater(this::rebuild);
 	}
 
 	private void removeSwap(TransmogSet transmogSet, Swap swap)
 	{
 		transmogSet.removeSwap(swap);
 		plugin.clientThread.invokeLater(plugin::handleTransmogSetChange);
-		SwingUtilities.invokeLater(rebuild::run);
+		SwingUtilities.invokeLater(this::rebuild);
 	}
 
 	private void moveSwap(TransmogSet transmogSet, Swap swap, int i)
 	{
 		transmogSet.moveSwap(swap, i);
 		plugin.clientThread.invokeLater(plugin::handleTransmogSetChange);
-		SwingUtilities.invokeLater(rebuild::run);
+		SwingUtilities.invokeLater(this::rebuild);
 	}
 
 	private void addAnimationReplacement(Swap swap)
@@ -446,7 +445,7 @@ class TransmogSetPanel extends JPanel
 		plugin.clientThread.invokeLater(() -> {
 			swap.addNewAnimationReplacement();
 			plugin.handleTransmogSetChange();
-			SwingUtilities.invokeLater(rebuild::run);
+			SwingUtilities.invokeLater(this::rebuild);
 		});
 	}
 
@@ -454,14 +453,14 @@ class TransmogSetPanel extends JPanel
 	{
 		swap.addNewProjectileSwap();
 		plugin.clientThread.invokeLater(plugin::handleTransmogSetChange);
-		SwingUtilities.invokeLater(rebuild::run);
+		SwingUtilities.invokeLater(this::rebuild);
 	}
 
 	private void addGraphicEffect(Swap swap)
 	{
 		swap.addNewGraphicEffect();
 		plugin.clientThread.invokeLater(plugin::handleTransmogSetChange);
-		SwingUtilities.invokeLater(rebuild::run);
+		SwingUtilities.invokeLater(this::rebuild);
 	}
 
 	// TODO threading, memory consistency? on which threads am I doing what. I want swaps to be modified on the client thread only, I think.
@@ -471,7 +470,7 @@ class TransmogSetPanel extends JPanel
 			result -> {
 				swap.addModelSwap(result.itemId, plugin, result.slot);
 				plugin.handleTransmogSetChange();
-				SwingUtilities.invokeLater(rebuild);
+				SwingUtilities.invokeLater(this::rebuild);
 			},
 			() -> {},
 			MODEL_SWAP,
@@ -485,7 +484,7 @@ class TransmogSetPanel extends JPanel
 			result -> {
 				swap.addTriggerItem(result.itemId, plugin);
 				plugin.handleTransmogSetChange();
-				SwingUtilities.invokeLater(rebuild);
+				SwingUtilities.invokeLater(this::rebuild);
 			},
 			TRIGGER_ITEM
 		);
@@ -532,6 +531,18 @@ class TransmogSetPanel extends JPanel
 		}
 	}
 
+	private Component bottomPanel;
+
+	private void rebuild() {
+		if (bottomPanel != null)
+		{
+			remove(bottomPanel);
+			bottomPanel = null;
+		}
+		if (!transmogSet.isMinimized()) add(createBottomPanel(), BorderLayout.CENTER);
+		pluginPanel.revalidate();
+	}
+
 	public class EntryPanel extends JPanel {
 		public EntryPanel(boolean checkbox, boolean enabled, boolean x, boolean plus, JPanel panel, Runnable onDelete, Runnable onAdd, Consumer<Boolean> onEnable) {
 			this(checkbox, enabled, false, false, false, false, false, x, plus, panel, onDelete, onAdd, onEnable);
@@ -560,7 +571,7 @@ class TransmogSetPanel extends JPanel
 				JLabel xButton = makeButton(minimized ? " + " : " - ", () -> {
 					plugin.clientThread.invokeLater(() -> {
 					    transmogSet.setMinimized(!minimized);;
-						SwingUtilities.invokeLater(rebuild::run);
+						SwingUtilities.invokeLater(TransmogSetPanel.this::rebuild);
 					});
 				});
 				rightSide.add(xButton);
@@ -569,15 +580,11 @@ class TransmogSetPanel extends JPanel
 			    rightSide.add(new IconLabelButton(MOVE_RULE_UP_ICON, MOVE_RULE_UP_ICON_HOVER, () -> {
 					plugin.clientThread.invokeLater(() -> {
 						plugin.moveTransmogSet(index, true);
-						SwingUtilities.invokeLater(rebuild::run);
-						plugin.handleTransmogSetChange();
 					});
 				}, "Move up in list and priority"));
 				rightSide.add(new IconLabelButton(MOVE_RULE_DOWN_ICON, MOVE_RULE_DOWN_ICON_HOVER, () -> {
 					plugin.clientThread.invokeLater(() -> {
 						plugin.moveTransmogSet(index, false);
-						SwingUtilities.invokeLater(rebuild::run);
-						plugin.handleTransmogSetChange();
 					});
 				}, "Move down in list and priority"));
 			}
@@ -659,7 +666,7 @@ class TransmogSetPanel extends JPanel
 					animationReplacement.animationtypeReplacement = null;
 				}
 				plugin.handleTransmogSetChange();
-				SwingUtilities.invokeLater(rebuild::run);
+				SwingUtilities.invokeLater(this::rebuild);
 			});
 		});
 		row1.add(animToReplace);
@@ -694,7 +701,7 @@ class TransmogSetPanel extends JPanel
 					}
 				}
 				plugin.handleTransmogSetChange();
-				SwingUtilities.invokeLater(rebuild::run);
+				SwingUtilities.invokeLater(this::rebuild);
 			});
 		});
 		row2.add(animationSetToUse);
@@ -741,12 +748,12 @@ class TransmogSetPanel extends JPanel
 		return new EntryPanel(false, true, true, i == size - 1, animationReplacementPanel, () -> {
 			swap.animationReplacements.remove(i);
 			plugin.clientThread.invoke(plugin::handleTransmogSetChange);
-			SwingUtilities.invokeLater(() -> rebuild.run());
+			SwingUtilities.invokeLater(this::rebuild);
 		}, () -> {
 			plugin.clientThread.invokeLater(() -> {
 				swap.addNewAnimationReplacement();
 				plugin.handleTransmogSetChange();
-				SwingUtilities.invokeLater(() -> rebuild.run());
+				SwingUtilities.invokeLater(this::rebuild);
 			});
 		}, (enabled) -> {
 			plugin.clientThread.invoke(plugin::handleTransmogSetChange);
@@ -782,12 +789,12 @@ class TransmogSetPanel extends JPanel
 		return new EntryPanel(false, true, true, i == size - 1, animationReplacementPanel, () -> {
 			swap.getProjectileSwaps().remove(i);
 			plugin.clientThread.invoke(plugin::handleTransmogSetChange);
-			SwingUtilities.invokeLater(() -> rebuild.run());
+			SwingUtilities.invokeLater(this::rebuild);
 		}, () -> {
 			plugin.clientThread.invokeLater(() -> {
 				swap.addNewProjectileSwap();
 				plugin.handleTransmogSetChange();
-				SwingUtilities.invokeLater(() -> rebuild.run());
+				SwingUtilities.invokeLater(this::rebuild);
 			});
 		}, (enabled) -> {
 			plugin.clientThread.invoke(plugin::handleTransmogSetChange);
@@ -1033,7 +1040,7 @@ class TransmogSetPanel extends JPanel
 				pluginPanel.currentlyEditingThisSwap = swap;
 				pluginPanel.currentlyEditingThisProjectileSwapIndex = index;
 			}
-			rebuild.run();
+			rebuild();
 		});
 		return button;
 	}
@@ -1067,7 +1074,7 @@ class TransmogSetPanel extends JPanel
 			plugin.clientThread.invokeLater(() -> {
 				graphicEffect.type = (GraphicEffect.Type) graphicEffectTypeComboBox.getSelectedItem();
 				plugin.handleTransmogSetChange();
-				SwingUtilities.invokeLater(rebuild::run);
+				SwingUtilities.invokeLater(this::rebuild);
 			});
 		});
 		row1.add(graphicEffectTypeComboBox);
@@ -1116,7 +1123,7 @@ class TransmogSetPanel extends JPanel
 					colorPicker.setOnClose(c -> plugin.clientThread.invokeLater(() -> {
 						graphicEffect.color = c;
 						plugin.handleTransmogSetChange();
-						SwingUtilities.invokeLater(rebuild::run);
+						SwingUtilities.invokeLater(TransmogSetPanel.this::rebuild);
 					}));
 					colorPicker.setVisible(true);
 				}
@@ -1128,12 +1135,12 @@ class TransmogSetPanel extends JPanel
 		return new EntryPanel(false, false, true, i == size - 1, animationReplacementPanel, () -> {
 			swap.getGraphicEffects().remove(i);
 			plugin.clientThread.invoke(plugin::handleTransmogSetChange);
-			SwingUtilities.invokeLater(rebuild::run);
+			SwingUtilities.invokeLater(this::rebuild);
 		}, () -> {
 			plugin.clientThread.invokeLater(() -> {
 				swap.addNewGraphicEffect();
 				plugin.handleTransmogSetChange();
-				SwingUtilities.invokeLater(rebuild::run);
+				SwingUtilities.invokeLater(this::rebuild);
 			});
 		}, (enabled) -> {
 		});
@@ -1318,7 +1325,7 @@ class TransmogSetPanel extends JPanel
 			    if (!nameInput.getTextField().isEditable()) {
 					plugin.clientThread.invokeLater(() -> {
 						transmogSet.setMinimized(!transmogSet.isMinimized());
-						SwingUtilities.invokeLater(rebuild::run);
+						SwingUtilities.invokeLater(TransmogSetPanel.this::rebuild);
 					});
 				}
 			}
@@ -1339,11 +1346,17 @@ class TransmogSetPanel extends JPanel
 		nameWrapper.add(nameInput, BorderLayout.CENTER);
 		nameWrapper.add(rename, BorderLayout.EAST);
 		return new EntryPanel(true, transmogSet.isEnabled(), false, transmogSet.isMinimized(), true, true, true, true, false, nameWrapper, () -> {
-			plugin.deleteTransmogSet(index);
+			int delete = JOptionPane.showConfirmDialog(pluginPanel,
+				"Are you sure you want to delete that?",
+				"Delete?", JOptionPane.OK_CANCEL_OPTION);
+			if (delete != JOptionPane.YES_OPTION) return;
+
+			plugin.clientThread.invokeLater(() -> {
+				plugin.deleteTransmogSet(index);
+			});
 		}, () -> {
 			plugin.clientThread.invokeLater(() -> {
 				plugin.addNewTransmogSet(index + 1);
-				plugin.handleTransmogSetChange();
 			});
 		}, (b) -> {
 			plugin.clientThread.invokeLater(() -> {

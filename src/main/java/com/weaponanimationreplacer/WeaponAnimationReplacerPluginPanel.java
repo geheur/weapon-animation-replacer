@@ -130,7 +130,7 @@ public class WeaponAnimationReplacerPluginPanel extends PluginPanel {
         int index = 0;
         for (TransmogSet transmogSet : plugin.getTransmogSets())
         {
-            markerView.add(new TransmogSetPanel(plugin, transmogSet, () -> rebuild(), this, index++), constraints);
+            markerView.add(new TransmogSetPanel(plugin, transmogSet, this, index++), constraints);
             constraints.gridy++;
 
             markerView.add(Box.createRigidArea(new Dimension(0, 10)), constraints);
