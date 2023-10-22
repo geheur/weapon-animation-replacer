@@ -44,16 +44,16 @@ public final class ProjectileCast
 		projectiles.add(p().name("Fire Strike").sprite(SpriteID.SPELL_FIRE_STRIKE).ids(1162, 99, 100, 101, 51, 64, 124, 16).build());
 		projectiles.add(p().name("Wind Bolt").sprite(SpriteID.SPELL_WIND_BOLT).ids(1162, 117, 118, 119, 51, 64, 124, 16).build());
 		projectiles.add(p().name("Curse").sprite(SpriteID.SPELL_CURSE).ids(1165, 108, 109, 110, 51, 64, 124, 16).build());
-		projectiles.add(p().name("Bind").sprite(SpriteID.SPELL_BIND).ids(1161, 177, 178, 181, 75, 64, 0, 16).build());
+		projectiles.add(p().name("Bind").sprite(SpriteID.SPELL_BIND).ids(1161, 177, 178, 181, 75, 64, 0, 16).hitGfx(181, 124).build());
 		projectiles.add(p().name("Water Bolt").sprite(SpriteID.SPELL_WATER_BOLT).ids(1162, 120, 121, 122, 51, 64, 124, 16).build());
 		projectiles.add(p().name("Earth Bolt").sprite(SpriteID.SPELL_EARTH_BOLT).ids(1162, 123, 124, 125, 51, 64, 124, 16).build());
-		projectiles.add(p().name("Telegrab").sprite(SpriteID.SPELL_TELEKINETIC_GRAB).ids(723, 142, 143, 144, 48, 64, 0, 16, -1).build());
+		projectiles.add(p().name("Telegrab").sprite(SpriteID.SPELL_TELEKINETIC_GRAB).ids(723, 142, 143, 144, 48, 64, 0, 16).build());
 		projectiles.add(p().name("Fire Bolt").sprite(SpriteID.SPELL_FIRE_BOLT).ids(1162, 126, 127, 128, 51, 64, 124, 16).build());
 		projectiles.add(p().name("Crumble Undead").sprite(SpriteID.SPELL_CRUMBLE_UNDEAD).ids(1166, 145, 146, 147, 46, 64, 124, 16).build());
 		projectiles.add(p().name("Wind Blast").sprite(SpriteID.SPELL_WIND_BLAST).ids(1162, 132, 133, 134, 51, 64, 124, 16).build());
 		projectiles.add(p().name("Water Blast").sprite(SpriteID.SPELL_WATER_BLAST).ids(1162, 135, 136, 137, 51, 64, 124, 16).build());
 		projectiles.add(p().name("Iban Blast").sprite(SpriteID.SPELL_IBAN_BLAST).ids(708, 87, 88, 89, 60, 64, 124, 16).build());
-		projectiles.add(p().name("Snare").sprite(SpriteID.SPELL_SNARE).ids(1161, 177, 178, 180, 75, 64, 0, 16).build());
+		projectiles.add(p().name("Snare").sprite(SpriteID.SPELL_SNARE).ids(1161, 177, 178, 180, 75, 64, 0, 16).hitGfx(180, 124).build());
 		projectiles.add(p().name("Magic Dart").sprite(SpriteID.SPELL_MAGIC_DART).ids(1576, -1, 328, 329, 51, 64, 124, 16).build());
 		projectiles.add(p().name("Earth Blast").sprite(SpriteID.SPELL_EARTH_BLAST).ids(1162, 138, 139, 140, 51, 64, 124, 16).build());
 		projectiles.add(p().name("Fire Blast").sprite(SpriteID.SPELL_FIRE_BLAST).ids(1162, 129, 130, 131, 51, 64, 124, 16).build());
@@ -66,7 +66,7 @@ public final class ProjectileCast
 		projectiles.add(p().name("Earth Wave").sprite(SpriteID.SPELL_EARTH_WAVE).ids(1167, 164, 165, 166, 51, 64, 124, 16).build());
 		projectiles.add(p().name("Enfeeble").sprite(SpriteID.SPELL_ENFEEBLE).ids(1168, 170, 171, 172, 48, 64, 124, 16).build());
 		projectiles.add(p().name("Fire Wave").sprite(SpriteID.SPELL_FIRE_WAVE).ids(1167, 155, 156, 157, 51, 64, 124, 16).build());
-		projectiles.add(p().name("Entangle").sprite(SpriteID.SPELL_ENTANGLE).ids(1161, 177, 178, 179, 75, 64, 0, 16).build());
+		projectiles.add(p().name("Entangle").sprite(SpriteID.SPELL_ENTANGLE).ids(1161, 177, 178, 179, 75, 64, 0, 16).hitGfx(179, 124).build());
 		projectiles.add(p().name("Stun").sprite(SpriteID.SPELL_STUN).ids(1169, 173, 174, 80, 52, 64, 124, 16).build());
 		projectiles.add(p().name("Wind Surge").sprite(SpriteID.SPELL_WIND_SURGE).ids(7855, 1455, 1456, 1457, 51, 64, 124, 16).build());
 		projectiles.add(p().name("Water Surge").sprite(SpriteID.SPELL_WATER_SURGE).ids(7855, 1458, 1459, 1460, 51, 64, 124, 16).build());
@@ -119,7 +119,7 @@ public final class ProjectileCast
 		projectiles.add(p().itemId(ItemID.MITHRIL_ARROW).ids(426, 21, 12, -1, 41, 11, 144, 15).build());
 		projectiles.add(p().itemId(ItemID.ADAMANT_ARROW).ids(426, 22, 13, -1, 41, 11, 144, 15).build());
 		projectiles.add(p().itemId(ItemID.RUNE_ARROW).ids(426, 24, 15, -1, 41, 11, 144, 15).build());
-		projectiles.add(p().itemId(ItemID.AMETHYST_ARROW).ids(426, 1385, 1384, -1, 41, 11, 144, 15, 0).build());
+		projectiles.add(p().itemId(ItemID.AMETHYST_ARROW).ids(426, 1385, 1384, -1, 41, 11, 144, 15).build());
 		projectiles.add(p().itemId(ItemID.DRAGON_ARROW).ids(426, 1116, 1120, -1, 41, 11, 144, 15).build());
 		projectiles.add(p().itemId(ItemID.ICE_ARROWS).ids(426, 25, 16, -1, 41, 11, 144, 15).build());
 		projectiles.add(p().name("Fire arrow").itemId(ItemID.BRONZE_FIRE_ARROW_LIT).ids(426, 26, 17, -1, 41, 11, 144, 15).build());
@@ -140,73 +140,73 @@ public final class ProjectileCast
 		projectiles.add(p().name("Bow of faerdhinen (blue)").itemId(ItemID.BOW_OF_FAERDHINEN_C_25896).ids(426, 1935, 1934, -1, 41, 11, 144, 15).build());
 
 		// Bolts.
-		projectiles.add(p().name("Bolts").itemId(ItemID.RUNITE_BOLTS).ids(7552, -1, 27, -1, 41, 11, 144, 5, 0).build());
+		projectiles.add(p().name("Bolts").itemId(ItemID.RUNITE_BOLTS).ids(7552, -1, 27, -1, 41, 11, 144, 5).build());
 		// TODO bolt effects.
 		// diamond (e) 9168, -1, 27, 758, 41, 11, 144, 5, 0
 		// ruby (e) 9168, -1, 27, 754, 41, 11, 144, 5, 0
 		// TODO it would be neat if different bolt types could have different projectiles.
 
 		// Knives.
-		projectiles.add(p().itemId(ItemID.BRONZE_KNIFE).ids(7617, 219, 212, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.IRON_KNIFE).ids(7617, 220, 213, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.STEEL_KNIFE).ids(7617, 221, 214, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.BLACK_KNIFE).ids(7617, 222, 215, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.MITHRIL_KNIFE).ids(7617, 223, 216, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.ADAMANT_KNIFE).ids(7617, 224, 217, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.RUNE_KNIFE).ids(7617, 225, 218, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.DRAGON_KNIFE).ids(8194, -1, 28, -1, 32, 11, 144, 15, -1).build());
-		projectiles.add(p().name("Dragon knife (spec)").itemId(ItemID.DRAGON_KNIFE).ids(8291, -1, 699, -1, 25, 11, 144, 15, -1).build());
-		projectiles.add(p().itemId(ItemID.DRAGON_KNIFEP_22808).ids(8195, -1, 697, -1, 32, 11, 144, 15, -1).build());
-		projectiles.add(p().name("Dragon knife (p++) (spec)").itemId(ItemID.DRAGON_KNIFEP_22808).ids(8292, -1, 1629, -1, 25, 11, 144, 15, -1).build());
+		projectiles.add(p().itemId(ItemID.BRONZE_KNIFE).ids(7617, 219, 212, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().itemId(ItemID.IRON_KNIFE).ids(7617, 220, 213, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().itemId(ItemID.STEEL_KNIFE).ids(7617, 221, 214, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().itemId(ItemID.BLACK_KNIFE).ids(7617, 222, 215, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().itemId(ItemID.MITHRIL_KNIFE).ids(7617, 223, 216, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().itemId(ItemID.ADAMANT_KNIFE).ids(7617, 224, 217, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().itemId(ItemID.RUNE_KNIFE).ids(7617, 225, 218, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().itemId(ItemID.DRAGON_KNIFE).ids(8194, -1, 28, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().name("Dragon knife (spec)").itemId(ItemID.DRAGON_KNIFE).ids(8291, -1, 699, -1, 25, 11, 144, 15).build());
+		projectiles.add(p().itemId(ItemID.DRAGON_KNIFEP_22808).ids(8195, -1, 697, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().name("Dragon knife (p++) (spec)").itemId(ItemID.DRAGON_KNIFEP_22808).ids(8292, -1, 1629, -1, 25, 11, 144, 15).build());
 
 		// Darts.
-		projectiles.add(p().itemId(ItemID.BRONZE_DART).ids(7554, -1, 226, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.IRON_DART).ids(7554, -1, 227, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.STEEL_DART).ids(7554, -1, 228, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.BLACK_DART).ids(7554, -1, 32, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.MITHRIL_DART).ids(7554, -1, 229, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.ADAMANT_DART).ids(7554, -1, 230, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.RUNE_DART).ids(7554, -1, 231, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.AMETHYST_DART).ids(7554, -1, 1936, -1, 32, 11, 144, 15, -1).build());
-		projectiles.add(p().itemId(ItemID.DRAGON_DART).ids(7554, -1, 1122, -1, 32, 11, 144, 15, 0).build());
+		projectiles.add(p().itemId(ItemID.BRONZE_DART).ids(7554, -1, 226, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().itemId(ItemID.IRON_DART).ids(7554, -1, 227, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().itemId(ItemID.STEEL_DART).ids(7554, -1, 228, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().itemId(ItemID.BLACK_DART).ids(7554, -1, 32, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().itemId(ItemID.MITHRIL_DART).ids(7554, -1, 229, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().itemId(ItemID.ADAMANT_DART).ids(7554, -1, 230, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().itemId(ItemID.RUNE_DART).ids(7554, -1, 231, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().itemId(ItemID.AMETHYST_DART).ids(7554, -1, 1936, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().itemId(ItemID.DRAGON_DART).ids(7554, -1, 1122, -1, 32, 11, 144, 15).build());
 
 		// Blowpipe.
-		projectiles.add(p().name("Bronze Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 226, -1, 32, 105, 144, 15, 0).build());
-		projectiles.add(p().name("Iron Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 227, -1,  32, 105, 144, 15, -1).build());
-		projectiles.add(p().name("Steel Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 228, -1, 32, 105, 144, 15, 0).build());
-		projectiles.add(p().name("Black Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 32, -1, 32, 105, 144, 15, 0).build());
-		projectiles.add(p().name("Mithril Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 229, -1, 32, 105, 144, 15, 0).build());
-		projectiles.add(p().name("Adamant Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 230, -1, 32, 105, 144, 15, 0).build());
-		projectiles.add(p().name("Rune Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 231, -1, 32, 105, 144, 15, 0).build());
-		projectiles.add(p().name("Amethyst Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 1936, -1, 32, 105, 144, 15, -1).build());
-		projectiles.add(p().name("Dragon Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 1122, -1, 32, 105, 144, 15, 0).build());
+		projectiles.add(p().name("Bronze Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 226, -1, 32, 105, 144, 15).build());
+		projectiles.add(p().name("Iron Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 227, -1,  32, 105, 144, 15).build());
+		projectiles.add(p().name("Steel Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 228, -1, 32, 105, 144, 15).build());
+		projectiles.add(p().name("Black Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 32, -1, 32, 105, 144, 15).build());
+		projectiles.add(p().name("Mithril Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 229, -1, 32, 105, 144, 15).build());
+		projectiles.add(p().name("Adamant Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 230, -1, 32, 105, 144, 15).build());
+		projectiles.add(p().name("Rune Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 231, -1, 32, 105, 144, 15).build());
+		projectiles.add(p().name("Amethyst Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 1936, -1, 32, 105, 144, 15).build());
+		projectiles.add(p().name("Dragon Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 1122, -1, 32, 105, 144, 15).build());
 
 		// Thrownaxes.
-		projectiles.add(p().itemId(ItemID.BRONZE_THROWNAXE).ids(7617, 43, 36, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.IRON_THROWNAXE).ids(7617, 42, 35, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.STEEL_THROWNAXE).ids(7617, 44, 37, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.MITHRIL_THROWNAXE).ids(7617, 45, 38, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.ADAMANT_THROWNAXE).ids(7617, 46, 39, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.RUNE_THROWNAXE).ids(7617, 48, 41, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().name("Rune thrownaxe (spec)").itemId(ItemID.RUNE_THROWNAXE).ids(1068, 257, 258, -1, 41, 11, 144, 0, 0).build());
-		projectiles.add(p().itemId(ItemID.DRAGON_THROWNAXE).ids(7617, 1320, 1319, -1, 32, 11, 144, 15, -1).build());
-		projectiles.add(p().name("Dragon thrownaxe (spec)").itemId(ItemID.DRAGON_THROWNAXE).ids(7521, 1317, 1318, -1, 25, 11, 144, 15, -1).build());
+		projectiles.add(p().itemId(ItemID.BRONZE_THROWNAXE).ids(7617, 43, 36, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().itemId(ItemID.IRON_THROWNAXE).ids(7617, 42, 35, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().itemId(ItemID.STEEL_THROWNAXE).ids(7617, 44, 37, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().itemId(ItemID.MITHRIL_THROWNAXE).ids(7617, 45, 38, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().itemId(ItemID.ADAMANT_THROWNAXE).ids(7617, 46, 39, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().itemId(ItemID.RUNE_THROWNAXE).ids(7617, 48, 41, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().name("Rune thrownaxe (spec)").itemId(ItemID.RUNE_THROWNAXE).ids(1068, 257, 258, -1, 41, 11, 144, 0).build());
+		projectiles.add(p().itemId(ItemID.DRAGON_THROWNAXE).ids(7617, 1320, 1319, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().name("Dragon thrownaxe (spec)").itemId(ItemID.DRAGON_THROWNAXE).ids(7521, 1317, 1318, -1, 25, 11, 144, 15).build());
 
 		// javelins.
-		projectiles.add(p().itemId(ItemID.BRONZE_JAVELIN).ids(7555, -1, 200, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.IRON_JAVELIN).ids(7555, -1, 201, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.STEEL_JAVELIN).ids(7555, -1, 202, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.MITHRIL_JAVELIN).ids(7555, -1, 203, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.ADAMANT_JAVELIN).ids(7555, -1, 204, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.RUNE_JAVELIN).ids(7555, -1, 205, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.AMETHYST_JAVELIN).ids(7555, -1, 1386, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.DRAGON_JAVELIN).ids(7555, -1, 1301, -1, 32, 11, 144, 15, 0).build());
+		projectiles.add(p().itemId(ItemID.BRONZE_JAVELIN).ids(7555, -1, 200, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().itemId(ItemID.IRON_JAVELIN).ids(7555, -1, 201, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().itemId(ItemID.STEEL_JAVELIN).ids(7555, -1, 202, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().itemId(ItemID.MITHRIL_JAVELIN).ids(7555, -1, 203, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().itemId(ItemID.ADAMANT_JAVELIN).ids(7555, -1, 204, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().itemId(ItemID.RUNE_JAVELIN).ids(7555, -1, 205, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().itemId(ItemID.AMETHYST_JAVELIN).ids(7555, -1, 1386, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().itemId(ItemID.DRAGON_JAVELIN).ids(7555, -1, 1301, -1, 32, 11, 144, 15).build());
 
 		projectiles.add(p().itemId(ItemID.BLACK_CHINCHOMPA).ids(7618, -1, 1272, 157, 21, 11, 144, 15).build()); // only has hit gfx when in multicombat area.
-		projectiles.add(p().itemId(ItemID.RED_CHINCHOMPA).ids(7618, -1, 909, 157, 21, 11, 144, 15, 0).build()); // only has hit gfx when in multicombat area.
-		projectiles.add(p().itemId(ItemID.CHINCHOMPA).ids(7618, -1, 908, 157, 21, 11, 144, 15, 0).build()); // only has hit gfx when in multicombat area.
+		projectiles.add(p().itemId(ItemID.RED_CHINCHOMPA).ids(7618, -1, 909, 157, 21, 11, 144, 15).hitGfx(157, 0).build()); // only has hit gfx when in multicombat area.
+		projectiles.add(p().itemId(ItemID.CHINCHOMPA).ids(7618, -1, 908, 157, 21, 11, 144, 15).hitGfx(157, 0).build()); // only has hit gfx when in multicombat area.
 
-		projectiles.add(p().itemId(ItemID.TOKTZXILUL).ids(7558, -1, 442, -1, 32, 11, 144, 15, -1).build());
+		projectiles.add(p().itemId(ItemID.TOKTZXILUL).ids(7558, -1, 442, -1, 32, 11, 144, 15).build());
 
 //		projectiles.add(p().itemId(ItemID.GRAAHK_HEADDRESS).ids(7618, -1, 941, 157, 21, 11, 144, 15, 0).build()); // only has hit gfx when in multicombat area.
 
@@ -214,7 +214,7 @@ public final class ProjectileCast
 		projectiles.add(p().name("Dragon crossbow spec").itemId(ItemID.DRAGON_CROSSBOW).ids(4230, -1, 698, 157, 41, 11, 144, 5).build());
 		projectiles.add(p().name("Dark bow spec (non-dragon arrows)").itemId(ItemID.DARK_BOW).ids(426, 1105, 1101, 1103, 41, 11, 144, 5).build());
 		projectiles.add(p().name("Dark bow spec (dragon arrows)").itemId(ItemID.DARK_BOW).ids(426, 1111, 1099, 1100, 41, 11, 144, 5).build());
-		projectiles.add(p().name("Seercull").itemId(ItemID.SEERCULL).ids(426, 472, 473, 474, 41, 11, 144, 15).build());
+		projectiles.add(p().name("Seercull").itemId(ItemID.SEERCULL).ids(426, 472, 473, 474, 41, 11, 144, 15).hitGfx(474, 0).build());
 
 		// TODO
 		projectiles.add(p().name("Corp sperm 1").sprite(SpriteID.SPELL_WIND_STRIKE).ids(1162, 90, 314, 92, 51, 64, 124, 16).artificial().build());
@@ -223,13 +223,13 @@ public final class ProjectileCast
 
 		projectiles.add(p().name("Rotten tomato").itemId(ItemID.ROTTEN_TOMATO).ids(5063, 30, 29, 31, 62, 11, 44, 15).build());
 		projectiles.add(p().name("Rock").itemId(ItemID.PET_ROCK).ids(5063, 33, 32, -1, 62, 11, 44, 15).build());
-		projectiles.add(p().itemId(ItemID.VIAL).ids(7617, 50, 49, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.ENCHANTED_VIAL).ids(7617, 52, 51, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.HOLY_WATER).ids(7617, 193, 192, -1, 32, 11, 144, 15, 0).build());
-		projectiles.add(p().itemId(ItemID.NINJA_IMPLING_JAR).ids(7617, 210, 211, 209, 32, 11, 144, 15, 0).build());
+		projectiles.add(p().itemId(ItemID.VIAL).ids(7617, 50, 49, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().itemId(ItemID.ENCHANTED_VIAL).ids(7617, 52, 51, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().itemId(ItemID.HOLY_WATER).ids(7617, 193, 192, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().itemId(ItemID.NINJA_IMPLING_JAR).ids(7617, 210, 211, 209, 32, 11, 144, 15).hitGfx(209, 0).build());
 		projectiles.add(p().name("Dragon breath (large)").sprite(SpriteID.SPELL_FIRE_SURGE).ids(7855, 1464, 54, 1466, 51, 64, 124, 16).build());
 		projectiles.add(p().name("Dark Strike").sprite(SpriteID.SPELL_WIND_STRIKE).ids(1162, 194, 195, 196, 51, 64, 124, 16).build());
-		projectiles.add(p().name("Tempoross harpoonfish").itemId(ItemID.HARPOONFISH).ids(426, 18, 1837, 3, 41, 11, 144, 15).build());
+		projectiles.add(p().name("Tempoross harpoonfish").itemId(ItemID.HARPOONFISH).ids(426, 18, 1837, 3, 41, 11, 144, 15).hitGfx(3, 0).build());
 
 		projectiles.add(p().itemId(ItemID.TUMEKENS_SHADOW).ids(9493, 2125, 2126, 2127, 56, 40, 124, 32).build());
 	}
@@ -243,6 +243,7 @@ public final class ProjectileCast
 	int castGfx;
 	int projectileId;
 	int hitGfx;
+	int hitGfxHeight;
 
 	int startMovement;
 	int startHeight;
@@ -253,39 +254,37 @@ public final class ProjectileCast
 
 	public static ProjectileCast copy(ProjectileCast toCopy)
 	{
-		return new ProjectileCast(toCopy.name, toCopy.itemIdIcon, toCopy.spriteIdIcon, toCopy.castAnimation, toCopy.castGfx, toCopy.projectileId, toCopy.hitGfx, toCopy.startMovement, toCopy.startHeight, toCopy.endHeight, toCopy.slope, true);
+		return new ProjectileCast(toCopy.name, toCopy.itemIdIcon, toCopy.spriteIdIcon, toCopy.castAnimation, toCopy.castGfx, toCopy.projectileId, toCopy.hitGfx, toCopy.hitGfxHeight, toCopy.startMovement, toCopy.startHeight, toCopy.endHeight, toCopy.slope, true);
 	}
 
 	public String getName(ItemManager itemManager) {
 		return name != null ? name : itemManager.getItemComposition(itemIdIcon).getName() + itemIdIcon;
 	}
 
-	private static class ProjectileCastBuilder {
+	public static class ProjectileCastBuilder {
 		String name = null;
 		int itemIdIcon = -1;
 		int spriteIdIcon = -1;
 
-		int castAnimation;
-		int castGfx;
-		int projectileId;
-		int hitGfx;
+		int castAnimation = -1;
+		int castGfx = -1;
+		int projectileId = -1;
+		int hitGfx = -1;
+		int hitGfxHeight = -1;
 
-		int startMovement;
-		int startHeight;
-		int endHeight;
-		int slope;
+		int startMovement = -1;
+		int startHeight = -1;
+		int endHeight = -1;
+		int slope = -1;
 
 		boolean artificial = false;
 
 		public ProjectileCastBuilder ids(int castAnimation, int castGfx, int projectileId, int hitGfx, int startMovement, int startHeight, int endHeight, int slope) {
-			return ids(castAnimation, castGfx, projectileId, hitGfx, startMovement, startHeight, endHeight, slope, 0);
-		}
-
-		public ProjectileCastBuilder ids(int castAnimation, int castGfx, int projectileId, int hitGfx, int startMovement, int startHeight, int endHeight, int slope, int graphicHeight) {
 			this.castAnimation = castAnimation;
 			this.castGfx = castGfx;
 			this.projectileId = projectileId;
 			this.hitGfx = hitGfx;
+			this.hitGfxHeight = endHeight; // Good enough for most spells, only a few have a different value here.
 			this.startMovement = startMovement;
 			this.startHeight = startHeight;
 			this.endHeight = endHeight;
@@ -293,11 +292,22 @@ public final class ProjectileCast
 			return this;
 		}
 
+		public ProjectileCastBuilder hitGfx(int hitGfx, int hitGfxHeight) {
+			this.hitGfx = hitGfx;
+			this.hitGfxHeight = hitGfxHeight;
+			return this;
+		}
+
 		public ProjectileCastBuilder ids(int castAnimation, int castGfx, int hitGfx) {
+			return ids(castAnimation, castGfx, hitGfx, 0);
+		}
+
+		public ProjectileCastBuilder ids(int castAnimation, int castGfx, int hitGfx, int hitGfxHeight) {
 			this.castAnimation = castAnimation;
 			this.castGfx = castGfx;
 			this.projectileId = -1;
 			this.hitGfx = hitGfx;
+			this.hitGfxHeight = hitGfxHeight;
 			this.startMovement = -1;
 			this.startHeight = -1;
 			this.endHeight = -1;
@@ -326,11 +336,11 @@ public final class ProjectileCast
 		}
 
 		public ProjectileCast build() {
-			return new ProjectileCast(name, itemIdIcon, spriteIdIcon, castAnimation, castGfx, projectileId, hitGfx, startMovement, startHeight, endHeight, slope, artificial);
+			return new ProjectileCast(name, itemIdIcon, spriteIdIcon, castAnimation, castGfx, projectileId, hitGfx, hitGfxHeight, startMovement, startHeight, endHeight, slope, artificial);
 		}
 	}
 
-	private static ProjectileCastBuilder p() {
+	public static ProjectileCastBuilder p() {
 		return new ProjectileCastBuilder();
 	}
 }

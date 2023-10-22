@@ -42,6 +42,7 @@ import lombok.Getter;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
+import net.runelite.api.ActorSpotAnim;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.JagexColor;
@@ -123,6 +124,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	private GraphicEffect currentScytheGraphicEffect = null;
 	int scytheSwingCountdown = -1;
 	int delayedGfxToApply = -1;
+	int delayedGfxHeightToApply = -1;
 	Actor actorToApplyDelayedGfxTo = null;
 	int timeToApplyDelayedGfx = -1;
 	// For handling spells that have no projectiles which are harder to identify. This must be toggled off in onProjectileMoved the the spell is replaced there.
@@ -492,7 +494,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 //			System.out.println("it is " + client.getGameCycle() + ", applying delayed gfx.");
 			actorToApplyDelayedGfxTo.setGraphic(delayedGfxToApply);
 			actorToApplyDelayedGfxTo.setSpotAnimFrame(0);
-			actorToApplyDelayedGfxTo.setGraphicHeight(124);
+			actorToApplyDelayedGfxTo.setGraphicHeight(delayedGfxHeightToApply);
 		}
 
 		if (scytheSwingCountdown == 0) {
@@ -722,14 +724,13 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 				if (graphic == toReplace.getHitGfx() || (graphic == 85 && true)) // TODO remove second part.
 				{
 					player.getInteracting().setGraphic(toReplaceWith.getHitGfx());
-					player.getInteracting().setGraphicHeight(toReplaceWith.getEndHeight());
+					player.getInteracting().setGraphicHeight(toReplaceWith.getHitGfxHeight());
 				}
 			}
 			else
 			{
 				delayedGfxToApply = toReplaceWith.getHitGfx();
-				// TODO gfx height.
-				player.getInteracting().setGraphicHeight(toReplaceWith.getEndHeight());
+				delayedGfxHeightToApply = toReplaceWith.getHitGfxHeight();
 				actorToApplyDelayedGfxTo = player.getInteracting();
 				timeToApplyDelayedGfx = endCycle;
 			}
@@ -818,17 +819,22 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	{
 		Player p = client.getLocalPlayer();
 		if (p == null) return;
-		WorldPoint wl = p.getWorldLocation();
-		LocalPoint ll = p.getLocalLocation();
-		norecurse = true;
-		int targetx = ll.getX() + (int) (700 * Math.cos((-512 - p.getOrientation()) / 2048d * 2 * Math.PI));
-		int targety = ll.getY() + (int) (700 * Math.sin((-512 - p.getOrientation()) / 2048d * 2 * Math.PI));
-		Projectile projectile = client.createProjectile(pc.projectileId, wl.getPlane(), ll.getX(), ll.getY(), -412, client.getGameCycle() + pc.startMovement, client.getGameCycle() + 100, pc.slope, pc.startHeight, pc.endHeight, null, targetx, targety);
-		client.getProjectiles().addLast(projectile);
-		norecurse = false;
-		p.setAnimation(pc.castAnimation);
-		p.setAnimationFrame(0);
-		p.createSpotAnim("demo".hashCode(), pc.castGfx, 92, 0);
+		if (pc.projectileId != -1)
+		{
+			WorldPoint wl = p.getWorldLocation();
+			LocalPoint ll = p.getLocalLocation();
+			norecurse = true;
+			int targetx = ll.getX() + (int) (700 * Math.cos((-512 - p.getOrientation()) / 2048d * 2 * Math.PI));
+			int targety = ll.getY() + (int) (700 * Math.sin((-512 - p.getOrientation()) / 2048d * 2 * Math.PI));
+			Projectile projectile = client.createProjectile(pc.projectileId, wl.getPlane(), ll.getX(), ll.getY(), -412, client.getGameCycle() + pc.startMovement, client.getGameCycle() + 100, pc.slope, pc.startHeight, pc.endHeight, null, targetx, targety);
+			client.getProjectiles().addLast(projectile);
+			norecurse = false;
+		}
+		if (pc.castAnimation != -1) {
+			p.setAnimation(pc.castAnimation);
+			p.setAnimationFrame(0);
+		}
+		if (pc.castGfx != -1) p.createSpotAnim("demo".hashCode(), pc.castGfx, 92, 0);
 	}
 
 	private static final class AnimationReplacements {

@@ -30,6 +30,10 @@ public class ProjectileSwap
 	{
 		if (toReplaceWithCustom != null) return;
 
-		toReplaceWithCustom = ProjectileCast.copy(ProjectileCast.projectiles.get(toReplaceWith));
+		if (toReplaceWith == -1) {
+			toReplaceWithCustom = ProjectileCast.p().build();
+		} else {
+			toReplaceWithCustom = ProjectileCast.copy(ProjectileCast.projectiles.get(toReplaceWith));
+		}
 	}
 }
