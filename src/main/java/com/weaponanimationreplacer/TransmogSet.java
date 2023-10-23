@@ -19,9 +19,13 @@ public class TransmogSet
 	@Setter
 	private boolean minimized = false;
 
-	// TODO assert that this list is not empty.
 	@Getter
 	private final List<Swap> swaps = new ArrayList<>();
+
+	// needed for gson to not skip my defaults.
+	public TransmogSet() {
+
+	}
 
 	public TransmogSet(List<Swap> swaps) {
 		this.swaps.addAll(swaps);
