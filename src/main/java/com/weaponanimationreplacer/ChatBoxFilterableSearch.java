@@ -764,21 +764,20 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 			// We ran out of items to search.
 			lastPage = page;
 		} else { // is spell.
-			int skip = page * RESULTS_PER_PAGE;
-			for (ProjectileCast projectile : ProjectileCast.projectiles)
+			int start = filteredPageIndexes.getOrDefault(page - 1, 0);
+			for (int projectileIndex = start; projectileIndex < ProjectileCast.projectiles.size(); projectileIndex++)
 			{
+				ProjectileCast projectile = ProjectileCast.projectiles.get(projectileIndex);
 				if (searchType == SPELL_L && projectile.isArtificial()) continue;
 				String projectileName = projectile.getName(itemManager);
-				if (projectileName.toLowerCase().contains(search) && !spells.contains(projectileName)) {
-					if (spells.size() >= RESULTS_PER_PAGE) {
+				if (projectileName.toLowerCase().contains(search) && !spells.contains(projectileName))
+				{
+					if (spells.size() == RESULTS_PER_PAGE)
+					{
+						filteredPageIndexes.put(page, projectileIndex);
 						return; // skip the lastPage setting, since there is at least 1 item on the next page.
 					}
-
-					skip--;
-					if (skip <= 0)
-					{
-						spells.add(projectileName);
-					}
+					spells.add(projectileName);
 				}
 			}
 			// We ran out of items to search.
