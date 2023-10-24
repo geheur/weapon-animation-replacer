@@ -277,7 +277,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 
 					if (projectile.getName(itemManager).equals(spell)) {
 						int finalI = i;
-						addItemWidget(-1, projectile.getItemIdIcon(), projectile.getSpriteIdIcon(), projectile.getName(itemManager), container, x, y, se ->
+						addItemWidget(finalI, projectile.getItemIdIcon(), projectile.getSpriteIdIcon(), projectile.getName(itemManager), container, x, y, se ->
 						{
 							itemSelected(finalI);
 							chatboxPanelManager.close();

@@ -23,6 +23,7 @@ import com.weaponanimationreplacer.Swap.AnimationType;
 import static com.weaponanimationreplacer.Swap.AnimationType.ALL;
 import static com.weaponanimationreplacer.Swap.AnimationType.ATTACK;
 import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.MODEL_SWAP;
+import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.SPELL_R;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.lang.reflect.Type;
@@ -1067,7 +1068,13 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			itemSearch.onItemSelected(onItemChosen);
 			itemSearch.onItemDeleted(onItemDeleted);
 			itemSearch.setType(searchType);
-			itemSearch.onItemMouseOvered(searchType == MODEL_SWAP ? itemId -> setPreviewItem(itemId, swap != null && (swap.animationReplacements.isEmpty() || swap.animationReplacements.size() == 1 && swap.animationReplacements.get(0).auto != -1)) : null);
+			itemSearch.onItemMouseOvered(
+				searchType == MODEL_SWAP ?
+					itemId -> setPreviewItem(itemId, swap != null && (swap.animationReplacements.isEmpty() || swap.animationReplacements.size() == 1 && swap.animationReplacements.get(0).auto != -1)) :
+				searchType == SPELL_R ?
+					spellIndex -> {if (spellIndex != -1) demoCast(ProjectileCast.projectiles.get(spellIndex));} :
+					null
+			);
 			itemSearch.build();
 			clientUI.requestFocus();
 		});
