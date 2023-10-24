@@ -271,28 +271,25 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 		} else { // spell
 			for (String spell : spells)
 			{
-				for (int i = 0; i < ProjectileCast.projectiles.size(); i++)
+				for (ProjectileCast projectile : Constants.projectiles)
 				{
-					ProjectileCast projectile = ProjectileCast.projectiles.get(i);
+					if (!projectile.getName(itemManager).equals(spell)) continue;
 
-					if (projectile.getName(itemManager).equals(spell)) {
-						int finalI = i;
-						addItemWidget(finalI, projectile.getItemIdIcon(), projectile.getSpriteIdIcon(), projectile.getName(itemManager), container, x, y, se ->
-						{
-							itemSelected(finalI);
-							chatboxPanelManager.close();
-						}, idx);
+					addItemWidget(projectile.getId(), projectile.getItemIdIcon(), projectile.getSpriteIdIcon(), projectile.getName(itemManager), container, x, y, se ->
+					{
+						itemSelected(projectile.getId());
+						chatboxPanelManager.close();
+					}, idx);
 
-						x += ICON_WIDTH + PADDING;
-						if (x + ICON_WIDTH >= container.getWidth())
-						{
-							y += ICON_HEIGHT + PADDING;
-							x = PADDING;
-						}
-
-						++idx;
-						break;
+					x += ICON_WIDTH + PADDING;
+					if (x + ICON_WIDTH >= container.getWidth())
+					{
+						y += ICON_HEIGHT + PADDING;
+						x = PADDING;
 					}
+
+					++idx;
+					break;
 				}
 			}
 		}
@@ -765,9 +762,9 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 			lastPage = page;
 		} else { // is spell.
 			int start = filteredPageIndexes.getOrDefault(page - 1, 0);
-			for (int projectileIndex = start; projectileIndex < ProjectileCast.projectiles.size(); projectileIndex++)
+			for (int projectileIndex = start; projectileIndex < Constants.projectiles.size(); projectileIndex++)
 			{
-				ProjectileCast projectile = ProjectileCast.projectiles.get(projectileIndex);
+				ProjectileCast projectile = Constants.projectiles.get(projectileIndex);
 				if (searchType == SPELL_L && projectile.isArtificial()) continue;
 				String projectileName = projectile.getName(itemManager);
 				if (projectileName.toLowerCase().contains(search) && !spells.contains(projectileName))

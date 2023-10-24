@@ -12,13 +12,13 @@ public class ProjectileSwap
 
 	public ProjectileCast getToReplace() {
 		if (toReplace == -1) return null;
-		return ProjectileCast.projectiles.get(toReplace);
+		return Constants.projectilesById[toReplace];
 	}
 
 	public ProjectileCast getToReplaceWith() {
 		if (toReplaceWithCustom != null) return toReplaceWithCustom;
 		if (toReplaceWith == -1) return null;
-		return ProjectileCast.projectiles.get(toReplaceWith);
+		return Constants.projectilesById[toReplaceWith];
 	}
 
 	public static ProjectileSwap createTemplate()
@@ -33,7 +33,7 @@ public class ProjectileSwap
 		if (toReplaceWith == -1) {
 			toReplaceWithCustom = ProjectileCast.p().build();
 		} else {
-			toReplaceWithCustom = ProjectileCast.copy(ProjectileCast.projectiles.get(toReplaceWith));
+			toReplaceWithCustom = ProjectileCast.copy(Constants.projectilesById[toReplaceWith]);
 		}
 	}
 }

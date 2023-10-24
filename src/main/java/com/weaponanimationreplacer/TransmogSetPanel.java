@@ -918,6 +918,7 @@ class TransmogSetPanel extends JPanel
 			if (plugin.client.getGameCycle() >= projectile.getStartCycle()) return;
 
 			liveProjectiles.add(new PCwI(new ProjectileCast(
+				-1,
 				"",
 				-1,
 				-1,
@@ -1235,17 +1236,15 @@ class TransmogSetPanel extends JPanel
 			}
 		}
 
-		public void setSpell(int spellIndex)
+		public void setSpell(int spellId)
 		{
-			if (spellIndex == -1)
+			if (spellId == -1)
 			{
 				setIcon(null);
 				setText(nameWhenEmpty);
 				setBorder(null);
 			} else {
-				if (spellIndex >= ProjectileCast.projectiles.size()) return;
-
-				ProjectileCast projectileCast = ProjectileCast.projectiles.get(spellIndex);
+				ProjectileCast projectileCast = Constants.projectilesById[spellId];
 				setText(null);
 
 				plugin.clientThread.invoke(() -> {

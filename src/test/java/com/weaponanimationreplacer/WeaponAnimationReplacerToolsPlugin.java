@@ -21,6 +21,7 @@ import static com.weaponanimationreplacer.Constants.SLOT_OVERRIDES;
 import static com.weaponanimationreplacer.Constants.TORSO_SLOT;
 import static com.weaponanimationreplacer.Constants.WEAPON_SLOT;
 import static com.weaponanimationreplacer.Constants.mapNegativeId;
+import static com.weaponanimationreplacer.ProjectileCast.p;
 import java.awt.image.BufferedImage;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -44,9 +45,11 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.ItemComposition;
 import net.runelite.api.ItemID;
+import net.runelite.api.Perspective;
 import net.runelite.api.Player;
 import net.runelite.api.PlayerComposition;
 import net.runelite.api.Projectile;
+import net.runelite.api.SpriteID;
 import net.runelite.api.WorldType;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
@@ -75,6 +78,7 @@ import net.runelite.client.game.ItemVariationMapping;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDependency;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.util.Text;
 import net.runelite.http.api.item.ItemEquipmentStats;
 import net.runelite.http.api.item.ItemStats;
 
@@ -178,45 +182,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		shutDown();
 	}
 
-	@Subscribe
-	public void onProjectileMoved(ProjectileMoved projectileMoved) {
-		Projectile projectile = projectileMoved.getProjectile();
-
-		// skip already seen projectiles.
-		if (client.getGameCycle() >= projectile.getStartCycle()) {
-			return;
-		}
-
-		for (Player clientPlayer : client.getPlayers())
-		{
-			final WorldPoint playerPos = clientPlayer.getWorldLocation();
-			if (playerPos == null)
-			{
-				return;
-			}
-
-			final LocalPoint playerPosLocal = LocalPoint.fromWorld(client, playerPos);
-			if (playerPosLocal == null)
-			{
-				return;
-			}
-
-			if (projectile.getX1() == playerPosLocal.getX() && projectile.getY1() == playerPosLocal.getY())
-			{
-				System.out.println(
-					clientPlayer.getAnimation() + ", " +
-						clientPlayer.getGraphic() + ", " +
-						projectile.getId() + ", " +
-						(clientPlayer.getInteracting() != null ? clientPlayer.getInteracting().getGraphic() : "-1") + ", " +
-						(projectile.getStartCycle() - client.getGameCycle()) + ", " +
-						projectile.getStartHeight() + ", " +
-						projectile.getEndHeight() + ", " +
-						projectile.getSlope() + ", " +
-						(clientPlayer.getInteracting() != null ? clientPlayer.getInteracting().getGraphicHeight() : "-1")
-				);
-			}
-		}
-	}
+	private ProjectileCast manualSpellCastNoCastGfx = null;
 
 	@Subscribe(priority = 100)
 	public void onPlayerSpawned(PlayerSpawned e) {
@@ -327,6 +293,165 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		rightList.add(body);
 		return uhoh;
 	}
+
+	@Subscribe
+	public void onProjectileMoved(ProjectileMoved projectileMoved) {
+		Projectile projectile = projectileMoved.getProjectile();
+
+		// skip already seen projectiles.
+		if (client.getGameCycle() >= projectile.getStartCycle()) {
+			return;
+		}
+
+		LocalPoint point = client.getLocalPlayer().getLocalLocation();
+		int plane = client.getLocalPlayer().getWorldLocation().getPlane();
+		int sceneX = point.getSceneX();
+		int sceneY = point.getSceneY();
+		if (sceneX >= 0 && sceneY >= 0 && sceneX < 104 && sceneY < 104) {
+			byte[][][] tileSettings = client.getTileSettings();
+			int[][][] tileHeights = client.getTileHeights();
+			int z1 = plane;
+			if (plane < 3 && (tileSettings[1][sceneX][sceneY] & 2) == 2) {
+				z1 = plane + 1;
+			}
+
+			int x = point.getX() & 127;
+			int y = point.getY() & 127;
+			int var8 = x * tileHeights[z1][sceneX + 1][sceneY] + (128 - x) * tileHeights[z1][sceneX][sceneY] >> 7;
+			int var9 = tileHeights[z1][sceneX][sceneY + 1] * (128 - x) + x * tileHeights[z1][sceneX + 1][sceneY + 1] >> 7;
+			int height = projectile.getHeight();
+			int tileHeight = Perspective.getTileHeight(client, client.getLocalPlayer().getLocalLocation(), client.getLocalPlayer().getWorldLocation().getPlane());
+			System.out.println(height + " " + tileHeight + " " + var8 + " " + var9);
+			System.out.println(height + " " + (height - tileHeight) + " " + (height - var8) + " " + (height - var9));
+//			return (128 - y) * var8 + y * var9 >> 7;
+//		} else {
+//			return 0;
+		}
+
+		System.out.println(Perspective.getTileHeight(client, client.getLocalPlayer().getLocalLocation(), client.getLocalPlayer().getWorldLocation().getPlane()));
+		System.out.println(
+				projectile.getId() + ", " +
+				(projectile.getStartCycle() - client.getGameCycle()) + ", " +
+				projectile.getStartHeight() + ", " +
+				projectile.getEndHeight() + ", " +
+					projectile.getScalar() + " " + projectile.getHeight() + " " + projectile.getZ() + " " +
+				projectile.getSlope() + ", "
+		);
+
+		for (Player clientPlayer : client.getPlayers())
+		{
+			final WorldPoint playerPos = clientPlayer.getWorldLocation();
+			if (playerPos == null)
+			{
+				return;
+			}
+
+			final LocalPoint playerPosLocal = LocalPoint.fromWorld(client, playerPos);
+			if (playerPosLocal == null)
+			{
+				return;
+			}
+
+			if (projectile.getX1() == playerPosLocal.getX() && projectile.getY1() == playerPosLocal.getY())
+			{
+				System.out.println(
+					clientPlayer.getAnimation() + ", " +
+						clientPlayer.getGraphic() + ", " +
+						projectile.getId() + ", " +
+						(clientPlayer.getInteracting() != null ? clientPlayer.getInteracting().getGraphic() : "-1") + ", " +
+						(projectile.getStartCycle() - client.getGameCycle()) + ", " +
+						projectile.getStartHeight() + ", " +
+						projectile.getEndHeight() + ", " +
+						projectile.getSlope() + ", " +
+						(clientPlayer.getInteracting() != null ? clientPlayer.getInteracting().getGraphicHeight() : "-1")
+				);
+			}
+		}
+	}
+
+	private List<AnimationSet> findMatchingAnimationSets(int itemId)
+	{
+		Set<List<Integer>> list = this.poseanims.get(itemId);
+		int variationId = itemId;
+		if (list == null)
+		{
+			Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(itemId));
+			for (Integer variation : variations)
+			{
+				if (this.poseanims.containsKey(variation))
+				{
+					list = poseanims.get(variation);
+					variationId = variation;
+					break;
+				}
+			}
+		}
+
+		boolean hasPoseAnims = list != null;
+		List<AnimationSet> matchingSets = new ArrayList<>();
+		boolean uhoh = false;
+		List<Integer> poseanims = null;
+		if (hasPoseAnims)
+		{
+			uhoh = list.size() > 1;
+			if (uhoh) System.out.println("more than 1 set of pose animations: " + itemId + " " + variationId);
+			poseanims = list.iterator().next();
+			for (AnimationSet animationSet : AnimationSet.animationSets)
+			{
+				if (
+					Objects.equals(animationSet.getAnimation(Swap.AnimationType.STAND), poseanims.get(0))
+						&& Objects.equals(animationSet.getAnimation(Swap.AnimationType.ROTATE), poseanims.get(1))
+						&& Objects.equals(animationSet.getAnimation(Swap.AnimationType.WALK), poseanims.get(2))
+						&& Objects.equals(animationSet.getAnimation(Swap.AnimationType.WALK_BACKWARD), poseanims.get(3))
+						&& Objects.equals(animationSet.getAnimation(Swap.AnimationType.SHUFFLE_LEFT), poseanims.get(4))
+						&& Objects.equals(animationSet.getAnimation(Swap.AnimationType.SHUFFLE_RIGHT), poseanims.get(5))
+						&& Objects.equals(animationSet.getAnimation(Swap.AnimationType.RUN), poseanims.get(6))
+				)
+				{
+					matchingSets.add(animationSet);
+				}
+			}
+		}
+		return matchingSets;
+	}
+
+	private void listUnseen(Set<Integer> shows, Set<Integer> hides, KitType kitType)
+	{
+		System.out.println("shows " + shows);
+		System.out.println("hides " + hides);
+		for (Integer showsArm : shows)
+		{
+			if (hides.contains(showsArm)) {
+
+				System.out.println("dupe id " + showsArm);
+			}
+		}
+		Set<Integer> s = new HashSet<>();
+		s.addAll(shows);
+		s.addAll(hides);
+		System.out.println(s.size() + " " + s);
+		int count = 0;
+		int countf2p = 0;
+		for (int i = 0; i < client.getItemCount(); i++)
+		{
+			if (s.contains(i)) continue;
+			ItemStats itemStats = itemManager.getItemStats(i, false);
+			if (
+				itemStats != null
+				&& itemStats.isEquipable()
+				&& itemStats.getEquipment().getSlot() == kitType.getIndex()
+				&& itemManager.getItemComposition(i).getPlaceholderTemplateId() == -1
+				&& itemManager.getItemComposition(i).getNote() == -1
+			) {
+				System.out.println(itemManager.getItemComposition(i).getName() + " " + i);
+				count++;
+			}
+		}
+		System.out.println(count);
+	}
+
+	public static final Map<Integer, Integer> OVERRIDE_EQUIPPABILITY_OR_SLOT = new HashMap<>();
+	public static final Map<Integer, Constants.NameAndIconId> EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT_NAMES = new HashMap<>();
 
 	@Subscribe
 	public void onCommandExecuted(CommandExecuted commandExecuted) {
@@ -772,9 +897,8 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 
 		if (command.equals("reload")) {
 			AnimationSet.loadAnimationSets();
-			ProjectileCast.initializeSpells();
-			SwingUtilities.invokeLater(plugin.pluginPanel::rebuild);
 			Constants.loadData(plugin.getGson());
+			SwingUtilities.invokeLater(plugin.pluginPanel::rebuild);
 			System.out.println("reloaded animations sets, projectiles, and equippable.");
 		}
 
@@ -893,89 +1017,370 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		}
 	}
 
-	private List<AnimationSet> findMatchingAnimationSets(int itemId)
+	private void putWeapon(Map<Integer, AnimationSet> itemIdToAnimationSet, int itemId, String animationSetName)
 	{
-		Set<List<Integer>> list = this.poseanims.get(itemId);
-		int variationId = itemId;
-		if (list == null)
-		{
-			Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(itemId));
-			for (Integer variation : variations)
-			{
-				if (this.poseanims.containsKey(variation))
-				{
-					list = poseanims.get(variation);
-					variationId = variation;
-					break;
-				}
+		int baseId = ItemVariationMapping.map(itemId);
+		AnimationSet animationSet;
+		if ("".equals(animationSetName)) {
+			List<AnimationSet> matchingAnimationSets = findMatchingAnimationSets(baseId);
+			if (matchingAnimationSets.size() > 1) {
+				System.out.println("multiple matching sets for item " + itemId + " " + matchingAnimationSets);
+				return;
+			} else if (matchingAnimationSets.isEmpty()) {
+				System.out.println("no matching sets for item " + itemId + " " + matchingAnimationSets);
+				return;
 			}
+			animationSet = matchingAnimationSets.iterator().next();
+		} else {
+			animationSet = AnimationSet.getAnimationSet(animationSetName);
 		}
 
-		boolean hasPoseAnims = list != null;
-		List<AnimationSet> matchingSets = new ArrayList<>();
-		boolean uhoh = false;
-		List<Integer> poseanims = null;
-		if (hasPoseAnims)
-		{
-			uhoh = list.size() > 1;
-			if (uhoh) System.out.println("more than 1 set of pose animations: " + itemId + " " + variationId);
-			poseanims = list.iterator().next();
-			for (AnimationSet animationSet : AnimationSet.animationSets)
-			{
-				if (
-					Objects.equals(animationSet.getAnimation(Swap.AnimationType.STAND), poseanims.get(0))
-						&& Objects.equals(animationSet.getAnimation(Swap.AnimationType.ROTATE), poseanims.get(1))
-						&& Objects.equals(animationSet.getAnimation(Swap.AnimationType.WALK), poseanims.get(2))
-						&& Objects.equals(animationSet.getAnimation(Swap.AnimationType.WALK_BACKWARD), poseanims.get(3))
-						&& Objects.equals(animationSet.getAnimation(Swap.AnimationType.SHUFFLE_LEFT), poseanims.get(4))
-						&& Objects.equals(animationSet.getAnimation(Swap.AnimationType.SHUFFLE_RIGHT), poseanims.get(5))
-						&& Objects.equals(animationSet.getAnimation(Swap.AnimationType.RUN), poseanims.get(6))
-				)
-				{
-					matchingSets.add(animationSet);
-				}
-			}
+		if (animationSet == null) {
+			System.out.println("null animationset " + animationSetName);
+			return;
 		}
-		return matchingSets;
+
+		itemIdToAnimationSet.put(baseId, animationSet);
 	}
 
-	private void listUnseen(Set<Integer> shows, Set<Integer> hides, KitType kitType)
+	Set<Integer> tempHidesHair;
+	Set<Integer> tempHidesJaw;
+	Set<Integer> tempShowsHair;
+	Set<Integer> tempShowsJaw;
+	private void addHidesHairAndJaw()
 	{
-		System.out.println("shows " + shows);
-		System.out.println("hides " + hides);
-		for (Integer showsArm : shows)
-		{
-			if (hides.contains(showsArm)) {
+		List<Integer> removeItem = new ArrayList<>();
 
-				System.out.println("dupe id " + showsArm);
-			}
-		}
-		Set<Integer> s = new HashSet<>();
-		s.addAll(shows);
-		s.addAll(hides);
-		System.out.println(s.size() + " " + s);
-		int count = 0;
-		int countf2p = 0;
+		follow(ItemID.OCHRE_SNELM_3341, ItemID.OCHRE_SNELM);
+		follow(ItemID.LAW_TIARA, ItemID.COSMIC_TIARA);
+		follow(ItemID.A_SPECIAL_TIARA, ItemID.COSMIC_TIARA);
+		follow(ItemID.ASTRAL_TIARA, ItemID.COSMIC_TIARA);
+		follow(ItemID.ORANGE_BOATER, ItemID.PURPLE_BOATER);
+		follow(ItemID.SWEET_NUTCRACKER_HAT, ItemID.FESTIVE_NUTCRACKER_HAT);
+		showAll(ItemID.MOUTH_GRIP);
+		showAll(ItemID.A_CHAIR);
+		showAll(ItemID.ONE_BARREL);
+		showAll(ItemID.TWO_BARRELS);
+		showAll(ItemID.THREE_BARRELS);
+		showAll(ItemID.FOUR_BARRELS);
+		showAll(ItemID.FIVE_BARRELS);
+		showAll(ItemID.PIRATE_HAT);
+		follow(ItemID.ADVENTURERS_HOOD_T1, ItemID.MAX_HOOD);
+		follow(ItemID.SARADOMIN_MAX_HOOD, ItemID.MAX_HOOD);
+		follow(ItemID.ZAMORAK_MAX_HOOD, ItemID.MAX_HOOD);
+		follow(ItemID.GUTHIX_MAX_HOOD, ItemID.MAX_HOOD);
+		follow(ItemID.ACCUMULATOR_MAX_HOOD, ItemID.MAX_HOOD);
+		follow(ItemID.SANGUINE_TORVA_FULL_HELM, ItemID.TORVA_FULL_HELM);
+		follow(ItemID.SANGUINE_TORVA_PLATEBODY, ItemID.TORVA_PLATEBODY);
+		removeItem.add(ItemID.SCYTHE_OF_VITUR_22664);
+		removeItem.add(ItemID.ARMADYL_GODSWORD_22665);
+		removeItem.add(ItemID.RUBBER_CHICKEN_22666);
+		removeItem.add(ItemID.DRAGON_KNIFE_22812);
+		removeItem.add(ItemID.DRAGON_KNIFE_22814);
+		// broken pvp arena gear. no model.
+		removeItem.addAll(Arrays.asList(26686, 26686, 26687, 26687, 26688, 26688, 26698, 26698, 26699, 26699, 26700, 26700, 26701, 26701, 26702, 26702, 26703, 26703));
 		for (int i = 0; i < client.getItemCount(); i++)
 		{
-			if (s.contains(i)) continue;
-			ItemStats itemStats = itemManager.getItemStats(i, false);
-			if (
-				itemStats != null
-				&& itemStats.isEquipable()
-				&& itemStats.getEquipment().getSlot() == kitType.getIndex()
-				&& itemManager.getItemComposition(i).getPlaceholderTemplateId() == -1
-				&& itemManager.getItemComposition(i).getNote() == -1
-			) {
-				System.out.println(itemManager.getItemComposition(i).getName() + " " + i);
-				count++;
+			ItemComposition itemComposition = itemManager.getItemComposition(i);
+			if (itemComposition.getPlaceholderTemplateId() != -1 || itemComposition.getNote() != -1) continue;
+
+			Integer slot = SLOT_OVERRIDES.get(i);
+			if (slot == null) {
+				slot = plugin.getWikiScrapeSlot(i);
+			}
+			if (slot == null || slot != HEAD_SLOT) continue;
+			if (removeItem.contains(i)) continue;
+
+			Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
+			for (Integer variation : variations)
+			{
+				if (tempHidesHair.contains(variation)) {
+					tempHidesHair.add(i);
+				}
+				if (tempHidesJaw.contains(variation)) {
+					tempHidesJaw.add(i);
+				}
+				if (tempShowsHair.contains(variation)) {
+					tempShowsHair.add(i);
+				}
+				if (tempShowsJaw.contains(variation)) {
+					tempShowsJaw.add(i);
+				}
+			}
+
+			String name = itemComposition.getName().toLowerCase();
+			if (name.contains("bedsheet")) {
+				removeItem.add(i);
+			}
+			if (name.contains("tricorn hat")) {
+				showAll(i);
+			}
+			if (name.contains("saika's")) {
+				showHairJaw(i, false, !name.contains("shroud"));
+			}
+			if (name.contains("koriff's")) {
+				showHairJaw(i, false, !name.contains("cowl"));
+			}
+			if (name.contains("maoma's")) {
+				showHairJaw(i, false, name.contains("med"));
 			}
 		}
-		System.out.println(count);
+		System.out.println(removeItem);
 	}
 
-	public static final Map<Integer, Integer> OVERRIDE_EQUIPPABILITY_OR_SLOT = new HashMap<>();
-	public static final Map<Integer, Constants.NameAndIconId> EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT_NAMES = new HashMap<>();
+	private void showAll(int itemId)
+	{
+		showHairJaw(itemId, true, true);
+	}
+
+	private void showHairJaw(int itemId, boolean showHair, boolean showJaw)
+	{
+		if (
+			((hidesHair.contains(itemId) && !showHair) || (showsHair.contains(itemId) && showHair)) &&
+			((hidesJaw.contains(itemId) && !showJaw) || (showsJaw.contains(itemId) && showJaw))
+		) {
+			System.out.println("superflous " + itemId);
+		}
+		if (
+			(hidesHair.contains(itemId) && showHair) ||
+			(showsHair.contains(itemId) && !showHair) ||
+			(hidesJaw.contains(itemId) && showJaw) ||
+			(showsJaw.contains(itemId) && !showJaw)
+		) {
+			System.out.println("goes against collected hair and jaw data " + itemId);
+		}
+		if (!showHair) tempHidesHair.add(itemId);
+		else tempShowsHair.add(itemId);
+		if (!showJaw) tempHidesJaw.add(itemId);
+		else tempShowsJaw.add(itemId);
+	}
+
+	private void follow(int itemId, int itemIdToCopy)
+	{
+		Boolean currentlyHidingHair = hidesHair.contains(itemId) ? TRUE : showsHair.contains(itemId) ? FALSE : null;
+		Boolean currentlyHidingJaw = hidesJaw.contains(itemId) ? TRUE : showsJaw.contains(itemId) ? FALSE : null;
+		Boolean hairToCopy = hidesHair.contains(itemIdToCopy) ? TRUE : showsHair.contains(itemIdToCopy) ? FALSE : null;
+		Boolean jawToCopy = hidesJaw.contains(itemIdToCopy) ? TRUE : showsJaw.contains(itemIdToCopy) ? FALSE : null;
+		if (hairToCopy == null || jawToCopy == null) {
+			System.out.println("copied item " + itemId + " didn't have enough data " + hairToCopy + " " + jawToCopy);
+			return;
+		}
+
+		boolean warnSuperfluous = false;
+		if (hairToCopy) {
+			if (currentlyHidingHair == null) {
+				tempHidesHair.add(itemId);
+			} else if (currentlyHidingHair) {
+				// skip;
+				warnSuperfluous = true;
+			} else {
+				System.out.println("item " + itemId + " was told to follow something that the data disagrees with.");
+			}
+		} else {
+			if (currentlyHidingHair == null) {
+				tempShowsHair.add(itemId);
+			} else if (currentlyHidingHair) {
+				System.out.println("item " + itemId + " was told to follow something that the data disagrees with.");
+			} else {
+				// skip;
+				warnSuperfluous = true;
+			}
+		}
+		if (jawToCopy) {
+			if (currentlyHidingJaw == null) {
+				tempHidesJaw.add(itemId);
+			} else if (currentlyHidingJaw) {
+				// skip;
+				if (warnSuperfluous) {
+					System.out.println("itemId " + itemId + " follow is superfluous.");
+				}
+			} else {
+				System.out.println("item " + itemId + " was told to follow something that the data disagrees with.");
+			}
+		} else {
+			if (currentlyHidingJaw == null) {
+				tempShowsJaw.add(itemId);
+			} else if (currentlyHidingJaw) {
+				System.out.println("item " + itemId + " was told to follow something that the data disagrees with.");
+			} else {
+				// skip;
+				if (warnSuperfluous) {
+					System.out.println("itemId " + itemId + " follow is superfluous.");
+				}
+			}
+		}
+	}
+
+	private void addSlotData(Set<Integer> showsArms, Set<Integer> hidesHair, Set<Integer> hidesJaw, Map<Integer, Set<List<Integer>>> poseanims)
+	{
+		for (int i = 0; i < client.getItemCount(); i++)
+		{
+			ItemComposition itemComposition = plugin.itemManager.getItemComposition(i);
+			if (itemComposition.getPlaceholderTemplateId() != -1 || itemComposition.getNote() != -1) continue;
+
+			Integer slot = SLOT_OVERRIDES.get(i);
+			if (slot == null) {
+				ItemStats itemStats = plugin.itemManager.getItemStats(i, false);
+				if (itemStats != null && itemStats.isEquipable())
+				{
+					slot = itemStats.getEquipment().getSlot();
+				}
+			}
+			if (slot == null) continue;
+
+			if (slot == TORSO_SLOT)
+			{
+				if (!hidesArms.contains(i) && !this.showsArms.contains(i))
+				{
+					Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
+					boolean shown = false;
+					for (Integer variation : variations)
+					{
+						if (this.showsArms.contains(variation)) {
+							shown = true;
+							break;
+						}
+					}
+					if (shown)
+					{
+						showsArms.add(i);
+					} else {
+//								System.out.println(itemManager.getItemComposition(i).getName() + " " + i);
+					}
+				}
+			}
+			else if (slot == HEAD_SLOT)
+			{
+				if (!hidesHair.contains(i) && !this.showsHair.contains(i))
+				{
+					Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
+					boolean hides = false;
+					for (Integer variation : variations)
+					{
+						if (this.hidesHair.contains(variation)) {
+							hides = true;
+							break;
+						}
+					}
+					if (hides)
+					{
+						hidesHair.add(i);
+					} else {
+//								System.out.println(itemManager.getItemComposition(i).getName() + " " + i);
+					}
+				}
+				if (!hidesJaw.contains(i) && !this.showsJaw.contains(i))
+				{
+					Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
+					boolean hides = false;
+					for (Integer variation : variations)
+					{
+						if (this.hidesJaw.contains(variation)) {
+							hides = true;
+							break;
+						}
+					}
+					if (hides)
+					{
+						hidesJaw.add(i);
+					} else {
+//								System.out.println(itemManager.getItemComposition(i).getName() + " " + i);
+					}
+				}
+			}
+//			else if (slot == WEAPON_SLOT)
+//			{
+//				if (!this.poseanims.containsKey(i))
+//				{
+//					Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
+//					boolean found = false;
+//					for (Integer variation : variations)
+//					{
+//						if (this.poseanims.containsKey(variation)) {
+//							poseanims.put(i, this.poseanims.get(variation));
+//							found = true;
+//							break;
+//						}
+//					}
+//					if (found)
+//					{
+//					} else {
+////						System.out.println(itemManager.getItemComposition(i).getName() + " " + i);
+//					}
+//				}
+//			}
+		}
+	}
+
+	private static void addUnequippable(int itemId, KitType kitType) {
+		addUnequippable(itemId, kitType, null);
+	}
+
+	private static void addUnequippable(int itemId, KitType kitType, String name) {
+		addUnequippable(itemId, kitType, name, -1);
+	}
+
+	private static void addUnequippable(int itemId, KitType kitType, String name, int iconId) {
+		OVERRIDE_EQUIPPABILITY_OR_SLOT.put(itemId, kitType.getIndex());
+		if (name != null || iconId != -1) {
+			EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT_NAMES.put(itemId, new Constants.NameAndIconId(name, iconId));
+		}
+	}
+
+	@Subscribe
+	public void onClientTick(ClientTick clientTick) {
+//		for (int i = 0; i < Math.min(100, client.getLocalPlayer().getModel().getFaceColors1().length); i++)
+//		for (int i = 0; i < client.getLocalPlayer().getModel().getFaceColors1().length; i++)
+//		{
+//			client.getLocalPlayer().getModel().getFaceColors1()[i] = 0;
+//		}
+		if (demoanim != -1) {
+//			client.getLocalPlayer().setAnimation(demoanim);
+//			client.getLocalPlayer().setAnimationFrame(0);
+		}
+		if (demogfx != -1 && client.getLocalPlayer().getGraphic() != demogfx) {
+			client.getLocalPlayer().setGraphic(demogfx);
+			client.getLocalPlayer().setSpotAnimFrame(0);
+		}
+	}
+
+	@Subscribe
+	public void onMenuOptionClicked(MenuOptionClicked menuOptionClicked)
+	{
+		if (menuOptionClicked.getMenuOption().equals("Use") && menuOptionClicked.getItemId() == 563) {
+			if (demoanim != -1) {
+				demoanim--;
+				for (Constants.ActorAnimation value : values())
+				{
+					value.setAnimation(client.getLocalPlayer(), demoanim);
+				}
+				System.out.println("demo anim " + demoanim);
+				client.playSoundEffect(demoanim);
+			}
+			if (demogfx != -1) {
+				demogfx--;
+				client.getLocalPlayer().setGraphic(demogfx);
+				client.getLocalPlayer().setSpotAnimFrame(0);
+				client.getLocalPlayer().setGraphicHeight(0);
+				System.out.println("demo gfx " + demogfx);
+			}
+		} else if (menuOptionClicked.getMenuOption().equals("Use") && menuOptionClicked.getItemId() == 995){
+			if (demoanim != -1) {
+				demoanim++;
+				client.playSoundEffect(demoanim);
+				for (Constants.ActorAnimation value : values())
+				{
+					value.setAnimation(client.getLocalPlayer(), demoanim);
+				}
+				System.out.println("demo anim " + demoanim);
+			}
+			if (demogfx != -1) {
+				demogfx++;
+				System.out.println("demo gfx " + demogfx);
+			}
+		}
+//		System.out.println(menuOptionClicked.getMenuOption() + " " + Text.removeTags(menuOptionClicked.getMenuTarget()));
+	}
 
 	private void json()
 	{
@@ -2014,374 +2419,239 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 			data.poseanims.put(entry.getKey(), entry.getValue().stream().mapToInt(i -> i).sorted().toArray());
 		}
 
+		/*
+		Types of projectiles:
+		hit gfx (most spells).
+			the hit gfx is applied when the spell casts, but has a timer before it actually shows.
+				This means if you're at a very long range it is possible for the hit gfx to never occur because it is replaced by the next spell cast before it goes off.
+			many of these can splash animation instead.
+		no hit gfx (ranged attacks mostly).
+		no cast gfx or projectile - requires additional information to identify what spell was cast.
+		no projectile spells (such as ice barrage) - when replacing, requires hit delay to be calculated.
+		TODO multiple projectile spells (such as dark bow).
+			Dark bow spec is actually 4 projectiles (with 2 different versions, one with dragon arrows one without).
+		enchanted bolts.
+		 */
+		// TODO any arrow, any spell.
+
+		List<ProjectileCast> projectiles = new ArrayList<>();
+		projectiles.add(p().id(0).name("Wind Strike").sprite(SpriteID.SPELL_WIND_STRIKE).cast(1162, 90).projectile(91, 51, 64, -172, 124, 16).hitGfx(92, 124).build());
+		projectiles.add(p().id(1).name("Confuse").sprite(SpriteID.SPELL_CONFUSE).cast(1163, 102).projectile(103, 61, 64, -172, 124, 16).hitGfx(104, 124).build());
+		projectiles.add(p().id(2).name("Water Strike").sprite(SpriteID.SPELL_WATER_STRIKE).cast(1162, 93).projectile(94, 51, 64, -172, 124, 16).hitGfx(95, 124).build());
+		projectiles.add(p().id(3).name("Earth Strike").sprite(SpriteID.SPELL_EARTH_STRIKE).cast(1162, 96).projectile(97, 51, 64, -172, 124, 16).hitGfx(98, 124).build());
+		projectiles.add(p().id(4).name("Weaken").sprite(SpriteID.SPELL_WEAKEN).cast(1164, 105).projectile(106, 44, 64, -172, 124, 16).hitGfx(107, 124).build());
+		projectiles.add(p().id(5).name("Fire Strike").sprite(SpriteID.SPELL_FIRE_STRIKE).cast(1162, 99).projectile(100, 51, 64, -172, 124, 16).hitGfx(101, 124).build());
+		projectiles.add(p().id(6).name("Wind Bolt").sprite(SpriteID.SPELL_WIND_BOLT).cast(1162, 117).projectile(118, 51, 64, -172, 124, 16).hitGfx(119, 124).build());
+		projectiles.add(p().id(7).name("Curse").sprite(SpriteID.SPELL_CURSE).cast(1165, 108).projectile(109, 51, 64, -172, 124, 16).hitGfx(110, 124).build());
+		projectiles.add(p().id(8).name("Bind").sprite(SpriteID.SPELL_BIND).cast(1161, 177).projectile(178, 75, 64, -172, 0, 16).hitGfx(181, 0).hitGfx(181, 124).build());
+		projectiles.add(p().id(9).name("Water Bolt").sprite(SpriteID.SPELL_WATER_BOLT).cast(1162, 120).projectile(121, 51, 64, -172, 124, 16).hitGfx(122, 124).build());
+		projectiles.add(p().id(10).name("Earth Bolt").sprite(SpriteID.SPELL_EARTH_BOLT).cast(1162, 123).projectile(124, 51, 64, -172, 124, 16).hitGfx(125, 124).build());
+		projectiles.add(p().id(11).name("Telegrab").sprite(SpriteID.SPELL_TELEKINETIC_GRAB).cast(723, 142).projectile(143, 48, 64, -172, 0, 16).hitGfx(144, 0).build());
+		projectiles.add(p().id(12).name("Fire Bolt").sprite(SpriteID.SPELL_FIRE_BOLT).cast(1162, 126).projectile(127, 51, 64, -172, 124, 16).hitGfx(128, 124).build());
+		projectiles.add(p().id(13).name("Crumble Undead").sprite(SpriteID.SPELL_CRUMBLE_UNDEAD).cast(1166, 145).projectile(146, 46, 64, -172, 124, 16).hitGfx(147, 124).build());
+		projectiles.add(p().id(14).name("Wind Blast").sprite(SpriteID.SPELL_WIND_BLAST).cast(1162, 132).projectile(133, 51, 64, -172, 124, 16).hitGfx(134, 124).build());
+		projectiles.add(p().id(15).name("Water Blast").sprite(SpriteID.SPELL_WATER_BLAST).cast(1162, 135).projectile(136, 51, 64, -172, 124, 16).hitGfx(137, 124).build());
+		projectiles.add(p().id(16).name("Iban Blast").sprite(SpriteID.SPELL_IBAN_BLAST).cast(708, 87).projectile(88, 60, 64, -172, 124, 16).hitGfx(89, 124).build());
+		projectiles.add(p().id(17).name("Snare").sprite(SpriteID.SPELL_SNARE).cast(1161, 177).projectile(178, 75, 64, -172, 0, 16).hitGfx(180, 0).hitGfx(180, 124).build());
+		projectiles.add(p().id(18).name("Magic Dart").sprite(SpriteID.SPELL_MAGIC_DART).cast(1576, -1).projectile(328, 51, 64, -172, 124, 16).hitGfx(329, 124).build());
+		projectiles.add(p().id(19).name("Earth Blast").sprite(SpriteID.SPELL_EARTH_BLAST).cast(1162, 138).projectile(139, 51, 64, -172, 124, 16).hitGfx(140, 124).build());
+		projectiles.add(p().id(20).name("Fire Blast").sprite(SpriteID.SPELL_FIRE_BLAST).cast(1162, 129).projectile(130, 51, 64, -172, 124, 16).hitGfx(131, 124).build());
+		projectiles.add(p().id(21).name("Saradomin Strike").sprite(SpriteID.SPELL_SARADOMIN_STRIKE).ids(811, -1, 76).build());
+		projectiles.add(p().id(22).name("Claws of Guthix").sprite(SpriteID.SPELL_CLAWS_OF_GUTHIX).ids(811, -1, 77).build());
+		projectiles.add(p().id(23).name("Flames of Zamorak").sprite(SpriteID.SPELL_FLAMES_OF_ZAMORAK).ids(811, -1, 78).build());
+		projectiles.add(p().id(24).name("Wind Wave").sprite(SpriteID.SPELL_WIND_WAVE).cast(1167, 158).projectile(159, 51, 64, -172, 124, 16).hitGfx(160, 124).build());
+		projectiles.add(p().id(25).name("Water Wave").sprite(SpriteID.SPELL_WATER_WAVE).cast(1167, 161).projectile(162, 51, 64, -172, 124, 16).hitGfx(163, 124).build());
+		projectiles.add(p().id(26).name("Vulnerability").sprite(SpriteID.SPELL_VULNERABILITY).cast(1165, 167).projectile(168, 34, 64, -172, 124, 16).hitGfx(169, 124).build());
+		projectiles.add(p().id(27).name("Earth Wave").sprite(SpriteID.SPELL_EARTH_WAVE).cast(1167, 164).projectile(165, 51, 64, -172, 124, 16).hitGfx(166, 124).build());
+		projectiles.add(p().id(28).name("Enfeeble").sprite(SpriteID.SPELL_ENFEEBLE).cast(1168, 170).projectile(171, 48, 64, -172, 124, 16).hitGfx(172, 124).build());
+		projectiles.add(p().id(29).name("Fire Wave").sprite(SpriteID.SPELL_FIRE_WAVE).cast(1167, 155).projectile(156, 51, 64, -172, 124, 16).hitGfx(157, 124).build());
+		projectiles.add(p().id(30).name("Entangle").sprite(SpriteID.SPELL_ENTANGLE).cast(1161, 177).projectile(178, 75, 64, -172, 0, 16).hitGfx(179, 0).hitGfx(179, 124).build());
+		projectiles.add(p().id(31).name("Stun").sprite(SpriteID.SPELL_STUN).cast(1169, 173).projectile(174, 52, 64, -172, 124, 16).hitGfx(80, 124).build());
+		projectiles.add(p().id(32).name("Wind Surge").sprite(SpriteID.SPELL_WIND_SURGE).cast(7855, 1455).projectile(1456, 51, 64, -172, 124, 16).hitGfx(1457, 124).build());
+		projectiles.add(p().id(33).name("Water Surge").sprite(SpriteID.SPELL_WATER_SURGE).cast(7855, 1458).projectile(1459, 51, 64, -172, 124, 16).hitGfx(1460, 124).build());
+		projectiles.add(p().id(34).name("Earth Surge").sprite(SpriteID.SPELL_EARTH_SURGE).cast(7855, 1461).projectile(1462, 51, 64, -172, 124, 16).hitGfx(1463, 124).build());
+		projectiles.add(p().id(35).name("Fire Surge").sprite(SpriteID.SPELL_FIRE_SURGE).cast(7855, 1464).projectile(1465, 51, 64, -172, 124, 16).hitGfx(1466, 124).build());
+
+		// Ancient spellbook.
+		projectiles.add(p().id(36).name("Smoke Rush").sprite(SpriteID.SPELL_SMOKE_RUSH).ids(1978, -1, 384, 385, 51, 64, 124, 16).build());
+		projectiles.add(p().id(37).name("Shadow Rush").sprite(SpriteID.SPELL_SHADOW_RUSH).ids(1978, -1, 378, 379, 51, 64, 0, 16).build());
+		projectiles.add(p().id(38).name("Blood Rush").sprite(SpriteID.SPELL_BLOOD_RUSH).ids(1978, -1, 373).build());
+		projectiles.add(p().id(39).name("Ice Rush").sprite(SpriteID.SPELL_ICE_RUSH).ids(1978, -1, 360, 361, 51, 64, 0, 16).build());
+		projectiles.add(p().id(40).name("Smoke Burst").sprite(SpriteID.SPELL_SMOKE_BURST).ids(1979, -1, 389).build());
+		projectiles.add(p().id(41).name("Shadow Burst").sprite(SpriteID.SPELL_SHADOW_BURST).ids(1979, -1, 382).build());
+		projectiles.add(p().id(42).name("Blood Burst").sprite(SpriteID.SPELL_BLOOD_BURST).ids(1979, -1, 376).build());
+		projectiles.add(p().id(43).name("Ice Burst").sprite(SpriteID.SPELL_ICE_BURST).ids(1979, -1, 363).build());
+		projectiles.add(p().id(44).name("Smoke Blitz").sprite(SpriteID.SPELL_SMOKE_BLITZ).ids(1978, -1, 386, 387, 51, 64, 124, 16).build());
+		projectiles.add(p().id(45).name("Shadow Blitz").sprite(SpriteID.SPELL_SHADOW_BLITZ).ids(1978, -1, 380, 381, 51, 64, 0, 16).build());
+		projectiles.add(p().id(46).name("Blood Blitz").sprite(SpriteID.SPELL_BLOOD_BLITZ).ids(1978, -1, 374, 375, 51, 64, 0, 16).build());
+		projectiles.add(p().id(47).name("Ice Blitz").sprite(SpriteID.SPELL_ICE_BLITZ).ids(1978, 366, 367).build());
+		projectiles.add(p().id(48).name("Smoke Barrage").sprite(SpriteID.SPELL_SMOKE_BARRAGE).ids(1979, -1, 391).build());
+		projectiles.add(p().id(49).name("Shadow Barrage").sprite(SpriteID.SPELL_SHADOW_BARRAGE).ids(1979, -1, 383).build());
+		projectiles.add(p().id(50).name("Blood Barrage").sprite(SpriteID.SPELL_BLOOD_BARRAGE).ids(1979, -1, 377).build());
+		projectiles.add(p().id(51).name("Ice Barrage").sprite(SpriteID.SPELL_ICE_BARRAGE).ids(1979, -1, 369).build());
+
+		// Arceuus spellbook.
+		projectiles.add(p().id(52).name("Ghostly Grasp").sprite(SpriteID.SPELL_GHOSTLY_GRASP).ids(8972, 1856, 1858).build());
+		projectiles.add(p().id(53).name("Skeletal Grasp").sprite(SpriteID.SPELL_SKELETAL_GRASP).ids(8972, 1859, 1861).build());
+		projectiles.add(p().id(54).name("Undead Grasp").sprite(SpriteID.SPELL_UNDEAD_GRASP).ids(8972, 1862, 1863).build());
+		projectiles.add(p().id(55).name("Inferior Demonbane").sprite(SpriteID.SPELL_INFERIOR_DEMONBANE).ids(8977, 1865, 1866).build());
+		projectiles.add(p().id(56).name("Superior Demonbane").sprite(SpriteID.SPELL_SUPERIOR_DEMONBANE).ids(8977, 1867, 1868).build());
+		projectiles.add(p().id(57).name("Dark Demonbane").sprite(SpriteID.SPELL_DARK_DEMONBANE).ids(8977, 1869, 1870).build());
+		projectiles.add(p().id(58).name("Dark Lure").sprite(SpriteID.SPELL_DARK_LURE).ids(8974, 1882, 1884).build());
+
+		// Powered staves.
+		// TODO black trident. I forget the ID.
+		projectiles.add(p().id(59).itemId(ItemID.TRIDENT_OF_THE_SEAS).ids(1167, 1251, 1252, 1253, 51, 64, 60, 16).build());
+		projectiles.add(p().id(60).itemId(ItemID.TRIDENT_OF_THE_SWAMP).ids(1167, 665, 1040, 1042, 51, 64, 60, 16).build());
+		projectiles.add(p().id(61).name("trident (purple and gold)").itemId(ItemID.GOLDEN_SCARAB).ids(1167, 1543, 1544, 1545, 51, 64, 60, 16).artificial().build());
+		projectiles.add(p().id(62).name("trident (purple and silver)").itemId(ItemID.STONE_SCARAB).ids(1167, 1546, 1547, 1548, 51, 64, 60, 16).artificial().build());
+		projectiles.add(p().id(63).name("Sanguinesti staff (regular)").itemId(ItemID.SANGUINESTI_STAFF).ids(1167, 1540, 1539, 1541, 51, 64, 60, 16).build());
+		projectiles.add(p().id(64).name("Sanguinesti staff (health restore)").itemId(ItemID.SANGUINESTI_STAFF).ids(1167, 1540, 1539, 1542, 51, 64, 60, 16).build());
+		projectiles.add(p().id(65).name("Holy sanguinesti staff (regular)").itemId(ItemID.HOLY_SANGUINESTI_STAFF).ids(1167, 1900, 1899, 1901, 51, 64, 60, 16).build());
+		projectiles.add(p().id(66).name("Holy sanguinesti staff (health restore)").itemId(ItemID.HOLY_SANGUINESTI_STAFF).ids(1167, 1900, 1899, 1902, 51, 64, 60, 16).build());
+		projectiles.add(p().id(157).itemId(ItemID.TUMEKENS_SHADOW).cast(9493, 2125).projectile(2126, 56, 40, -400, 124, 32).hitGfx(2127, 124).build());
+
+		// Arrows. Many values guessed based off of iron arrow, so stuff like height/slope could be off for some arrows.
+		projectiles.add(p().id(67).itemId(ItemID.BRONZE_ARROW).ids(426, 19, 10, -1, 41, 11, 144, 15).build());
+		projectiles.add(p().id(68).itemId(ItemID.IRON_ARROW).ids(426, 18, 9, -1, 41, 11, 144, 15).build());
+		projectiles.add(p().id(69).itemId(ItemID.STEEL_ARROW).ids(426, 20, 11, -1, 41, 11, 144, 15).build());
+		projectiles.add(p().id(70).name("Black arrow").itemId(ItemID.HEADLESS_ARROW).ids(426, 23, 14, -1, 41, 11, 144, 15).build());
+		projectiles.add(p().id(71).itemId(ItemID.MITHRIL_ARROW).ids(426, 21, 12, -1, 41, 11, 144, 15).build());
+		projectiles.add(p().id(72).itemId(ItemID.ADAMANT_ARROW).ids(426, 22, 13, -1, 41, 11, 144, 15).build());
+		projectiles.add(p().id(73).itemId(ItemID.RUNE_ARROW).ids(426, 24, 15, -1, 41, 11, 144, 15).build());
+		projectiles.add(p().id(74).itemId(ItemID.AMETHYST_ARROW).ids(426, 1385, 1384, -1, 41, 11, 144, 15).build());
+		projectiles.add(p().id(75).itemId(ItemID.DRAGON_ARROW).ids(426, 1116, 1120, -1, 41, 11, 144, 15).build());
+		projectiles.add(p().id(76).itemId(ItemID.ICE_ARROWS).ids(426, 25, 16, -1, 41, 11, 144, 15).build());
+		projectiles.add(p().id(77).name("Fire arrow").itemId(ItemID.BRONZE_FIRE_ARROW_LIT).ids(426, 26, 17, -1, 41, 11, 144, 15).build());
+		projectiles.add(p().id(78).itemId(ItemID.TRAINING_ARROWS).ids(426, 806, 805, -1, 41, 11, 144, 15).build());
+		projectiles.add(p().id(79).itemId(ItemID.CRYSTAL_BOW).ids(426, 250, 249, -1, 41, 11, 144, 15).build());
+		projectiles.add(p().id(80).itemId(ItemID.OGRE_ARROW).ids(426, 243, 242, -1, 41, 11, 144, 15).build());
+		projectiles.add(p().id(142).name("Dark bow spec (non-dragon arrows)").itemId(ItemID.DARK_BOW).ids(426, 1105, 1101, 1103, 41, 11, 144, 5).build());
+		projectiles.add(p().id(143).name("Dark bow spec (dragon arrows)").itemId(ItemID.DARK_BOW).ids(426, 1111, 1099, 1100, 41, 11, 144, 5).build());
+		projectiles.add(p().id(144).name("Seercull").itemId(ItemID.SEERCULL).ids(426, 472, 473, 474, 41, 11, 144, 15).hitGfx(474, 0).build());
+		// TODO ba arrows, brutal arrow, broad arrow.
+		// TODO specs (seercull, msb, magic longbow), dark bow.
+
+		// bow of faerdhinen bofa
+		projectiles.add(p().id(81).itemId(ItemID.BOW_OF_FAERDHINEN).ids(426, 1889, 1888, -1, 41, 11, 144, 15).build());
+		projectiles.add(p().id(82).name("Bow of faerdhinen (red)").itemId(ItemID.BOW_OF_FAERDHINEN_C_25884).ids(426, 1923, 1922, -1, 41, 11, 144, 15).build());
+		projectiles.add(p().id(83).name("Bow of faerdhinen (white)").itemId(ItemID.BOW_OF_FAERDHINEN_C_25886).ids(426, 1925, 1924, -1, 41, 11, 144, 15).build());
+		projectiles.add(p().id(84).name("Bow of faerdhinen (black)").itemId(ItemID.BOW_OF_FAERDHINEN_C_25888).ids(426, 1927, 1926, -1, 41, 11, 144, 15).build());
+		projectiles.add(p().id(85).name("Bow of faerdhinen (purple)").itemId(ItemID.BOW_OF_FAERDHINEN_C_25890).ids(426, 1929, 1928, -1, 41, 11, 144, 15).build());
+		projectiles.add(p().id(86).name("Bow of faerdhinen (green)").itemId(ItemID.BOW_OF_FAERDHINEN_C_25892).ids(426, 1931, 1930, -1, 41, 11, 144, 15).build());
+		projectiles.add(p().id(87).name("Bow of faerdhinen (yellow)").itemId(ItemID.BOW_OF_FAERDHINEN_C_25894).ids(426, 1933, 1932, -1, 41, 11, 144, 15).build());
+		projectiles.add(p().id(88).name("Bow of faerdhinen (blue)").itemId(ItemID.BOW_OF_FAERDHINEN_C_25896).ids(426, 1935, 1934, -1, 41, 11, 144, 15).build());
+
+		// Bolts.
+		projectiles.add(p().id(89).name("Bolts").itemId(ItemID.RUNITE_BOLTS).ids(7552, -1, 27, -1, 41, 11, 144, 5).build());
+		projectiles.add(p().id(141).name("Dragon crossbow spec").itemId(ItemID.DRAGON_CROSSBOW).ids(4230, -1, 698, 157, 41, 11, 144, 5).build());
+		// TODO bolt effects.
+		// diamond (e) 9168, -1, 27, 758, 41, 11, 144, 5, 0
+		// ruby (e) 9168, -1, 27, 754, 41, 11, 144, 5, 0
+		// TODO it would be neat if different bolt types could have different projectiles.
+
+		// Knives.
+		projectiles.add(p().id(90).itemId(ItemID.BRONZE_KNIFE).ids(7617, 219, 212, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().id(91).itemId(ItemID.IRON_KNIFE).ids(7617, 220, 213, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().id(92).itemId(ItemID.STEEL_KNIFE).ids(7617, 221, 214, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().id(93).itemId(ItemID.BLACK_KNIFE).ids(7617, 222, 215, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().id(94).itemId(ItemID.MITHRIL_KNIFE).ids(7617, 223, 216, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().id(95).itemId(ItemID.ADAMANT_KNIFE).ids(7617, 224, 217, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().id(96).itemId(ItemID.RUNE_KNIFE).ids(7617, 225, 218, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().id(97).itemId(ItemID.DRAGON_KNIFE).ids(8194, -1, 28, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().id(98).name("Dragon knife (spec)").itemId(ItemID.DRAGON_KNIFE).ids(8291, -1, 699, -1, 25, 11, 144, 15).build());
+		projectiles.add(p().id(99).itemId(ItemID.DRAGON_KNIFEP_22808).ids(8195, -1, 697, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().id(100).name("Dragon knife (p++) (spec)").itemId(ItemID.DRAGON_KNIFEP_22808).ids(8292, -1, 1629, -1, 25, 11, 144, 15).build());
+
+		// Darts.
+		projectiles.add(p().id(101).itemId(ItemID.BRONZE_DART).ids(7554, -1, 226, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().id(102).itemId(ItemID.IRON_DART).ids(7554, -1, 227, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().id(103).itemId(ItemID.STEEL_DART).ids(7554, -1, 228, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().id(104).itemId(ItemID.BLACK_DART).ids(7554, -1, 32, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().id(105).itemId(ItemID.MITHRIL_DART).ids(7554, -1, 229, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().id(106).itemId(ItemID.ADAMANT_DART).ids(7554, -1, 230, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().id(107).itemId(ItemID.RUNE_DART).ids(7554, -1, 231, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().id(108).itemId(ItemID.AMETHYST_DART).ids(7554, -1, 1936, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().id(109).itemId(ItemID.DRAGON_DART).ids(7554, -1, 1122, -1, 32, 11, 144, 15).build());
+
+		// Blowpipe.
+		projectiles.add(p().id(110).name("Bronze Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 226, -1, 32, 105, 144, 15).build());
+		projectiles.add(p().id(111).name("Iron Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 227, -1,  32, 105, 144, 15).build());
+		projectiles.add(p().id(112).name("Steel Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 228, -1, 32, 105, 144, 15).build());
+		projectiles.add(p().id(113).name("Black Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 32, -1, 32, 105, 144, 15).build());
+		projectiles.add(p().id(114).name("Mithril Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 229, -1, 32, 105, 144, 15).build());
+		projectiles.add(p().id(115).name("Adamant Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 230, -1, 32, 105, 144, 15).build());
+		projectiles.add(p().id(116).name("Rune Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 231, -1, 32, 105, 144, 15).build());
+		projectiles.add(p().id(117).name("Amethyst Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 1936, -1, 32, 105, 144, 15).build());
+		projectiles.add(p().id(118).name("Dragon Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 1122, -1, 32, 105, 144, 15).build());
+
+		// Thrownaxes.
+		projectiles.add(p().id(119).itemId(ItemID.BRONZE_THROWNAXE).ids(7617, 43, 36, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().id(120).itemId(ItemID.IRON_THROWNAXE).ids(7617, 42, 35, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().id(121).itemId(ItemID.STEEL_THROWNAXE).ids(7617, 44, 37, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().id(122).itemId(ItemID.MITHRIL_THROWNAXE).ids(7617, 45, 38, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().id(123).itemId(ItemID.ADAMANT_THROWNAXE).ids(7617, 46, 39, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().id(124).itemId(ItemID.RUNE_THROWNAXE).ids(7617, 48, 41, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().id(125).name("Rune thrownaxe (spec)").itemId(ItemID.RUNE_THROWNAXE).ids(1068, 257, 258, -1, 41, 11, 144, 0).build());
+		projectiles.add(p().id(126).itemId(ItemID.DRAGON_THROWNAXE).ids(7617, 1320, 1319, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().id(127).name("Dragon thrownaxe (spec)").itemId(ItemID.DRAGON_THROWNAXE).ids(7521, 1317, 1318, -1, 25, 11, 144, 15).build());
+
+		// javelins.
+		projectiles.add(p().id(128).itemId(ItemID.BRONZE_JAVELIN).ids(7555, -1, 200, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().id(129).itemId(ItemID.IRON_JAVELIN).ids(7555, -1, 201, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().id(130).itemId(ItemID.STEEL_JAVELIN).ids(7555, -1, 202, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().id(131).itemId(ItemID.MITHRIL_JAVELIN).ids(7555, -1, 203, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().id(132).itemId(ItemID.ADAMANT_JAVELIN).ids(7555, -1, 204, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().id(133).itemId(ItemID.RUNE_JAVELIN).ids(7555, -1, 205, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().id(134).itemId(ItemID.AMETHYST_JAVELIN).ids(7555, -1, 1386, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().id(135).itemId(ItemID.DRAGON_JAVELIN).ids(7555, -1, 1301, -1, 32, 11, 144, 15).build());
+
+		projectiles.add(p().id(136).itemId(ItemID.BLACK_CHINCHOMPA).ids(7618, -1, 1272, 157, 21, 11, 144, 15).build()); // only has hit gfx when in multicombat area.
+		projectiles.add(p().id(137).itemId(ItemID.RED_CHINCHOMPA).ids(7618, -1, 909, 157, 21, 11, 144, 15).hitGfx(157, 0).build()); // only has hit gfx when in multicombat area.
+		projectiles.add(p().id(138).itemId(ItemID.CHINCHOMPA).ids(7618, -1, 908, 157, 21, 11, 144, 15).hitGfx(157, 0).build()); // only has hit gfx when in multicombat area.
+
+		projectiles.add(p().id(139).itemId(ItemID.TOKTZXILUL).ids(7558, -1, 442, -1, 32, 11, 144, 15).build());
+
+		projectiles.add(p().id(140).name("Snowball").itemId(ItemID.SNOWBALL).ids(5063, 860, 861, 862, 62, 11, 44, 15).build());
+		projectiles.add(p().id(148).name("Rotten tomato").itemId(ItemID.ROTTEN_TOMATO).ids(5063, 30, 29, 31, 62, 11, 44, 15).build());
+		projectiles.add(p().id(149).name("Rock").itemId(ItemID.PET_ROCK).ids(5063, 33, 32, -1, 62, 11, 44, 15).build());
+		projectiles.add(p().id(150).itemId(ItemID.VIAL).ids(7617, 50, 49, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().id(151).itemId(ItemID.ENCHANTED_VIAL).ids(7617, 52, 51, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().id(152).itemId(ItemID.HOLY_WATER).ids(7617, 193, 192, -1, 32, 11, 144, 15).build());
+		projectiles.add(p().id(153).itemId(ItemID.NINJA_IMPLING_JAR).ids(7617, 210, 211, 209, 32, 11, 144, 15).hitGfx(209, 0).build());
+
+		projectiles.add(p().id(145).name("Corp sperm 1").sprite(SpriteID.SPELL_WIND_STRIKE).ids(1162, 90, 314, 92, 51, 64, 124, 16).artificial().build());
+		projectiles.add(p().id(146).name("Corp sperm 2").sprite(SpriteID.SPELL_WIND_STRIKE).ids(1162, 90, 315, 92, 51, 64, 124, 16).artificial().build());
+		projectiles.add(p().id(147).name("Corp sperm 3").sprite(SpriteID.SPELL_WIND_STRIKE).ids(1162, 90, 316, 92, 51, 64, 124, 16).artificial().build());
+		projectiles.add(p().id(154).name("Dragon breath (large)").sprite(SpriteID.SPELL_FIRE_SURGE).ids(7855, 1464, 54, 1466, 51, 64, 124, 16).build());
+		projectiles.add(p().id(155).name("Dark Strike").sprite(SpriteID.SPELL_WIND_STRIKE_DISABLED).ids(1162, 194, 195, 196, 51, 64, 124, 16).build());
+		projectiles.add(p().id(156).name("Tempoross harpoonfish").itemId(ItemID.HARPOONFISH).ids(426, 18, 1837, 3, 41, 11, 144, 15).hitGfx(3, 0).build());
+
+		data.projectiles = projectiles;
+
 		String s = plugin.getGson().toJson(data);
 		System.out.println("your uhohlist is " + uhohList);
 		System.out.println("json is \n" + s);
+
+		Constants.loadData(plugin.getGson().fromJson(s, Constants.Data.class));
 	}
 
-	private void putWeapon(Map<Integer, AnimationSet> itemIdToAnimationSet, int itemId, String animationSetName)
-	{
-		int baseId = ItemVariationMapping.map(itemId);
-		AnimationSet animationSet;
-		if ("".equals(animationSetName)) {
-			List<AnimationSet> matchingAnimationSets = findMatchingAnimationSets(baseId);
-			if (matchingAnimationSets.size() > 1) {
-				System.out.println("multiple matching sets for item " + itemId + " " + matchingAnimationSets);
-				return;
-			} else if (matchingAnimationSets.isEmpty()) {
-				System.out.println("no matching sets for item " + itemId + " " + matchingAnimationSets);
-				return;
-			}
-			animationSet = matchingAnimationSets.iterator().next();
-		} else {
-			animationSet = AnimationSet.getAnimationSet(animationSetName);
+//	@Subscribe
+	public void not_onMenuOptionClicked(MenuOptionClicked e) {
+		// Cannot use hit gfx because of splashing, plus I don't know what happens if someone else casts on the same target at the same time.
+
+		if (e.getMenuOption().equals("Attack")) {
+			manualSpellCastNoCastGfx = null;
 		}
-
-		if (animationSet == null) {
-			System.out.println("null animationset " + animationSetName);
-			return;
-		}
-
-		itemIdToAnimationSet.put(baseId, animationSet);
-	}
-
-	Set<Integer> tempHidesHair;
-	Set<Integer> tempHidesJaw;
-	Set<Integer> tempShowsHair;
-	Set<Integer> tempShowsJaw;
-	private void addHidesHairAndJaw()
-	{
-		List<Integer> removeItem = new ArrayList<>();
-
-		follow(ItemID.OCHRE_SNELM_3341, ItemID.OCHRE_SNELM);
-		follow(ItemID.LAW_TIARA, ItemID.COSMIC_TIARA);
-		follow(ItemID.A_SPECIAL_TIARA, ItemID.COSMIC_TIARA);
-		follow(ItemID.ASTRAL_TIARA, ItemID.COSMIC_TIARA);
-		follow(ItemID.ORANGE_BOATER, ItemID.PURPLE_BOATER);
-		follow(ItemID.SWEET_NUTCRACKER_HAT, ItemID.FESTIVE_NUTCRACKER_HAT);
-		showAll(ItemID.MOUTH_GRIP);
-		showAll(ItemID.A_CHAIR);
-		showAll(ItemID.ONE_BARREL);
-		showAll(ItemID.TWO_BARRELS);
-		showAll(ItemID.THREE_BARRELS);
-		showAll(ItemID.FOUR_BARRELS);
-		showAll(ItemID.FIVE_BARRELS);
-		showAll(ItemID.PIRATE_HAT);
-		follow(ItemID.ADVENTURERS_HOOD_T1, ItemID.MAX_HOOD);
-		follow(ItemID.SARADOMIN_MAX_HOOD, ItemID.MAX_HOOD);
-		follow(ItemID.ZAMORAK_MAX_HOOD, ItemID.MAX_HOOD);
-		follow(ItemID.GUTHIX_MAX_HOOD, ItemID.MAX_HOOD);
-		follow(ItemID.ACCUMULATOR_MAX_HOOD, ItemID.MAX_HOOD);
-		follow(ItemID.SANGUINE_TORVA_FULL_HELM, ItemID.TORVA_FULL_HELM);
-		follow(ItemID.SANGUINE_TORVA_PLATEBODY, ItemID.TORVA_PLATEBODY);
-		removeItem.add(ItemID.SCYTHE_OF_VITUR_22664);
-		removeItem.add(ItemID.ARMADYL_GODSWORD_22665);
-		removeItem.add(ItemID.RUBBER_CHICKEN_22666);
-		removeItem.add(ItemID.DRAGON_KNIFE_22812);
-		removeItem.add(ItemID.DRAGON_KNIFE_22814);
-		// broken pvp arena gear. no model.
-		removeItem.addAll(Arrays.asList(26686, 26686, 26687, 26687, 26688, 26688, 26698, 26698, 26699, 26699, 26700, 26700, 26701, 26701, 26702, 26702, 26703, 26703));
-		for (int i = 0; i < client.getItemCount(); i++)
-		{
-			ItemComposition itemComposition = itemManager.getItemComposition(i);
-			if (itemComposition.getPlaceholderTemplateId() != -1 || itemComposition.getNote() != -1) continue;
-
-			Integer slot = SLOT_OVERRIDES.get(i);
-			if (slot == null) {
-				slot = plugin.getWikiScrapeSlot(i);
-			}
-			if (slot == null || slot != HEAD_SLOT) continue;
-			if (removeItem.contains(i)) continue;
-
-			Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
-			for (Integer variation : variations)
-			{
-				if (tempHidesHair.contains(variation)) {
-					tempHidesHair.add(i);
-				}
-				if (tempHidesJaw.contains(variation)) {
-					tempHidesJaw.add(i);
-				}
-				if (tempShowsHair.contains(variation)) {
-					tempShowsHair.add(i);
-				}
-				if (tempShowsJaw.contains(variation)) {
-					tempShowsJaw.add(i);
-				}
-			}
-
-			String name = itemComposition.getName().toLowerCase();
-			if (name.contains("bedsheet")) {
-				removeItem.add(i);
-			}
-			if (name.contains("tricorn hat")) {
-				showAll(i);
-			}
-			if (name.contains("saika's")) {
-				showHairJaw(i, false, !name.contains("shroud"));
-			}
-			if (name.contains("koriff's")) {
-				showHairJaw(i, false, !name.contains("cowl"));
-			}
-			if (name.contains("maoma's")) {
-				showHairJaw(i, false, name.contains("med"));
-			}
-		}
-		System.out.println(removeItem);
-	}
-
-	private void showAll(int itemId)
-	{
-		showHairJaw(itemId, true, true);
-	}
-
-	private void showHairJaw(int itemId, boolean showHair, boolean showJaw)
-	{
-		if (
-			((hidesHair.contains(itemId) && !showHair) || (showsHair.contains(itemId) && showHair)) &&
-			((hidesJaw.contains(itemId) && !showJaw) || (showsJaw.contains(itemId) && showJaw))
-		) {
-			System.out.println("superflous " + itemId);
-		}
-		if (
-			(hidesHair.contains(itemId) && showHair) ||
-			(showsHair.contains(itemId) && !showHair) ||
-			(hidesJaw.contains(itemId) && showJaw) ||
-			(showsJaw.contains(itemId) && !showJaw)
-		) {
-			System.out.println("goes against collected hair and jaw data " + itemId);
-		}
-		if (!showHair) tempHidesHair.add(itemId);
-		else tempShowsHair.add(itemId);
-		if (!showJaw) tempHidesJaw.add(itemId);
-		else tempShowsJaw.add(itemId);
-	}
-
-	private void follow(int itemId, int itemIdToCopy)
-	{
-		Boolean currentlyHidingHair = hidesHair.contains(itemId) ? TRUE : showsHair.contains(itemId) ? FALSE : null;
-		Boolean currentlyHidingJaw = hidesJaw.contains(itemId) ? TRUE : showsJaw.contains(itemId) ? FALSE : null;
-		Boolean hairToCopy = hidesHair.contains(itemIdToCopy) ? TRUE : showsHair.contains(itemIdToCopy) ? FALSE : null;
-		Boolean jawToCopy = hidesJaw.contains(itemIdToCopy) ? TRUE : showsJaw.contains(itemIdToCopy) ? FALSE : null;
-		if (hairToCopy == null || jawToCopy == null) {
-			System.out.println("copied item " + itemId + " didn't have enough data " + hairToCopy + " " + jawToCopy);
-			return;
-		}
-
-		boolean warnSuperfluous = false;
-		if (hairToCopy) {
-			if (currentlyHidingHair == null) {
-				tempHidesHair.add(itemId);
-			} else if (currentlyHidingHair) {
-				// skip;
-				warnSuperfluous = true;
-			} else {
-				System.out.println("item " + itemId + " was told to follow something that the data disagrees with.");
-			}
-		} else {
-			if (currentlyHidingHair == null) {
-				tempShowsHair.add(itemId);
-			} else if (currentlyHidingHair) {
-				System.out.println("item " + itemId + " was told to follow something that the data disagrees with.");
-			} else {
-				// skip;
-				warnSuperfluous = true;
-			}
-		}
-		if (jawToCopy) {
-			if (currentlyHidingJaw == null) {
-				tempHidesJaw.add(itemId);
-			} else if (currentlyHidingJaw) {
-				// skip;
-				if (warnSuperfluous) {
-					System.out.println("itemId " + itemId + " follow is superfluous.");
-				}
-			} else {
-				System.out.println("item " + itemId + " was told to follow something that the data disagrees with.");
-			}
-		} else {
-			if (currentlyHidingJaw == null) {
-				tempShowsJaw.add(itemId);
-			} else if (currentlyHidingJaw) {
-				System.out.println("item " + itemId + " was told to follow something that the data disagrees with.");
-			} else {
-				// skip;
-				if (warnSuperfluous) {
-					System.out.println("itemId " + itemId + " follow is superfluous.");
+		if (e.getMenuOption().equals("Cast")) {
+			String spellName = Text.removeTags(e.getMenuTarget());
+			for (ProjectileCast projectileCast : Constants.projectiles) { // TODO smaller lookup table maybe? That's a lot of list items to go through, many of which don't matter because they have cast gfx!
+				if (projectileCast.getName(itemManager).equals(spellName)) {
+					manualSpellCastNoCastGfx = projectileCast;
+					break;
 				}
 			}
 		}
-	}
-
-	private void addSlotData(Set<Integer> showsArms, Set<Integer> hidesHair, Set<Integer> hidesJaw, Map<Integer, Set<List<Integer>>> poseanims)
-	{
-		for (int i = 0; i < client.getItemCount(); i++)
-		{
-			ItemComposition itemComposition = plugin.itemManager.getItemComposition(i);
-			if (itemComposition.getPlaceholderTemplateId() != -1 || itemComposition.getNote() != -1) continue;
-
-			Integer slot = SLOT_OVERRIDES.get(i);
-			if (slot == null) {
-				ItemStats itemStats = plugin.itemManager.getItemStats(i, false);
-				if (itemStats != null && itemStats.isEquipable())
-				{
-					slot = itemStats.getEquipment().getSlot();
-				}
-			}
-			if (slot == null) continue;
-
-			if (slot == TORSO_SLOT)
-			{
-				if (!hidesArms.contains(i) && !this.showsArms.contains(i))
-				{
-					Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
-					boolean shown = false;
-					for (Integer variation : variations)
-					{
-						if (this.showsArms.contains(variation)) {
-							shown = true;
-							break;
-						}
-					}
-					if (shown)
-					{
-						showsArms.add(i);
-					} else {
-//								System.out.println(itemManager.getItemComposition(i).getName() + " " + i);
-					}
-				}
-			}
-			else if (slot == HEAD_SLOT)
-			{
-				if (!hidesHair.contains(i) && !this.showsHair.contains(i))
-				{
-					Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
-					boolean hides = false;
-					for (Integer variation : variations)
-					{
-						if (this.hidesHair.contains(variation)) {
-							hides = true;
-							break;
-						}
-					}
-					if (hides)
-					{
-						hidesHair.add(i);
-					} else {
-//								System.out.println(itemManager.getItemComposition(i).getName() + " " + i);
-					}
-				}
-				if (!hidesJaw.contains(i) && !this.showsJaw.contains(i))
-				{
-					Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
-					boolean hides = false;
-					for (Integer variation : variations)
-					{
-						if (this.hidesJaw.contains(variation)) {
-							hides = true;
-							break;
-						}
-					}
-					if (hides)
-					{
-						hidesJaw.add(i);
-					} else {
-//								System.out.println(itemManager.getItemComposition(i).getName() + " " + i);
-					}
-				}
-			}
-//			else if (slot == WEAPON_SLOT)
-//			{
-//				if (!this.poseanims.containsKey(i))
-//				{
-//					Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
-//					boolean found = false;
-//					for (Integer variation : variations)
-//					{
-//						if (this.poseanims.containsKey(variation)) {
-//							poseanims.put(i, this.poseanims.get(variation));
-//							found = true;
-//							break;
-//						}
-//					}
-//					if (found)
-//					{
-//					} else {
-////						System.out.println(itemManager.getItemComposition(i).getName() + " " + i);
-//					}
-//				}
-//			}
-		}
-	}
-
-	private static void addUnequippable(int itemId, KitType kitType) {
-		addUnequippable(itemId, kitType, null);
-	}
-
-	private static void addUnequippable(int itemId, KitType kitType, String name) {
-		addUnequippable(itemId, kitType, name, -1);
-	}
-
-	private static void addUnequippable(int itemId, KitType kitType, String name, int iconId) {
-		OVERRIDE_EQUIPPABILITY_OR_SLOT.put(itemId, kitType.getIndex());
-		if (name != null || iconId != -1) {
-			EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT_NAMES.put(itemId, new Constants.NameAndIconId(name, iconId));
-		}
-	}
-
-	@Subscribe
-	public void onClientTick(ClientTick clientTick) {
-//		for (int i = 0; i < Math.min(100, client.getLocalPlayer().getModel().getFaceColors1().length); i++)
-//		for (int i = 0; i < client.getLocalPlayer().getModel().getFaceColors1().length; i++)
-//		{
-//			client.getLocalPlayer().getModel().getFaceColors1()[i] = 0;
-//		}
-		if (demoanim != -1) {
-//			client.getLocalPlayer().setAnimation(demoanim);
-//			client.getLocalPlayer().setAnimationFrame(0);
-		}
-		if (demogfx != -1 && client.getLocalPlayer().getGraphic() != demogfx) {
-			client.getLocalPlayer().setGraphic(demogfx);
-			client.getLocalPlayer().setSpotAnimFrame(0);
-		}
-	}
-
-	@Subscribe
-	public void onMenuOptionClicked(MenuOptionClicked menuOptionClicked)
-	{
-		if (menuOptionClicked.getMenuOption().equals("Use") && menuOptionClicked.getItemId() == 563) {
-			if (demoanim != -1) {
-				demoanim--;
-				for (Constants.ActorAnimation value : values())
-				{
-					value.setAnimation(client.getLocalPlayer(), demoanim);
-				}
-				System.out.println("demo anim " + demoanim);
-				client.playSoundEffect(demoanim);
-			}
-			if (demogfx != -1) {
-				demogfx--;
-				client.getLocalPlayer().setGraphic(demogfx);
-				client.getLocalPlayer().setSpotAnimFrame(0);
-				client.getLocalPlayer().setGraphicHeight(0);
-				System.out.println("demo gfx " + demogfx);
-			}
-		} else if (menuOptionClicked.getMenuOption().equals("Use") && menuOptionClicked.getItemId() == 995){
-			if (demoanim != -1) {
-				demoanim++;
-				client.playSoundEffect(demoanim);
-				for (Constants.ActorAnimation value : values())
-				{
-					value.setAnimation(client.getLocalPlayer(), demoanim);
-				}
-				System.out.println("demo anim " + demoanim);
-			}
-			if (demogfx != -1) {
-				demogfx++;
-				System.out.println("demo gfx " + demogfx);
-			}
-		}
-//		System.out.println(menuOptionClicked.getMenuOption() + " " + Text.removeTags(menuOptionClicked.getMenuTarget()));
 	}
 
 }

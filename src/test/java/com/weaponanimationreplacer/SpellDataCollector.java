@@ -85,7 +85,7 @@ public class SpellDataCollector
 		System.out.println(client.getGameCycle() + " !!! spell start (projectile) !!!");
 
 		spellStart = client.getGameCycle();
-		currentSpellChebyshevDistance = plugin.chebyshevDistance(player, player.getInteracting(), false);
+		currentSpellChebyshevDistance = player.getInteracting() != null ? plugin.chebyshevDistance(player, player.getInteracting(), false) : -1;
 
 		currentProjectile = new ProjectileData();
 		currentProjectile.name = lastSpellCastName;

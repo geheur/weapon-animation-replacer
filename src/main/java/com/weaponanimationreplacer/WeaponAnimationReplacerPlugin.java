@@ -58,7 +58,6 @@ import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.InteractingChanged;
-import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.PlayerChanged;
 import net.runelite.api.events.ProjectileMoved;
 import net.runelite.api.kit.KitType;
@@ -79,7 +78,6 @@ import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.components.colorpicker.ColorPickerManager;
 import net.runelite.client.util.AsyncBufferedImage;
 import net.runelite.client.util.ImageUtil;
-import net.runelite.client.util.Text;
 import net.runelite.http.api.item.ItemEquipmentStats;
 import net.runelite.http.api.item.ItemStats;
 
@@ -130,7 +128,6 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	int timeToApplyDelayedGfx = -1;
 	// For handling spells that have no projectiles which are harder to identify. This must be toggled off in onProjectileMoved the the spell is replaced there.
 	private boolean handlePossibleNoProjectileSpellInClientTick = false;
-	private ProjectileCast manualSpellCastNoCastGfx = null;
 
 	private List<ProjectileSwap> projectileSwaps = Collections.emptyList();
 
@@ -571,6 +568,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
 	int chebyshevDistance(Player player, Actor target, boolean isBarrage)
 	{
+		if (target == null) return -1;
 		/*
 		 * see https://oldschool.runescape.wiki/w/Hit_delay
 		 * "The distance is typically measured edge-to-edge in game squares, using the same edge for both entities. I.e. distance will be calculated using an NPC's closest edge to the player, and the player's furthest edge from the NPC. However, barrage spells are a notable exception in that they calculate distance from the player to an NPC's south-west tile, which causes abnormally long hit delay when attacking a large NPC from the north or east."
@@ -977,24 +975,6 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		}
 	}
 
-	@Subscribe
-	public void onMenuOptionClicked(MenuOptionClicked e) {
-		// Cannot use hit gfx because of splashing, plus I don't know what happens if someone else casts on the same target at the same time.
-
-		if (e.getMenuOption().equals("Attack")) {
-			manualSpellCastNoCastGfx = null;
-		}
-		if (e.getMenuOption().equals("Cast")) {
-			String spellName = Text.removeTags(e.getMenuTarget());
-			for (ProjectileCast projectileCast : ProjectileCast.projectiles) { // TODO smaller lookup table maybe? That's a lot of list items to go through, many of which don't matter because they have cast gfx!
-				if (projectileCast.getName(itemManager).equals(spellName)) {
-					manualSpellCastNoCastGfx = projectileCast;
-					break;
-				}
-			}
-		}
-	}
-
 	@Subscribe(priority = 1) // I need kit data to determine what the player is wearing (equipment inventory does not update fast enough to avoid flickering), so I need this information before other plugins might change it.
 	public void onPlayerChanged(PlayerChanged playerChanged) {
 		if (playerChanged.getPlayer() != client.getLocalPlayer()) return;
@@ -1057,7 +1037,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 				searchType == MODEL_SWAP ?
 					itemId -> setPreviewItem(itemId, swap != null && (swap.animationReplacements.isEmpty() || swap.animationReplacements.size() == 1 && swap.animationReplacements.get(0).auto != -1)) :
 				searchType == SPELL_R ?
-					spellIndex -> {if (spellIndex != -1) demoCast(ProjectileCast.projectiles.get(spellIndex));} :
+					spellId -> {if (spellId != -1) demoCast(Constants.projectilesById[spellId]);} :
 					null
 			);
 			itemSearch.build();

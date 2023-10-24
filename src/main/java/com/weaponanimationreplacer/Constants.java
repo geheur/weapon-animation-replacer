@@ -8,10 +8,12 @@ import static com.weaponanimationreplacer.Swap.AnimationType.STAND;
 import static com.weaponanimationreplacer.Swap.AnimationType.WALK_BACKWARD;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalInt;
 import java.util.Set;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +43,8 @@ public class Constants
 	public static Set<Integer> HIDES_HAIR;
 	public static Set<Integer> HIDES_JAW;
 	public static Map<String, int[]> poseanims;
+	public static List<ProjectileCast> projectiles = new ArrayList<>();
+	public static ProjectileCast[] projectilesById = new ProjectileCast[0];
 
 	// key is item id, value is the slot id it should go in. A slot id of -1 means the item should be considered unequippable.
 	public static Map<Integer, Integer> SLOT_OVERRIDES = new HashMap<>();
@@ -61,16 +65,6 @@ public class Constants
 		return null;
 	}
 
-	static final class Data
-	{
-		Set<Integer> showArms;
-		Set<Integer> hideHair;
-		Set<Integer> hideJaw;
-		Map<Integer, List<Integer>> slotOverrides;
-		Map<Integer, NameAndIconId> nameIconOverrides;
-		Map<String, int[]> poseanims;
-	}
-
 	public static void loadData(Gson gson)
 	{
 		if (SLOT_OVERRIDES.size() > 0) return; // Already loaded.
@@ -78,6 +72,11 @@ public class Constants
 		InputStream resourceAsStream = Constants.class.getResourceAsStream("data.json");
 		Data data = gson.fromJson(new InputStreamReader(resourceAsStream), Data.class);
 
+		loadData(data);
+	}
+
+	public static void loadData(Data data)
+	{
 		// Load slot overrides.
 		for (Map.Entry<Integer, List<Integer>> entry : data.slotOverrides.entrySet())
 		{
@@ -98,6 +97,34 @@ public class Constants
 		HIDES_JAW = data.hideJaw;
 		poseanims = data.poseanims;
 		NAME_ICON_OVERRIDES = data.nameIconOverrides;
+		projectiles = data.projectiles;
+		projectilesById = createProjectilesById(projectiles);
+	}
+
+	private static ProjectileCast[] createProjectilesById(List<ProjectileCast> projectiles)
+	{
+		OptionalInt max = projectiles.stream().mapToInt(p -> p.id).max();
+		if (!max.isPresent()) {
+			return new ProjectileCast[0];
+		}
+		int highestId = max.getAsInt();
+		ProjectileCast[] projectilesById = new ProjectileCast[highestId + 1];
+		for (ProjectileCast projectile : projectiles)
+		{
+			projectilesById[projectile.id] = projectile;
+		}
+		return projectilesById;
+	}
+
+	static final class Data
+	{
+		Set<Integer> showArms;
+		Set<Integer> hideHair;
+		Set<Integer> hideJaw;
+		Map<Integer, List<Integer>> slotOverrides;
+		Map<Integer, NameAndIconId> nameIconOverrides;
+		Map<String, int[]> poseanims;
+		List<ProjectileCast> projectiles;
 	}
 
 	private static void addUnequippable(int itemId, KitType kitType) {
