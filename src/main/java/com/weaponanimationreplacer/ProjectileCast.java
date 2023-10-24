@@ -36,42 +36,43 @@ public final class ProjectileCast
 	static void initializeSpells() {
 		projectiles.clear();
 		// Standard spellbook.
-		projectiles.add(p().name("Wind Strike").sprite(SpriteID.SPELL_WIND_STRIKE).ids(1162, 90, 91, 92, 51, 64, 124, 16).build());
-		projectiles.add(p().name("Confuse").sprite(SpriteID.SPELL_CONFUSE).ids(1163, 102, 103, 104, 61, 64, 124, 16).build());
-		projectiles.add(p().name("Water Strike").sprite(SpriteID.SPELL_WATER_STRIKE).ids(1162, 93, 94, 95, 51, 64, 124, 16).build());
-		projectiles.add(p().name("Earth Strike").sprite(SpriteID.SPELL_EARTH_STRIKE).ids(1162, 96, 97, 98, 51, 64, 124, 16).build());
-		projectiles.add(p().name("Weaken").sprite(SpriteID.SPELL_WEAKEN).ids(1164, 105, 106, 107, 44, 64, 124, 16).build());
-		projectiles.add(p().name("Fire Strike").sprite(SpriteID.SPELL_FIRE_STRIKE).ids(1162, 99, 100, 101, 51, 64, 124, 16).build());
-		projectiles.add(p().name("Wind Bolt").sprite(SpriteID.SPELL_WIND_BOLT).ids(1162, 117, 118, 119, 51, 64, 124, 16).build());
-		projectiles.add(p().name("Curse").sprite(SpriteID.SPELL_CURSE).ids(1165, 108, 109, 110, 51, 64, 124, 16).build());
-		projectiles.add(p().name("Bind").sprite(SpriteID.SPELL_BIND).ids(1161, 177, 178, 181, 75, 64, 0, 16).hitGfx(181, 124).build());
-		projectiles.add(p().name("Water Bolt").sprite(SpriteID.SPELL_WATER_BOLT).ids(1162, 120, 121, 122, 51, 64, 124, 16).build());
-		projectiles.add(p().name("Earth Bolt").sprite(SpriteID.SPELL_EARTH_BOLT).ids(1162, 123, 124, 125, 51, 64, 124, 16).build());
-		projectiles.add(p().name("Telegrab").sprite(SpriteID.SPELL_TELEKINETIC_GRAB).ids(723, 142, 143, 144, 48, 64, 0, 16).build());
-		projectiles.add(p().name("Fire Bolt").sprite(SpriteID.SPELL_FIRE_BOLT).ids(1162, 126, 127, 128, 51, 64, 124, 16).build());
-		projectiles.add(p().name("Crumble Undead").sprite(SpriteID.SPELL_CRUMBLE_UNDEAD).ids(1166, 145, 146, 147, 46, 64, 124, 16).build());
-		projectiles.add(p().name("Wind Blast").sprite(SpriteID.SPELL_WIND_BLAST).ids(1162, 132, 133, 134, 51, 64, 124, 16).build());
-		projectiles.add(p().name("Water Blast").sprite(SpriteID.SPELL_WATER_BLAST).ids(1162, 135, 136, 137, 51, 64, 124, 16).build());
-		projectiles.add(p().name("Iban Blast").sprite(SpriteID.SPELL_IBAN_BLAST).ids(708, 87, 88, 89, 60, 64, 124, 16).build());
-		projectiles.add(p().name("Snare").sprite(SpriteID.SPELL_SNARE).ids(1161, 177, 178, 180, 75, 64, 0, 16).hitGfx(180, 124).build());
-		projectiles.add(p().name("Magic Dart").sprite(SpriteID.SPELL_MAGIC_DART).ids(1576, -1, 328, 329, 51, 64, 124, 16).build());
-		projectiles.add(p().name("Earth Blast").sprite(SpriteID.SPELL_EARTH_BLAST).ids(1162, 138, 139, 140, 51, 64, 124, 16).build());
-		projectiles.add(p().name("Fire Blast").sprite(SpriteID.SPELL_FIRE_BLAST).ids(1162, 129, 130, 131, 51, 64, 124, 16).build());
+		// TODO hit gfx heights.
+		projectiles.add(p().name("Wind Strike").sprite(SpriteID.SPELL_WIND_STRIKE).cast(1162, 90).projectile(92, 51, 64, -172, 124, 16).hitGfx(91, 124).build());
+		projectiles.add(p().name("Confuse").sprite(SpriteID.SPELL_CONFUSE).cast(1163, 102).projectile(104, 61, 64, -172, 124, 16).hitGfx(103, 124).build());
+		projectiles.add(p().name("Water Strike").sprite(SpriteID.SPELL_WATER_STRIKE).cast(1162, 93).projectile(95, 51, 64, -172, 124, 16).hitGfx(94, 124).build());
+		projectiles.add(p().name("Earth Strike").sprite(SpriteID.SPELL_EARTH_STRIKE).cast(1162, 96).projectile(98, 51, 64, -172, 124, 16).hitGfx(97, 124).build());
+		projectiles.add(p().name("Weaken").sprite(SpriteID.SPELL_WEAKEN).cast(1164, 105).projectile(107, 44, 64, -172, 124, 16).hitGfx(106, 124).build());
+		projectiles.add(p().name("Fire Strike").sprite(SpriteID.SPELL_FIRE_STRIKE).cast(1162, 99).projectile(101, 51, 64, -172, 124, 16).hitGfx(100, 124).build());
+		projectiles.add(p().name("Wind Bolt").sprite(SpriteID.SPELL_WIND_BOLT).cast(1162, 117).projectile(119, 51, 64, -172, 124, 16).hitGfx(118, 124).build());
+		projectiles.add(p().name("Curse").sprite(SpriteID.SPELL_CURSE).cast(1165, 108).projectile(110, 51, 64, -172, 124, 16).hitGfx(109, 124).build());
+		projectiles.add(p().name("Bind").sprite(SpriteID.SPELL_BIND).cast(1161, 177).projectile(181, 75, 64, -172, 0, 16).hitGfx(178, 0).hitGfx(181, 124).build());
+		projectiles.add(p().name("Water Bolt").sprite(SpriteID.SPELL_WATER_BOLT).cast(1162, 120).projectile(122, 51, 64, -172, 124, 16).hitGfx(121, 124).build());
+		projectiles.add(p().name("Earth Bolt").sprite(SpriteID.SPELL_EARTH_BOLT).cast(1162, 123).projectile(125, 51, 64, -172, 124, 16).hitGfx(124, 124).build());
+		projectiles.add(p().name("Telegrab").sprite(SpriteID.SPELL_TELEKINETIC_GRAB).cast(723, 142).projectile(144, 48, 64, -172, 0, 16).hitGfx(143, 0).build());
+		projectiles.add(p().name("Fire Bolt").sprite(SpriteID.SPELL_FIRE_BOLT).cast(1162, 126).projectile(128, 51, 64, -172, 124, 16).hitGfx(127, 124).build());
+		projectiles.add(p().name("Crumble Undead").sprite(SpriteID.SPELL_CRUMBLE_UNDEAD).cast(1166, 145).projectile(147, 46, 64, -172, 124, 16).hitGfx(146, 124).build());
+		projectiles.add(p().name("Wind Blast").sprite(SpriteID.SPELL_WIND_BLAST).cast(1162, 132).projectile(134, 51, 64, -172, 124, 16).hitGfx(133, 124).build());
+		projectiles.add(p().name("Water Blast").sprite(SpriteID.SPELL_WATER_BLAST).cast(1162, 135).projectile(137, 51, 64, -172, 124, 16).hitGfx(136, 124).build());
+		projectiles.add(p().name("Iban Blast").sprite(SpriteID.SPELL_IBAN_BLAST).cast(708, 87).projectile(89, 60, 64, -172, 124, 16).hitGfx(88, 124).build());
+		projectiles.add(p().name("Snare").sprite(SpriteID.SPELL_SNARE).cast(1161, 177).projectile(180, 75, 64, -172, 0, 16).hitGfx(178, 0).hitGfx(180, 124).build());
+		projectiles.add(p().name("Magic Dart").sprite(SpriteID.SPELL_MAGIC_DART).cast(1576, -1).projectile(329, 51, 64, -172, 124, 16).hitGfx(328, 124).build());
+		projectiles.add(p().name("Earth Blast").sprite(SpriteID.SPELL_EARTH_BLAST).cast(1162, 138).projectile(140, 51, 64, -172, 124, 16).hitGfx(139, 124).build());
+		projectiles.add(p().name("Fire Blast").sprite(SpriteID.SPELL_FIRE_BLAST).cast(1162, 129).projectile(131, 51, 64, -172, 124, 16).hitGfx(130, 124).build());
 		projectiles.add(p().name("Saradomin Strike").sprite(SpriteID.SPELL_SARADOMIN_STRIKE).ids(811, -1, 76).build());
 		projectiles.add(p().name("Claws of Guthix").sprite(SpriteID.SPELL_CLAWS_OF_GUTHIX).ids(811, -1, 77).build());
 		projectiles.add(p().name("Flames of Zamorak").sprite(SpriteID.SPELL_FLAMES_OF_ZAMORAK).ids(811, -1, 78).build());
-		projectiles.add(p().name("Wind Wave").sprite(SpriteID.SPELL_WIND_WAVE).ids(1167, 158, 159, 160, 51, 64, 124, 16).build());
-		projectiles.add(p().name("Water Wave").sprite(SpriteID.SPELL_WATER_WAVE).ids(1167, 161, 162, 163, 51, 64, 124, 16).build());
-		projectiles.add(p().name("Vulnerability").sprite(SpriteID.SPELL_VULNERABILITY).ids(1165, 167, 168, 169, 34, 64, 124, 16).build());
-		projectiles.add(p().name("Earth Wave").sprite(SpriteID.SPELL_EARTH_WAVE).ids(1167, 164, 165, 166, 51, 64, 124, 16).build());
-		projectiles.add(p().name("Enfeeble").sprite(SpriteID.SPELL_ENFEEBLE).ids(1168, 170, 171, 172, 48, 64, 124, 16).build());
-		projectiles.add(p().name("Fire Wave").sprite(SpriteID.SPELL_FIRE_WAVE).ids(1167, 155, 156, 157, 51, 64, 124, 16).build());
-		projectiles.add(p().name("Entangle").sprite(SpriteID.SPELL_ENTANGLE).ids(1161, 177, 178, 179, 75, 64, 0, 16).hitGfx(179, 124).build());
-		projectiles.add(p().name("Stun").sprite(SpriteID.SPELL_STUN).ids(1169, 173, 174, 80, 52, 64, 124, 16).build());
-		projectiles.add(p().name("Wind Surge").sprite(SpriteID.SPELL_WIND_SURGE).ids(7855, 1455, 1456, 1457, 51, 64, 124, 16).build());
-		projectiles.add(p().name("Water Surge").sprite(SpriteID.SPELL_WATER_SURGE).ids(7855, 1458, 1459, 1460, 51, 64, 124, 16).build());
-		projectiles.add(p().name("Earth Surge").sprite(SpriteID.SPELL_EARTH_SURGE).ids(7855, 1461, 1462, 1463, 51, 64, 124, 16).build());
-		projectiles.add(p().name("Fire Surge").sprite(SpriteID.SPELL_FIRE_SURGE).ids(7855, 1464, 1465, 1466, 51, 64, 124, 16).build());
+		projectiles.add(p().name("Wind Wave").sprite(SpriteID.SPELL_WIND_WAVE).cast(1167, 158).projectile(160, 51, 64, -172, 124, 16).hitGfx(159, 124).build());
+		projectiles.add(p().name("Water Wave").sprite(SpriteID.SPELL_WATER_WAVE).cast(1167, 161).projectile(163, 51, 64, -172, 124, 16).hitGfx(162, 124).build());
+		projectiles.add(p().name("Vulnerability").sprite(SpriteID.SPELL_VULNERABILITY).cast(1165, 167).projectile(169, 34, 64, -172, 124, 16).hitGfx(168, 124).build());
+		projectiles.add(p().name("Earth Wave").sprite(SpriteID.SPELL_EARTH_WAVE).cast(1167, 164).projectile(166, 51, 64, -172, 124, 16).hitGfx(165, 124).build());
+		projectiles.add(p().name("Enfeeble").sprite(SpriteID.SPELL_ENFEEBLE).cast(1168, 170).projectile(172, 48, 64, -172, 124, 16).hitGfx(171, 124).build());
+		projectiles.add(p().name("Fire Wave").sprite(SpriteID.SPELL_FIRE_WAVE).cast(1167, 155).projectile(157, 51, 64, -172, 124, 16).hitGfx(156, 124).build());
+		projectiles.add(p().name("Entangle").sprite(SpriteID.SPELL_ENTANGLE).cast(1161, 177).projectile(179, 75, 64, -172, 0, 16).hitGfx(178, 0).hitGfx(179, 124).build());
+		projectiles.add(p().name("Stun").sprite(SpriteID.SPELL_STUN).cast(1169, 173).projectile(80, 52, 64, -172, 124, 16).hitGfx(174, 124).build());
+		projectiles.add(p().name("Wind Surge").sprite(SpriteID.SPELL_WIND_SURGE).cast(7855, 1455).projectile(1457, 51, 64, -172, 124, 16).hitGfx(1456, 124).build());
+		projectiles.add(p().name("Water Surge").sprite(SpriteID.SPELL_WATER_SURGE).cast(7855, 1458).projectile(1460, 51, 64, -172, 124, 16).hitGfx(1459, 124).build());
+		projectiles.add(p().name("Earth Surge").sprite(SpriteID.SPELL_EARTH_SURGE).cast(7855, 1461).projectile(1463, 51, 64, -172, 124, 16).hitGfx(1462, 124).build());
+		projectiles.add(p().name("Fire Surge").sprite(SpriteID.SPELL_FIRE_SURGE).cast(7855, 1464).projectile(1466, 51, 64, -172, 124, 16).hitGfx(1465, 124).build());
 
 		// Ancient spellbook.
 		projectiles.add(p().name("Smoke Rush").sprite(SpriteID.SPELL_SMOKE_RUSH).ids(1978, -1, 384, 385, 51, 64, 124, 16).build());
@@ -85,7 +86,7 @@ public final class ProjectileCast
 		projectiles.add(p().name("Smoke Blitz").sprite(SpriteID.SPELL_SMOKE_BLITZ).ids(1978, -1, 386, 387, 51, 64, 124, 16).build());
 		projectiles.add(p().name("Shadow Blitz").sprite(SpriteID.SPELL_SHADOW_BLITZ).ids(1978, -1, 380, 381, 51, 64, 0, 16).build());
 		projectiles.add(p().name("Blood Blitz").sprite(SpriteID.SPELL_BLOOD_BLITZ).ids(1978, -1, 374, 375, 51, 64, 0, 16).build());
-		projectiles.add(p().name("Ice Blitz").sprite(SpriteID.SPELL_ICE_BLITZ).ids(1978, 376, 367).build());
+		projectiles.add(p().name("Ice Blitz").sprite(SpriteID.SPELL_ICE_BLITZ).ids(1978, 366, 367).build());
 		projectiles.add(p().name("Smoke Barrage").sprite(SpriteID.SPELL_SMOKE_BARRAGE).ids(1979, -1, 391).build());
 		projectiles.add(p().name("Shadow Barrage").sprite(SpriteID.SPELL_SHADOW_BARRAGE).ids(1979, -1, 383).build());
 		projectiles.add(p().name("Blood Barrage").sprite(SpriteID.SPELL_BLOOD_BARRAGE).ids(1979, -1, 377).build());
@@ -246,7 +247,8 @@ public final class ProjectileCast
 	int hitGfxHeight;
 
 	int startMovement;
-	int startHeight;
+	int startHeight; // This is not the start height, this is the horizontal distance from the source towards the target at which the projectile is spawned.
+	int height; // This is the actual height above the current tile height that the projectile should be at.
 	int endHeight;
 	int slope;
 
@@ -254,7 +256,7 @@ public final class ProjectileCast
 
 	public static ProjectileCast copy(ProjectileCast toCopy)
 	{
-		return new ProjectileCast(toCopy.name, toCopy.itemIdIcon, toCopy.spriteIdIcon, toCopy.castAnimation, toCopy.castGfx, toCopy.projectileId, toCopy.hitGfx, toCopy.hitGfxHeight, toCopy.startMovement, toCopy.startHeight, toCopy.endHeight, toCopy.slope, true);
+		return new ProjectileCast(toCopy.name, toCopy.itemIdIcon, toCopy.spriteIdIcon, toCopy.castAnimation, toCopy.castGfx, toCopy.projectileId, toCopy.hitGfx, toCopy.hitGfxHeight, toCopy.startMovement, toCopy.startHeight, toCopy.height, toCopy.endHeight, toCopy.slope, true);
 	}
 
 	public String getName(ItemManager itemManager) {
@@ -274,12 +276,35 @@ public final class ProjectileCast
 
 		int startMovement = -1;
 		int startHeight = -1;
+		int height = -172; // reasonable default.
 		int endHeight = -1;
 		int slope = -1;
 
 		boolean artificial = false;
 
+		public ProjectileCastBuilder cast(int castAnimation, int castGfx) {
+			this.castAnimation = castAnimation;
+			this.castGfx = castGfx;
+			return this;
+		}
+
+		public ProjectileCastBuilder projectile(int projectileId, int startMovement, int startHeight, int height, int endHeight, int slope) {
+			this.projectileId = projectileId;
+			this.hitGfxHeight = endHeight; // Good enough for most spells, only a few have a different value here.
+			this.startMovement = startMovement;
+			this.startHeight = startHeight;
+			this.endHeight = endHeight;
+			this.slope = slope;
+			return this;
+		}
+
+		// TODO ideally remove this once you have the right values.
+		// reasonable default.
 		public ProjectileCastBuilder ids(int castAnimation, int castGfx, int projectileId, int hitGfx, int startMovement, int startHeight, int endHeight, int slope) {
+			return ids(castAnimation, castGfx, projectileId, hitGfx, startMovement, startHeight, -172, endHeight, slope);
+		}
+
+		public ProjectileCastBuilder ids(int castAnimation, int castGfx, int projectileId, int hitGfx, int startMovement, int startHeight, int height, int endHeight, int slope) {
 			this.castAnimation = castAnimation;
 			this.castGfx = castGfx;
 			this.projectileId = projectileId;
@@ -336,7 +361,7 @@ public final class ProjectileCast
 		}
 
 		public ProjectileCast build() {
-			return new ProjectileCast(name, itemIdIcon, spriteIdIcon, castAnimation, castGfx, projectileId, hitGfx, hitGfxHeight, startMovement, startHeight, endHeight, slope, artificial);
+			return new ProjectileCast(name, itemIdIcon, spriteIdIcon, castAnimation, castGfx, projectileId, hitGfx, hitGfxHeight, startMovement, startHeight, height, endHeight, slope, artificial);
 		}
 	}
 

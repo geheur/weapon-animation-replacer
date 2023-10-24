@@ -43,12 +43,12 @@ import lombok.Getter;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
-import net.runelite.api.ActorSpotAnim;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.JagexColor;
 import net.runelite.api.Model;
 import net.runelite.api.NPC;
+import net.runelite.api.Perspective;
 import net.runelite.api.Player;
 import net.runelite.api.Projectile;
 import net.runelite.api.RuneLiteObject;
@@ -511,27 +511,15 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
 		Player player = client.getLocalPlayer();
 		final WorldPoint playerPos = player.getWorldLocation();
-		if (playerPos == null)
-		{
-			return;
-		}
-
+		if (playerPos == null) return;
 		final LocalPoint playerPosLocal = LocalPoint.fromWorld(client, playerPos);
-		if (playerPosLocal.equals(player.getLocalLocation())) { // TODO remove this block
-//			System.out.println("equal");
-		} else {
-//			System.out.println("not equal");
-		}
-		if (playerPosLocal == null)
-		{
-			return;
-		}
+		if (playerPosLocal == null) return;
+		if (player.getInteracting() == null) return;
 
 		for (ProjectileSwap projectileSwap : projectileSwaps)
 		{
 			ProjectileCast toReplace = projectileSwap.getToReplace();
-//			System.out.println("checking " + toReplace.getName(itemManager) + " " + lastRealAnimation + " " + toReplace.getCastAnimation() + " " + toReplace.getProjectileId());
-			if (!(toReplace.getCastAnimation() == lastRealAnimation && toReplace.getProjectileId() == -1)) {
+			if (toReplace.getCastAnimation() != lastRealAnimation || toReplace.getProjectileId() != -1) {
 				continue;
 			}
 
@@ -547,10 +535,11 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			// TODO splash detection.
 			int projectileTravelTime;
 			int graphicDelay;
+			ProjectileCast toReplaceWith = projectileSwap.getToReplaceWith();
 			switch (toReplace.getCastAnimation()) {
 				// magic spells.
 				case 811:
-					projectileTravelTime = 120 - projectileSwap.getToReplaceWith().getStartMovement();
+					projectileTravelTime = 120 - toReplaceWith.getStartMovement();
 					graphicDelay = 48 + 10 * chebyshevDistance;
 					break;
 				case 1978:
@@ -569,10 +558,10 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 				default:
 					return; // shouldn't happen.
 			}
-			int endCycle = client.getGameCycle() + projectileSwap.getToReplaceWith().getStartMovement() + projectileTravelTime;
+			int endCycle = client.getGameCycle() + toReplaceWith.getStartMovement() + projectileTravelTime;
 			int targetX = player.getInteracting().getLocalLocation().getX();
 			int targetY = player.getInteracting().getLocalLocation().getY();
-			int startHeight = -412; // TODO
+			int startHeight = Perspective.getTileHeight(client, player.getLocalLocation(), player.getWorldLocation().getPlane()) + toReplaceWith.height;
 
 //			System.out.println("replacing projectile-less spell. " + client.getGameCycle() + " " + endCycle);
 			replaceSpell(projectileSwap, player, playerPos.getPlane(), playerPosLocal, startHeight, endCycle, player.getInteracting(), targetX, targetY);
@@ -618,56 +607,51 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		if (norecurse) return;
 
 		Projectile projectile = projectileMoved.getProjectile();
-
-		// skip already seen projectiles.
-		if (client.getGameCycle() >= projectile.getStartCycle()) return;
+		if (client.getGameCycle() >= projectile.getStartCycle()) return; // skip already seen projectiles.
 
 		// This is the player's actual location which is what projectiles use as their start position. Player#getX, #getSceneX, etc., do not work here.
 		Player player = client.getLocalPlayer();
 		final WorldPoint playerPos = player.getWorldLocation();
 		if (playerPos == null) return;
-
 		final LocalPoint playerPosLocal = LocalPoint.fromWorld(client, playerPos);
 		if (playerPosLocal == null) return;
 
-		if (projectile.getX1() == playerPosLocal.getX() && projectile.getY1() == playerPosLocal.getY()) {
-//			System.out.println("projectilemoved " + client.getTickCount() + " " + client.getGameCycle() + " (" + (projectile.getStartCycle() - client.getGameCycle()) + ") " + player.getInteracting() + " " + (projectile.getEndCycle() - projectile.getStartCycle()));
-//			System.out.println(itemManager.getItemComposition(client.getItemContainer(InventoryID.EQUIPMENT).getItem(EquipmentInventorySlot.WEAPON.getSlotIdx()).getId()).getName());
-			int correctedLastRealAnimation = // Some standard spellbook spells use a different animation depending on the equipped weapon (or lack thereof).
-				(lastRealAnimation < 711 || lastRealAnimation > 729) ? lastRealAnimation :
-				lastRealAnimation == 710 ? 1161 :
-				lastRealAnimation == 711 ? 1162 :
-				lastRealAnimation == 716 ? 1163 :
-				lastRealAnimation == 717 ? 1164 :
-				lastRealAnimation == 718 ? 1165 :
-				lastRealAnimation == 724 ? 1166 :
-				lastRealAnimation == 727 ? 1167 :
-				lastRealAnimation == 728 ? 1168 :
-				1169 // counterpart of 729
-			;
-			for (ProjectileSwap projectileSwap : projectileSwaps)
-			{
-				ProjectileCast toReplace = projectileSwap.getToReplace();
-				if (
-					toReplace.getCastAnimation() == correctedLastRealAnimation && correctedLastRealAnimation != -1 &&
-					toReplace.getProjectileId() == projectile.getId() &&
-					(toReplace.getCastGfx() == -1 || toReplace.getCastGfx() == player.getGraphic())
-				) {
-					handlePossibleNoProjectileSpellInClientTick = false;
+		if (projectile.getX1() != playerPosLocal.getX() || projectile.getY1() != playerPosLocal.getY()) return;
 
-//					System.out.println("matched " + toReplace.getName(itemManager) + " at " + client.getGameCycle());
+		int correctedLastRealAnimation = // Some standard spellbook spells use a different animation depending on the equipped weapon (or lack thereof).
+			(lastRealAnimation < 710 || lastRealAnimation > 729) ? lastRealAnimation :
+			lastRealAnimation == 710 ? 1161 :
+			lastRealAnimation == 711 ? 1162 :
+			lastRealAnimation == 716 ? 1163 :
+			lastRealAnimation == 717 ? 1164 :
+			lastRealAnimation == 718 ? 1165 :
+			lastRealAnimation == 724 ? 1166 :
+			lastRealAnimation == 727 ? 1167 :
+			lastRealAnimation == 728 ? 1168 :
+			lastRealAnimation == 729 ? 1169 :
+			lastRealAnimation
+		;
+		for (ProjectileSwap projectileSwap : projectileSwaps)
+		{
+			ProjectileCast toReplace = projectileSwap.getToReplace();
+			if (
+				toReplace.getCastAnimation() == correctedLastRealAnimation && correctedLastRealAnimation != -1 &&
+				toReplace.getProjectileId() == projectile.getId() &&
+				(toReplace.getCastGfx() == -1 || toReplace.getCastGfx() == player.getGraphic())
+			) {
+				handlePossibleNoProjectileSpellInClientTick = false;
+//				System.out.println("matched " + toReplace.getName(itemManager) + " at " + client.getGameCycle());
 
-					int endCycle = projectile.getEndCycle();
-					Actor interacting = projectile.getInteracting();
-					int x = projectile.getTarget().getX();
-					int y = projectile.getTarget().getY();
-					int height = projectile.getHeight();
+				int endCycle = projectile.getEndCycle();
+				Actor interacting = projectile.getInteracting();
+				int x = projectile.getTarget().getX();
+				int y = projectile.getTarget().getY();
+				int height = projectile.getHeight() - toReplace.height + projectileSwap.getToReplaceWith().height;
 
-					replaceSpell(projectileSwap, player, playerPos.getPlane(), playerPosLocal, height, endCycle, interacting, x, y);
-					projectile.setEndCycle(0);
+				replaceSpell(projectileSwap, player, playerPos.getPlane(), playerPosLocal, height, endCycle, interacting, x, y);
+				projectile.setEndCycle(0);
 
-					break;
-				}
+				break;
 			}
 		}
 	}
@@ -824,10 +808,11 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		{
 			WorldPoint wl = p.getWorldLocation();
 			LocalPoint ll = p.getLocalLocation();
-			norecurse = true;
 			int targetx = ll.getX() + (int) (700 * Math.cos((-512 - p.getOrientation()) / 2048d * 2 * Math.PI));
 			int targety = ll.getY() + (int) (700 * Math.sin((-512 - p.getOrientation()) / 2048d * 2 * Math.PI));
-			Projectile projectile = client.createProjectile(pc.projectileId, wl.getPlane(), ll.getX(), ll.getY(), -412, client.getGameCycle() + pc.startMovement, client.getGameCycle() + 100, pc.slope, pc.startHeight, pc.endHeight, null, targetx, targety);
+			int height = Perspective.getTileHeight(client, p.getLocalLocation(), p.getWorldLocation().getPlane()) + pc.height;
+			norecurse = true;
+			Projectile projectile = client.createProjectile(pc.projectileId, wl.getPlane(), ll.getX(), ll.getY(), height, client.getGameCycle() + pc.startMovement, client.getGameCycle() + 100, pc.slope, pc.startHeight, pc.endHeight, null, targetx, targety);
 			client.getProjectiles().addLast(projectile);
 			norecurse = false;
 		}

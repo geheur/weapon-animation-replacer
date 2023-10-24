@@ -807,12 +807,6 @@ class TransmogSetPanel extends JPanel
 		panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
 		ProjectileCast defaultValue = projectileSwap.getToReplaceWith() != null ? projectileSwap.getToReplaceWith() : ProjectileCast.p().build();
 
-		createProjectileEditPanelRow("projectile id", ce -> {
-			projectileSwap.createCustomIfNull();
-			projectileSwap.toReplaceWithCustom.setProjectileId((int) ((JSpinner) ce.getSource()).getValue());
-			plugin.saveTransmogSets();
-			plugin.demoCast(projectileSwap.getToReplaceWith());
-		}, defaultValue.projectileId, panel);
 		createProjectileEditPanelRow("anim id", ce -> {
 			projectileSwap.createCustomIfNull();
 			projectileSwap.toReplaceWithCustom.setCastAnimation((int) ((JSpinner) ce.getSource()).getValue());
@@ -837,30 +831,42 @@ class TransmogSetPanel extends JPanel
 			plugin.saveTransmogSets();
 			plugin.client.getLocalPlayer().createSpotAnim("demo".hashCode(), projectileSwap.toReplaceWithCustom.hitGfxHeight, 0, 0);
 		}, defaultValue.hitGfxHeight, panel);
+		createProjectileEditPanelRow("projectile id", ce -> {
+			projectileSwap.createCustomIfNull();
+			projectileSwap.toReplaceWithCustom.setProjectileId((int) ((JSpinner) ce.getSource()).getValue());
+			plugin.saveTransmogSets();
+			plugin.demoCast(projectileSwap.getToReplaceWith());
+		}, defaultValue.projectileId, panel);
+		createProjectileEditPanelRow("arc", ce -> {
+			projectileSwap.createCustomIfNull();
+			projectileSwap.toReplaceWithCustom.setSlope((int) ((JSpinner) ce.getSource()).getValue());
+			plugin.saveTransmogSets();
+			plugin.demoCast(projectileSwap.getToReplaceWith());
+		}, defaultValue.slope, panel, -64, 64);
 		createProjectileEditPanelRow("delay", ce -> {
 			projectileSwap.createCustomIfNull();
 			projectileSwap.toReplaceWithCustom.setStartMovement((int) ((JSpinner) ce.getSource()).getValue());
 			plugin.saveTransmogSets();
 			plugin.demoCast(projectileSwap.getToReplaceWith());
 		}, defaultValue.startMovement, panel);
-		createProjectileEditPanelRow("start height", ce -> {
+		createProjectileEditPanelRow("start offset", ce -> {
 			projectileSwap.createCustomIfNull();
 			projectileSwap.toReplaceWithCustom.setStartHeight((int) ((JSpinner) ce.getSource()).getValue());
 			plugin.saveTransmogSets();
 			plugin.demoCast(projectileSwap.getToReplaceWith());
 		}, defaultValue.startHeight, panel);
+		createProjectileEditPanelRow("start height", ce -> {
+			projectileSwap.createCustomIfNull();
+			projectileSwap.toReplaceWithCustom.setHeight((int) ((JSpinner) ce.getSource()).getValue());
+			plugin.saveTransmogSets();
+			plugin.demoCast(projectileSwap.getToReplaceWith());
+		}, defaultValue.height, panel, Integer.MIN_VALUE, Integer.MAX_VALUE);
 		createProjectileEditPanelRow("end height", ce -> {
 			projectileSwap.createCustomIfNull();
 			projectileSwap.toReplaceWithCustom.setEndHeight((int) ((JSpinner) ce.getSource()).getValue());
 			plugin.saveTransmogSets();
 			plugin.demoCast(projectileSwap.getToReplaceWith());
 		}, defaultValue.endHeight, panel);
-		createProjectileEditPanelRow("slope", ce -> {
-			projectileSwap.createCustomIfNull();
-			projectileSwap.toReplaceWithCustom.setSlope((int) ((JSpinner) ce.getSource()).getValue());
-			plugin.saveTransmogSets();
-			plugin.demoCast(projectileSwap.getToReplaceWith());
-		}, defaultValue.slope, panel);
 		JButton demo = new JButton("demo");
 		demo.addActionListener(al -> plugin.demoCast(projectileSwap.getToReplaceWith()));
 		panel.add(demo);
@@ -922,6 +928,7 @@ class TransmogSetPanel extends JPanel
 				projectile.getInteracting() != null ? projectile.getInteracting().getGraphicHeight() : -1,
 				projectile.getStartCycle() - plugin.client.getGameCycle(),
 				projectile.getStartHeight(),
+				projectile.getHeight(), // TODO
 				projectile.getEndHeight(),
 				projectile.getSlope(),
 				true
@@ -1003,20 +1010,23 @@ class TransmogSetPanel extends JPanel
 
 	private void createProjectileEditPanelRow(String labelName, ChangeListener cl, int initialValue, JPanel panel)
 	{
+		createProjectileEditPanelRow(labelName, cl, initialValue, panel, -1, Integer.MAX_VALUE);
+	}
+
+	private void createProjectileEditPanelRow(String labelName, ChangeListener cl, int initialValue, JPanel panel, int min, int max)
+	{
 		JPanel row = new JPanel();
 		row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
 		JLabel label = new JLabel(labelName);
 		row.add(label);
-		JSpinner input = createIntSpinner(initialValue, cl);
+		JSpinner input = createIntSpinner(initialValue, cl, min, max);
 		row.add(input);
 		panel.add(row);
 	}
 
 	// Copied from runelite's ConfigPanel class.
-	private JSpinner createIntSpinner(int value, ChangeListener onChange)
+	private JSpinner createIntSpinner(int value, ChangeListener onChange, int min, int max)
 	{
-		int min = -1, max = Integer.MAX_VALUE;
-
 		// Config may previously have been out of range
 		value = Ints.constrainToRange(value, min, max);
 
