@@ -95,6 +95,7 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			.build();
 		new AnimationSetBuilder("Flying Carpet")
 			.poseAnims(6936, 6936, 6936, 6936, 6936, 6936, 6936)
+			.doNotReplace()
 			.build();
 		new AnimationSetBuilder("Levitate")
 			.poseAnims(8070, 8070, 8070, 8070, 8070, 8070, 8070)
