@@ -208,6 +208,15 @@ public class Constants
 		throw new IllegalArgumentException();
 	}
 
+	@Value
+	public static class IdIconNameAndSlot
+	{
+		int id;
+		int iconId;
+		String name;
+		KitType kitType;
+	}
+
 	@RequiredArgsConstructor
 	public enum HiddenSlot {
 		HEAD(KitType.HEAD, ItemID.IRON_MED_HELM, "Hide helm"),
@@ -308,5 +317,22 @@ public class Constants
 		public static final class NegativeId {
 		public final NegativeIdsMap type;
 		public final int id;
+	}
+
+	public static final class TriggerItemIds {
+		public static final List<IdIconNameAndSlot> EMPTY_SLOTS = new ArrayList<>();
+		static {
+			for (int i = 0; i < KitType.values().length; i++)
+			{
+				EMPTY_SLOTS.add(new IdIconNameAndSlot(-i - 1_000_000, HiddenSlot.values()[i].iconIdToShow, "empty " + KitType.values()[i].name().toLowerCase() + " slot", KitType.values()[i]));
+			}
+		}
+
+		public static IdIconNameAndSlot getHiddenSlot(int itemId) {
+			if (itemId > -1_000_000) {
+				return null;
+			}
+			return EMPTY_SLOTS.get(-itemId - 1_000_000);
+		}
 	}
 }

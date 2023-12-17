@@ -31,10 +31,12 @@ import com.google.inject.Inject;
 import static com.weaponanimationreplacer.Constants.ARMS_SLOT;
 import static com.weaponanimationreplacer.Constants.HAIR_SLOT;
 import static com.weaponanimationreplacer.Constants.HiddenSlot;
+import com.weaponanimationreplacer.Constants.IdIconNameAndSlot;
 import static com.weaponanimationreplacer.Constants.JAW_SLOT;
 import static com.weaponanimationreplacer.Constants.NegativeId;
 import static com.weaponanimationreplacer.Constants.NegativeIdsMap;
 import static com.weaponanimationreplacer.Constants.ShownSlot;
+import static com.weaponanimationreplacer.Constants.TriggerItemIds;
 import static com.weaponanimationreplacer.Constants.mapNegativeId;
 import com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType;
 import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.MODEL_SWAP;
@@ -46,7 +48,6 @@ import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -69,11 +70,11 @@ import net.runelite.api.kit.KitType;
 import net.runelite.api.widgets.ItemQuantityMode;
 import net.runelite.api.widgets.JavaScriptCallback;
 import net.runelite.api.widgets.Widget;
-import net.runelite.api.widgets.WidgetInfo;
 import net.runelite.api.widgets.WidgetPositionMode;
 import net.runelite.api.widgets.WidgetSizeMode;
 import net.runelite.api.widgets.WidgetTextAlignment;
 import net.runelite.api.widgets.WidgetType;
+import net.runelite.api.widgets.WidgetUtil;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
@@ -99,7 +100,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
     private final WeaponAnimationReplacerConfig config;
 	private final WeaponAnimationReplacerPlugin plugin;
 
-	private final Map<Integer, ItemComposition> results = new LinkedHashMap<>();
+	private final List<Integer> results = new ArrayList<>();
 	private final List<String> spells = new ArrayList<>();
 	private String tooltipText;
     private int index = -1;
@@ -190,13 +191,22 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 				}
 				else
 				{
-					for (ItemComposition itemComposition : results.values())
+					for (Integer itemId : results)
 					{
-						int itemId = itemComposition.getId();
+						ItemComposition itemComposition = itemManager.getItemComposition(itemId);
+						int iconId = Constants.getIconId(itemId);
+						String name = Constants.getName(itemId, itemComposition.getName());
+						if (searchType == TRIGGER_ITEM) {
+							IdIconNameAndSlot hiddenSlot = TriggerItemIds.getHiddenSlot(itemId);
+							if (hiddenSlot != null) {
+								iconId = hiddenSlot.getIconId();
+								name = hiddenSlot.getName();
+							}
+						}
 						addItemWidgetItem(
 							itemId,
-							Constants.getIconId(itemId),
-							Constants.getName(itemId, itemComposition.getName()),
+							iconId,
+							name,
 							container,
 							x,
 							y,
@@ -589,7 +599,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 				ev.consume();
 				if (index > -1)
 				{
-					itemSelected(results.keySet().toArray(new Integer[results.size()])[index]);
+					itemSelected(results.get(index));
                 }
                 break;
             case KeyEvent.VK_TAB:
@@ -709,11 +719,18 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 				triggerItemSlots.clear();
 				for (int i = 0; i < items.length; i++)
 				{
-					if (items[i].getId() == -1 || i == EquipmentInventorySlot.RING.getSlotIdx() || i == EquipmentInventorySlot.AMMO.getSlotIdx()) continue;
+					if (i == EquipmentInventorySlot.RING.getSlotIdx() || i == EquipmentInventorySlot.AMMO.getSlotIdx()) continue;
 
-					ItemComposition itemComposition = itemManager.getItemComposition(itemManager.canonicalize(items[i].getId()));
+					int itemId = items[i].getId();
+					if (itemId == -1) {
+						itemId = -1_000_000 - KitType.values()[i].getIndex();
+					} else {
+						itemId = itemManager.canonicalize(items[i].getId());
+					}
+
+					ItemComposition itemComposition = itemManager.getItemComposition(itemId);
 					triggerItemSlots.put(itemComposition.getId(), i);
-					results.put(itemComposition.getId(), itemComposition);
+					results.add(itemId);
 				}
 				lastPage = 0; // Do not show page change arrows.
 				return;
@@ -740,6 +757,19 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 		{
 			int start = filteredPageIndexes.getOrDefault(page - 1, 0);
 			boolean showUnequippableItems = searchType == MODEL_SWAP && config.showUnequippableItems();
+			if (searchType == TRIGGER_ITEM) {
+				for (IdIconNameAndSlot hiddenSlot : TriggerItemIds.EMPTY_SLOTS)
+				{
+					if (hiddenSlot.getName().contains(search)) {
+						if (results.size() == RESULTS_PER_PAGE)
+						{
+							filteredPageIndexes.put(page, hiddenSlot.getIconId());
+							return; // skip the lastPage setting, since there is at least 1 item on the next page.
+						}
+						results.add(hiddenSlot.getIconId());
+					}
+				}
+			}
 			for (int itemId = start; itemId < client.getItemCount(); itemId++)
 			{
 				ItemComposition itemComposition = getItemCompositionIfUsable(itemId, showUnequippableItems);
@@ -755,7 +785,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 						filteredPageIndexes.put(page, itemId);
 						return; // skip the lastPage setting, since there is at least 1 item on the next page.
 					}
-					results.put(itemComposition.getId(), itemComposition);
+					results.add(itemComposition.getId());
 				}
 			}
 			// We ran out of items to search.
@@ -833,7 +863,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 		for (MenuEntry menuEntry : client.getMenuEntries())
 		{
 			Widget widget = menuEntry.getWidget();
-			if (widget == null || widget.getId() != WidgetInfo.PACK(162, 37))
+			if (widget == null || widget.getId() != WidgetUtil.packComponentId(162, 37))
 			{
 				continue;
 			}
@@ -859,7 +889,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 		for (MenuEntry menuEntry : e.getMenuEntries())
 		{
 			Widget widget = menuEntry.getWidget();
-			if (widget == null || widget.getId() != WidgetInfo.PACK(162, 37)) continue;
+			if (widget == null || widget.getId() != WidgetUtil.packComponentId(162, 37)) continue;
 
 			if (widget.getText().startsWith(" ("))
 			{
