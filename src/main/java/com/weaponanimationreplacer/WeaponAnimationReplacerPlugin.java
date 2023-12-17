@@ -901,7 +901,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
     }
 
     public String itemDisplayName(int itemId) {
-		return Constants.getName(itemId, itemManager.getItemComposition(itemId).getName());
+		return Constants.getName(itemId, itemManager.getItemComposition(itemId).getMembersName());
 	}
 
 	public String itemName(Integer itemId)

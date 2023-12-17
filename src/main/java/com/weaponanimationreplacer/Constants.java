@@ -208,6 +208,27 @@ public class Constants
 		throw new IllegalArgumentException();
 	}
 
+	public static IdIconNameAndSlot getModelSwap(int modelSwap) {
+		if (modelSwap < 0) {
+			NegativeId negativeId = mapNegativeId(modelSwap);
+			if (negativeId.type == NegativeIdsMap.HIDE_SLOT)
+			{
+				HiddenSlot hiddenSlot = HiddenSlot.values()[negativeId.id];
+				return new IdIconNameAndSlot(modelSwap, hiddenSlot.iconIdToShow, hiddenSlot.actionName, hiddenSlot.kitType, true);
+			}
+			else if (negativeId.type == NegativeIdsMap.SHOW_SLOT)
+			{
+				ShownSlot shownSlot = ShownSlot.values()[negativeId.id];
+				return new IdIconNameAndSlot(modelSwap, shownSlot.iconIdToShow, "Show " + shownSlot.kitType.name().toLowerCase(), shownSlot.kitType, false);
+			}
+			else
+			{
+				return new IdIconNameAndSlot(-1, -1, null, null, false);
+			}
+		}
+		return null;
+	}
+
 	@RequiredArgsConstructor
 	public enum HiddenSlot {
 		HEAD(KitType.HEAD, ItemID.IRON_MED_HELM, "Hide helm"),
@@ -308,5 +329,32 @@ public class Constants
 		public static final class NegativeId {
 		public final NegativeIdsMap type;
 		public final int id;
+	}
+
+	@Value
+	public static class IdIconNameAndSlot
+	{
+		int id;
+		int iconId;
+		String name;
+		KitType kitType;
+		boolean showNotSign;
+	}
+
+	public static final class TriggerItemIds {
+		public static final List<IdIconNameAndSlot> EMPTY_SLOTS = new ArrayList<>();
+		static {
+			for (int i = 0; i < KitType.values().length; i++)
+			{
+				EMPTY_SLOTS.add(new IdIconNameAndSlot(-i - 1_000_000, HiddenSlot.values()[i].iconIdToShow, "empty " + KitType.values()[i].name().toLowerCase() + " slot", KitType.values()[i], true));
+			}
+		}
+
+		public static IdIconNameAndSlot getHiddenSlot(int itemId) {
+			if (itemId > -1_000_000) {
+				return null;
+			}
+			return EMPTY_SLOTS.get(-itemId - 1_000_000);
+		}
 	}
 }

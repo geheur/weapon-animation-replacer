@@ -1,5 +1,7 @@
 package com.weaponanimationreplacer;
 
+import com.weaponanimationreplacer.Constants.IdIconNameAndSlot;
+import static com.weaponanimationreplacer.Constants.TriggerItemIds.getHiddenSlot;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -109,6 +111,8 @@ public class Swap
 	}
 
 	private int getTriggerItemSlot(int itemId, WeaponAnimationReplacerPlugin plugin) {
+		IdIconNameAndSlot hiddenSlot = getHiddenSlot(itemId);
+		if (hiddenSlot != null) return hiddenSlot.getKitType().getIndex();
 		Integer integer = triggerItemSlotOverrides.get(itemId);
 		if (integer != null) return integer;
 		integer = plugin.getWikiScrapeSlot(itemId);
@@ -214,7 +218,7 @@ public class Swap
 
 		if (slot == -1)
 		{
-			Integer newItemSlot = plugin.getWikiScrapeSlot(itemId);
+			Integer newItemSlot = getTriggerItemSlot(itemId, plugin);
 			if (newItemSlot == null || newItemSlot == EquipmentInventorySlot.RING.getSlotIdx() || newItemSlot == EquipmentInventorySlot.AMMO.getSlotIdx())
 				return;
 		} else {
@@ -289,7 +293,7 @@ public class Swap
 
 			int slot = getTriggerItemSlot(itemRestriction, plugin);
 			slots.add(slot);
-			if (equippedItemIds.contains(itemRestriction)) {
+			if (itemRestriction < 0 && equippedItemIds.get(slot) == -512 || equippedItemIds.contains(itemRestriction)) {
 				slotsSatisfied.add(slot);
 			}
 		}
