@@ -922,6 +922,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 			{
 
 				System.out.println(integerIntegerEntry.getKey() + " " + integerIntegerEntry.getValue());
+//				System.out.println("slot " + KitType.values()[integerIntegerEntry.getKey()] + " (" + integerIntegerEntry.getKey() + ") " + integerIntegerEntry.getValue());
 			}
 			System.out.println("reloading animations sets");
 			AnimationSet.loadAnimationSets();
