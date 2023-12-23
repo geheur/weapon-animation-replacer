@@ -2405,6 +2405,9 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		putWeapon(itemIdToAnimationSet, 27810, "Dragon dagger"); // Dragon candle dagger [Ancient mace, Arclight, Bow, Claws, Dart, Dragon axe, Dragon battleaxe, Dragon dagger, Dragon knife, Dragon knife (poisoned), Dragon mace, Dragon scimitar, Dragon sword, Dragon warhammer, Inquisitor's mace, Knife (non-dragon), Leaf-bladed battleaxe, Snowball, Thrownaxe, Torag's hammers, Unarmed] [808, 823, 819, 820, 821, 822, 824, 823]
 		putWeapon(itemIdToAnimationSet, 27820, ""); // 10th birthday balloons no match [10032, 823, 10033, 10033, 821, 822, 10034, 823]
 		putWeapon(itemIdToAnimationSet, 27871, ""); // Giant bronze dagger [Colossal Blade] [9460, 10055, 9461, 9461, 10055, 10054, 9459, 10055]
+		putWeapon(itemIdToAnimationSet, 28585 /* ItemID.WARPED_SCEPTRE */, "Warped sceptre");
+		putWeapon(itemIdToAnimationSet, 28688 /* ItemID.BLAZING_BLOWPIPE */, "Toxic blowpipe");
+		putWeapon(itemIdToAnimationSet, 28682 /* ItemID.DINHS_BLAZING_BULWARK */, "Dinh's bulwhark");
 
 		Map<String, List<Integer>> poseanims = new HashMap<>();
 		for (Map.Entry<Integer, AnimationSet> entry : itemIdToAnimationSet.entrySet())

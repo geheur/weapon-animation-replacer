@@ -689,12 +689,23 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			.put(ATTACK_SPEC, 10078)
 			.put(DEFEND, 10080)
 			.build();
+		new AnimationSetBuilder("2h axe (old)")
+			.standMovement(10598, 10599)
+			.put(RUN, 10600)
+			.put(ATTACK, 10602)
+			.put(ATTACK_SPEC, 10601)
+			.put(DEFEND, 10603)
+			.build();
 		new AnimationSetBuilder("Soulreaper axe")
 			.poseAnims(10169, 823, 10170, 10170, 10170, 10170, 824)
 			.put(ATTACK_SLASH, 10172)
 			.put(ATTACK_CRUSH, 10171)
 			.put(ATTACK_SPEC, 10173)
 			.put(DEFEND, 424)
+			.build();
+		new AnimationSetBuilder("Warped sceptre")
+			.copy("Staff")
+			.put(ATTACK, 10501)
 			.build();
 
 		Collections.sort(animationSets);
