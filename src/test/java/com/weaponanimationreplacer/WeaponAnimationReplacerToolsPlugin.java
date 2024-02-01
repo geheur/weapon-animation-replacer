@@ -2422,19 +2422,30 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 			data.poseanims.put(entry.getKey(), entry.getValue().stream().mapToInt(i -> i).sorted().toArray());
 		}
 
-		/*
-		Types of projectiles:
-		hit gfx (most spells).
-			the hit gfx is applied when the spell casts, but has a timer before it actually shows.
-				This means if you're at a very long range it is possible for the hit gfx to never occur because it is replaced by the next spell cast before it goes off.
-			many of these can splash animation instead.
-		no hit gfx (ranged attacks mostly).
-		no cast gfx or projectile - requires additional information to identify what spell was cast.
-		no projectile spells (such as ice barrage) - when replacing, requires hit delay to be calculated.
-		TODO multiple projectile spells (such as dark bow).
-			Dark bow spec is actually 4 projectiles (with 2 different versions, one with dragon arrows one without).
-		enchanted bolts.
-		 */
+		data.projectiles = getProjectileCasts();
+
+		String s = plugin.getGson().toJson(data);
+		System.out.println("your uhohlist is " + uhohList);
+		System.out.println("json is \n" + s);
+
+		Constants.loadData(plugin.getGson().fromJson(s, Constants.Data.class));
+	}
+
+	private List<ProjectileCast> getProjectileCasts()
+	{
+    /*
+	Types of projectiles:
+	hit gfx (most spells).
+		the hit gfx is applied when the spell casts, but has a timer before it actually shows.
+			This means if you're at a very long range it is possible for the hit gfx to never occur because it is replaced by the next spell cast before it goes off.
+		many of these can splash animation instead.
+	no hit gfx (ranged attacks mostly).
+	no cast gfx or projectile - requires additional information to identify what spell was cast.
+	no projectile spells (such as ice barrage) - when replacing, requires hit delay to be calculated.
+	TODO multiple projectile spells (such as dark bow).
+		Dark bow spec is actually 4 projectiles (with 2 different versions, one with dragon arrows one without).
+	enchanted bolts.
+	 */
 		// TODO any arrow, any spell.
 
 		List<ProjectileCast> projectiles = new ArrayList<>();
@@ -2547,6 +2558,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 
 		// Bolts.
 		projectiles.add(p().id(89).name("Bolts").itemId(ItemID.RUNITE_BOLTS).ids(7552, -1, 27, -1, 41, 11, 144, 5).build());
+		projectiles.add(p().id(158).name("Dragon bolts").itemId(ItemID.DRAGON_BOLTS).ids(7552, -1, 1468, -1, 41, 11, 144, 5).build());
 		projectiles.add(p().id(141).name("Dragon crossbow spec").itemId(ItemID.DRAGON_CROSSBOW).ids(4230, -1, 698, 157, 41, 11, 144, 5).build());
 		// TODO bolt effects.
 		// diamond (e) 9168, -1, 27, 758, 41, 11, 144, 5, 0
@@ -2629,17 +2641,23 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		projectiles.add(p().id(154).name("Dragon breath (large)").sprite(SpriteID.SPELL_FIRE_SURGE).ids(7855, 1464, 54, 1466, 51, 64, 124, 16).build());
 		projectiles.add(p().id(155).name("Dark Strike").sprite(SpriteID.SPELL_WIND_STRIKE_DISABLED).ids(1162, 194, 195, 196, 51, 64, 124, 16).build());
 		projectiles.add(p().id(156).name("Tempoross harpoonfish").itemId(ItemID.HARPOONFISH).ids(426, 18, 1837, 3, 41, 11, 144, 15).hitGfx(3, 0).build());
-
-		data.projectiles = projectiles;
-
-		String s = plugin.getGson().toJson(data);
-		System.out.println("your uhohlist is " + uhohList);
-		System.out.println("json is \n" + s);
-
-		Constants.loadData(plugin.getGson().fromJson(s, Constants.Data.class));
+		int highestId = -1;
+		int duplicateProjectileId = -1;
+		Set<Integer> idDuplicateChecker = new HashSet<>();
+		for (ProjectileCast projectile : projectiles)
+		{
+			if (highestId < projectile.id) {
+				highestId = projectile.id;
+			}
+			boolean added = idDuplicateChecker.add(projectile.id);
+			if (!added) duplicateProjectileId = projectile.id;
+		}
+		System.out.println("highest projectile id: " + highestId);
+		if (duplicateProjectileId != -1) throw new RuntimeException("Duplicate projectile id " + duplicateProjectileId);
+		return projectiles;
 	}
 
-//	@Subscribe
+	//	@Subscribe
 	public void not_onMenuOptionClicked(MenuOptionClicked e) {
 		// Cannot use hit gfx because of splashing, plus I don't know what happens if someone else casts on the same target at the same time.
 
