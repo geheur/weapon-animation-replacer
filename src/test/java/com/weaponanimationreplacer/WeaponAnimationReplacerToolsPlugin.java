@@ -2559,6 +2559,8 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		// Bolts.
 		projectiles.add(p().id(89).name("Bolts").itemId(ItemID.RUNITE_BOLTS).ids(7552, -1, 27, -1, 41, 11, 144, 5).build());
 		projectiles.add(p().id(158).name("Dragon bolts").itemId(ItemID.DRAGON_BOLTS).ids(7552, -1, 1468, -1, 41, 11, 144, 5).build());
+		projectiles.add(p().id(159).name("Bolts (zcb)").itemId(ItemID.ZARYTE_CROSSBOW).ids(9168, -1, 27, -1, 41, 11, 144, 5).build());
+		projectiles.add(p().id(160).name("Dragon bolts (zcb)").itemId(ItemID.ZARYTE_CROSSBOW).ids(9168, -1, 1468, -1, 41, 11, 144, 5).build());
 		projectiles.add(p().id(141).name("Dragon crossbow spec").itemId(ItemID.DRAGON_CROSSBOW).ids(4230, -1, 698, 157, 41, 11, 144, 5).build());
 		// TODO bolt effects.
 		// diamond (e) 9168, -1, 27, 758, 41, 11, 144, 5, 0

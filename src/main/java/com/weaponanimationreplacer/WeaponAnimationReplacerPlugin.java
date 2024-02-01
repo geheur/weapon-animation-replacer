@@ -1063,7 +1063,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	{
 		return projectileCast.getSpriteIdIcon() != -1 ?
 			spriteManager.getSprite(projectileCast.getSpriteIdIcon(), 0) :
-			itemManager.getImage(projectileCast.getItemIdIcon())
+			itemManager.getImage(projectileCast.getItemIdIcon(), 1000, false)
 			;
 	}
 
