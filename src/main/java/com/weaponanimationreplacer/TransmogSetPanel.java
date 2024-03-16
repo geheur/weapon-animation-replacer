@@ -29,9 +29,11 @@ package com.weaponanimationreplacer;
 
 import com.google.common.primitives.Ints;
 import com.weaponanimationreplacer.ChatBoxFilterableSearch.SelectionResult;
-import com.weaponanimationreplacer.Constants.IdIconNameAndSlot;
-import static com.weaponanimationreplacer.Constants.TriggerItemIds;
-import static com.weaponanimationreplacer.Swap.AnimationReplacement;
+import static com.weaponanimationreplacer.Constants.HiddenSlot;
+import static com.weaponanimationreplacer.Constants.NegativeId;
+import static com.weaponanimationreplacer.Constants.NegativeIdsMap;
+import static com.weaponanimationreplacer.Constants.ShownSlot;
+import static com.weaponanimationreplacer.Constants.mapNegativeId;
 import com.weaponanimationreplacer.Swap.AnimationType;
 import static com.weaponanimationreplacer.Swap.AnimationType.ATTACK;
 import com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType;
@@ -83,6 +85,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JSpinner;
+import javax.swing.JTextField;
 import javax.swing.SpinnerModel;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
@@ -263,6 +266,12 @@ class TransmogSetPanel extends JPanel
 				animationSwapsPanel.add(createGraphicsEffectPanel(swap, i, swap.getGraphicEffects().size()));
 			}
 		}
+		if (!swap.getSoundSwaps().isEmpty()) {
+			for (int i = 0; i < swap.getSoundSwaps().size(); i++)
+			{
+				animationSwapsPanel.add(createSoundSwapPanel(swap, i, swap.getSoundSwaps().size()));
+			}
+		}
 		panel.add(animationSwapsPanel, BorderLayout.CENTER);
 
 		return panel;
@@ -312,57 +321,61 @@ class TransmogSetPanel extends JPanel
 
 	private Component createItemRestrictionButton(Swap swap, int initialItemId)
 	{
-		ItemSelectionButton button = new ItemSelectionButton();
-
-		button.nameWhenEmpty = "Any";
-		IdIconNameAndSlot hiddenSlot = TriggerItemIds.getHiddenSlot(initialItemId);
-		int displayIconId = initialItemId;
-		if (hiddenSlot != null) {
-			displayIconId = hiddenSlot.getIconId();
-			button.showNotSign = true;
-			button.setItem(displayIconId, hiddenSlot.getName());
-		} else {
-			button.setItem(displayIconId, initialItemId);
-		}
-
-		button.addListeners(() -> swap.removeTriggerItem(initialItemId), (result, plugin) -> swap.addTriggerItem(result.itemId, result.slot, plugin), TRIGGER_ITEM, swap);
-		return button;
+		return createItemSelectionButton(initialItemId, () -> swap.removeTriggerItem(initialItemId), (result, plugin) -> swap.addTriggerItem(result.itemId, result.slot, plugin), TRIGGER_ITEM, "Any", null, null);
 	}
 
 	private Component createModelSwapButton(Swap swap, int initialItemId)
 	{
-		ItemSelectionButton button = new ItemSelectionButton();
-		button.nameWhenEmpty = "None";
 		int slotOverride = swap.getSlotOverride(initialItemId);
-		if (slotOverride != -1) button.overlayString = KitType.values()[slotOverride].name().toLowerCase();
-		if (initialItemId < 0) {
-			IdIconNameAndSlot idIconNameAndSlot = Constants.getModelSwap(initialItemId);
-			button.showNotSign = idIconNameAndSlot.isShowNotSign();
-			button.setItem(idIconNameAndSlot.getIconId(), idIconNameAndSlot.getName());
-		} else {
-			button.setItem(initialItemId);
-		}
-		button.addListeners(() -> swap.removeModelSwap(initialItemId), (result, plugin) -> swap.addModelSwap(result.itemId, plugin, result.slot), MODEL_SWAP, swap);
-		return button;
+		String overlayString = slotOverride != -1 ? KitType.values()[slotOverride].name() : null;
+		return createItemSelectionButton(initialItemId, () -> swap.removeModelSwap(initialItemId), (result, plugin) -> swap.addModelSwap(result.itemId, plugin, result.slot), MODEL_SWAP, "None", overlayString, swap);
 	}
 
 	private Component createSpellSwapLButton(ProjectileSwap swap)
 	{
-		ItemSelectionButton button = new ItemSelectionButton();
-		button.nameWhenEmpty = "None";
-		button.setSpell(swap.toReplace);
-		button.addListeners(() -> swap.toReplace = -1, (result, plugin) -> swap.toReplace = result.itemId, SPELL_L, null);
-		return button;
+		return createItemSelectionButton(swap.toReplace, () -> swap.toReplace = -1, (result, plugin) -> swap.toReplace = result.itemId, SPELL_L, "None", null, null);
 	}
 
 	private Component createSpellSwapRButton(ProjectileSwap swap)
 	{
-		ItemSelectionButton button = new ItemSelectionButton();
-		button.nameWhenEmpty = "None";
-		button.overlayString = swap.toReplaceWithCustom != null ? "Custom" : null;
-		button.setSpell(swap.toReplaceWith);
-		button.addListeners(() -> swap.toReplaceWith = -1, (result, plugin) -> {swap.toReplaceWith = result.itemId; swap.toReplaceWithCustom = null;}, SPELL_R, null);
-		return button;
+		return createItemSelectionButton(swap.toReplaceWith, () -> swap.toReplaceWith = -1, (result, plugin) -> {swap.toReplaceWith = result.itemId; swap.toReplaceWithCustom = null;}, SPELL_R, "None", swap.toReplaceWithCustom != null ? "c" : null, null);
+	}
+
+	private ItemSelectionButton createItemSelectionButton(int initialId, Runnable onRemove, BiConsumer<SelectionResult, WeaponAnimationReplacerPlugin> onAdd, SearchType type, String whenEmpty, String overlayString, Swap swap)
+	{
+		ItemSelectionButton weaponIdInput = new ItemSelectionButton();
+		weaponIdInput.nameWhenEmpty = whenEmpty;
+		weaponIdInput.overlayString = overlayString;
+		if (type == TRIGGER_ITEM || type == MODEL_SWAP) weaponIdInput.setItem(initialId); else weaponIdInput.setSpell(initialId);
+		Runnable deleteItem = () ->
+			plugin.clientThread.invoke(() -> {
+				onRemove.run();
+				plugin.handleTransmogSetChange();
+				SwingUtilities.invokeLater(this::rebuild);
+			}
+		);
+		Runnable addItem = () -> {
+			plugin.doItemSearch(
+				result -> {
+					onAdd.accept(result, plugin);
+					plugin.handleTransmogSetChange();
+					SwingUtilities.invokeLater(this::rebuild);
+				},
+				deleteItem,
+				type,
+				swap
+			);
+		};
+		weaponIdInput.addActionListener(e -> ((e.getModifiers() & InputEvent.CTRL_MASK) > 0 ? deleteItem : addItem).run());
+		JPopupMenu rightClickMenu = new JPopupMenu();
+		JMenuItem addItemsMenuItem = new JMenuItem("Add more items");
+		addItemsMenuItem.addActionListener(e -> addItem.run());
+		rightClickMenu.add(addItemsMenuItem);
+		JMenuItem removeItemMenuItem = new JMenuItem("Remove (ctrl-click)");
+		removeItemMenuItem.addActionListener(e -> deleteItem.run());
+		rightClickMenu.add(removeItemMenuItem);
+		weaponIdInput.setComponentPopupMenu(rightClickMenu);
+		return weaponIdInput;
 	}
 
 	private Component createSwapOptionsPanel(TransmogSet transmogSet, Swap swap, boolean moveUp, boolean moveDown)
@@ -378,6 +391,7 @@ class TransmogSetPanel extends JPanel
 		addMenuItem(menu, "Add animation swap", e -> addAnimationReplacement(swap));
 		addMenuItem(menu, "Add projectile swap", e -> addProjectileSwap(swap));
 		addMenuItem(menu, "Add graphic effect", e -> addGraphicEffect(swap));
+		addMenuItem(menu, "Add sound swap", e -> addSoundSwap(swap));
 
 		if (moveUp) addMenuItem(menu, "Move up", e -> moveSwap(transmogSet, swap, -1));
 		if (moveDown) addMenuItem(menu, "Move down", e -> moveSwap(transmogSet, swap, +1));
@@ -453,6 +467,13 @@ class TransmogSetPanel extends JPanel
 	private void addGraphicEffect(Swap swap)
 	{
 		swap.addNewGraphicEffect();
+		plugin.clientThread.invokeLater(plugin::handleTransmogSetChange);
+		SwingUtilities.invokeLater(this::rebuild);
+	}
+
+	private void addSoundSwap(Swap swap)
+	{
+		swap.addNewSoundSwap();
 		plugin.clientThread.invokeLater(plugin::handleTransmogSetChange);
 		SwingUtilities.invokeLater(this::rebuild);
 	}
@@ -621,7 +642,7 @@ class TransmogSetPanel extends JPanel
 	}
 
 	private Component createAnimationReplacementPanel(Swap swap, int i, int size) {
-		AnimationReplacement animationReplacement = swap.animationReplacements.get(i);
+		Swap.AnimationReplacement animationReplacement = swap.animationReplacements.get(i);
 
 	    JPanel animationReplacementPanel = new JPanel();
 	    animationReplacementPanel.setBorder(new EmptyBorder(5, 0, 0, 0));
@@ -1159,11 +1180,51 @@ class TransmogSetPanel extends JPanel
 		});
 	}
 
-	/** Should really use a builder. atm you have to call setitem/setspell and addListeners last, after other fields are set. */
+	private Component createSoundSwapPanel(Swap swap, int i, int size)
+	{
+		JPanel animationReplacementPanel = new JPanel();
+		animationReplacementPanel.setBorder(new EmptyBorder(5, 0, 0, 0));
+		animationReplacementPanel.setLayout(new BoxLayout(animationReplacementPanel, BoxLayout.Y_AXIS));
+		animationReplacementPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+
+		JPanel soundToReplacePanel = new JPanel();
+		soundToReplacePanel.setLayout(new BorderLayout());
+		soundToReplacePanel.setBorder(new EmptyBorder(0, 10, 0, 10));
+		soundToReplacePanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		JLabel soundToReplaceLabel = new JLabel("Replace");
+		JTextField soundToReplace = new JTextField();
+		soundToReplacePanel.add(soundToReplaceLabel, BorderLayout.WEST);
+		soundToReplacePanel.add(soundToReplace, BorderLayout.EAST);
+
+		JPanel soundToReplaceWithPanel = new JPanel();
+		soundToReplaceWithPanel.setLayout(new BorderLayout());
+		soundToReplaceWithPanel.setBorder(new EmptyBorder(0, 10, 0, 10));
+		soundToReplaceWithPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		JLabel soundToReplaceWithLabel = new JLabel("with");
+		JTextField soundToReplaceWith = new JTextField();
+		soundToReplaceWithPanel.add(soundToReplaceWithLabel, BorderLayout.WEST);
+		soundToReplaceWithPanel.add(soundToReplaceWith, BorderLayout.EAST);
+		animationReplacementPanel.add(soundToReplacePanel);
+		animationReplacementPanel.add(soundToReplaceWithPanel);
+
+		return new EntryPanel(false, false, true, i == size - 1, animationReplacementPanel, () -> {
+			swap.getSoundSwaps().remove(i);
+			plugin.clientThread.invoke(plugin::handleTransmogSetChange);
+			SwingUtilities.invokeLater(this::rebuild);
+		}, () -> {
+			plugin.clientThread.invokeLater(() -> {
+				swap.addNewSoundSwap();
+				plugin.handleTransmogSetChange();
+				SwingUtilities.invokeLater(this::rebuild);
+			});
+		}, (enabled) -> {
+		});
+
+	}
+
 	public class ItemSelectionButton extends JButton {
 		String nameWhenEmpty = "None";
 		String overlayString = null;
-		boolean showNotSign = false;
 		public ItemSelectionButton()
 		{
 			setBackground(ColorScheme.LIGHT_GRAY_COLOR);
@@ -1171,51 +1232,58 @@ class TransmogSetPanel extends JPanel
 			setMaximumSize(new Dimension(35, 35));
 			setMinimumSize(new Dimension( 30, 30));
 		}
-		public void setItem(int itemId, int tooltipId) {
-			setItemInternal(itemId, tooltipId, null);
-		}
-		public void setItem(int itemId, String tooltip) {
-			setItemInternal(itemId, -1, tooltip);
-		}
 		public void setItem(int itemId) {
-			setItem(itemId, itemId);
-		}
-		private void setItemInternal(int itemId, int tooltipItemId, String tooltip) {
 			if (itemId == -1)
 			{
 				setIcon(null);
 				setText(nameWhenEmpty);
 				setBorder(null);
+			} else if (itemId < 0) {
+				NegativeId negativeId = mapNegativeId(itemId);
+				if (negativeId.type == NegativeIdsMap.HIDE_SLOT) {
+					plugin.clientThread.invoke(() -> {
+						BufferedImage itemImage = plugin.getItemImage(HiddenSlot.values()[negativeId.id].iconIdToShow);
+						BufferedImage bankFillerImage = plugin.getItemImage(ItemID.BANK_FILLER);
+						SwingUtilities.invokeLater(() -> {
+							BufferedImage copy = new BufferedImage(itemImage.getWidth(), itemImage.getHeight(), itemImage.getType());
+							Graphics2D graphics = (Graphics2D) copy.getGraphics();
+							graphics.drawImage(itemImage, 0, 0, null);
+							AlphaComposite ac = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f);
+							graphics.setComposite(ac);
+							graphics.drawImage(bankFillerImage, 0, 0/*, (int) (bankFillerImage.getHeight() * 1.5), (int) (bankFillerImage.getWidth() * 1.5)*/, null);
+							setIcon(new ImageIcon(copy));
+						});
+					});
+					setText(null);
+					SwingUtilities.invokeLater(() -> {
+						setToolTipText("hide " + KitType.values()[negativeId.id]);
+					});
+				}
+				else if (negativeId.type == NegativeIdsMap.SHOW_SLOT) {
+					AsyncBufferedImage itemImage = (AsyncBufferedImage) plugin.getItemImage(ShownSlot.values()[negativeId.id].iconIdToShow);
+					itemImage.addTo(this);
+					setText(null);
+					SwingUtilities.invokeLater(() -> {
+						setToolTipText("show " + KitType.values()[negativeId.id]);
+					});
+				}
 			} else {
-				setText(null);
 				plugin.clientThread.invoke(() -> {
+					String name = plugin.itemDisplayName(itemId);
 					AsyncBufferedImage itemImage = plugin.getItemImage(Constants.getIconId(itemId));
-					BufferedImage bankFillerImage = showNotSign ? plugin.getItemImage(ItemID.BANK_FILLER) : null;
-					String tooltipString = tooltip == null ? plugin.itemDisplayName(tooltipItemId) : tooltip;
 					Runnable processImage = () -> {
 						SwingUtilities.invokeLater(() -> {
-							if (!showNotSign && overlayString == null) {
-								setIcon(new ImageIcon(itemImage));
-							} else {
+							if (overlayString != null)
+							{
 								BufferedImage copy = new BufferedImage(itemImage.getWidth(), itemImage.getHeight(), itemImage.getType());
 								Graphics2D graphics = (Graphics2D) copy.getGraphics();
 								graphics.drawImage(itemImage, 0, 0, null);
-								if (showNotSign)
-								{
-									AlphaComposite ac = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f);
-									graphics.setComposite(ac);
-									graphics.drawImage(bankFillerImage, 0, 0/*, (int) (bankFillerImage.getHeight() * 1.5), (int) (bankFillerImage.getWidth() * 1.5)*/, null);
-								}
-								if (overlayString != null)
-								{
-									graphics.drawString(overlayString, 0, 32);
-								}
+								graphics.drawString(overlayString, 0, 24);
 								setIcon(new ImageIcon(copy));
+							} else {
+								setIcon(new ImageIcon(itemImage));
 							}
-
-							if (tooltipString != null) {
-								setToolTipText(tooltipString);
-							}
+							setToolTipText(name);
 						});
 					};
 					// Yes I might end up running it twice, this stupid asyncbufferedimage doesn't let you know if it's loaded and won't run listeners once it's already been loaded.
@@ -1223,37 +1291,6 @@ class TransmogSetPanel extends JPanel
 					processImage.run();
 				});
 			}
-		}
-
-		public void addListeners(Runnable onRemove, BiConsumer<SelectionResult, WeaponAnimationReplacerPlugin> onAdd, SearchType type, Swap swap) {
-			Runnable deleteItem = () ->
-				plugin.clientThread.invoke(() -> {
-						onRemove.run();
-						plugin.handleTransmogSetChange();
-						SwingUtilities.invokeLater(TransmogSetPanel.this::rebuild);
-					}
-				);
-			Runnable addItem = () -> {
-				plugin.doItemSearch(
-					result -> {
-						onAdd.accept(result, plugin);
-						plugin.handleTransmogSetChange();
-						SwingUtilities.invokeLater(TransmogSetPanel.this::rebuild);
-					},
-					deleteItem,
-					type,
-					swap
-				);
-			};
-			this.addActionListener(e -> ((e.getModifiers() & InputEvent.CTRL_MASK) > 0 ? deleteItem : addItem).run());
-			JPopupMenu rightClickMenu = new JPopupMenu();
-			JMenuItem addItemsMenuItem = new JMenuItem("Add more items");
-			addItemsMenuItem.addActionListener(e -> addItem.run());
-			rightClickMenu.add(addItemsMenuItem);
-			JMenuItem removeItemMenuItem = new JMenuItem("Remove (ctrl-click)");
-			removeItemMenuItem.addActionListener(e -> deleteItem.run());
-			rightClickMenu.add(removeItemMenuItem);
-			this.setComponentPopupMenu(rightClickMenu);
 		}
 
 		public void setSpell(int spellId)
@@ -1275,11 +1312,10 @@ class TransmogSetPanel extends JPanel
 					{
 						if (overlayString != null)
 						{
-							// fill entire button, they're about 32x32. This makes space for more text.
-							BufferedImage copy = new BufferedImage(32, 32, spellImage.getType());
+							BufferedImage copy = new BufferedImage(spellImage.getWidth(), spellImage.getHeight(), spellImage.getType());
 							Graphics2D graphics = (Graphics2D) copy.getGraphics();
-							graphics.drawImage(spellImage, (32 - spellImage.getWidth()) / 2, (32 - spellImage.getHeight()) / 2, null);
-							graphics.drawString(overlayString, 0, 32);
+							graphics.drawImage(spellImage, 0, 0, null);
+							graphics.drawString(overlayString, 0, 10);
 							setIcon(new ImageIcon(copy));
 						} else {
 							setIcon(new ImageIcon(spellImage));

@@ -50,7 +50,7 @@ public class MigrationTest
 			}
 			assertTrue("couldn't find " + stringStringEntry.getValue(), found);
 		}
-		String config = plugin.getGson().toJson(Collections.singletonList(new TransmogSet(Collections.singletonList(new Swap(Collections.emptyList(), Collections.emptyList(), Collections.singletonList(new Swap.AnimationReplacement(new AnimationSet("Godsword", AnimationSet.AnimationSetType.MELEE_SPECIFIC, false, new int[Swap.AnimationType.values().length]), Swap.AnimationType.ALL, null)), Collections.emptyList(), Collections.emptyList())))));
+		String config = plugin.getGson().toJson(Collections.singletonList(new TransmogSet(Collections.singletonList(new Swap(Collections.emptyList(), Collections.emptyList(), Collections.singletonList(new Swap.AnimationReplacement(new AnimationSet("Godsword", AnimationSet.AnimationSetType.MELEE_SPECIFIC, false, new int[Swap.AnimationType.values().length]), Swap.AnimationType.ALL, null)), Collections.emptyList(), Collections.emptyList(), Collections.emptyList())))));
 		System.out.println(config);
 		List<TransmogSet> transmogSets = plugin.getGson().fromJson(config, new TypeToken<ArrayList<TransmogSet>>() {}.getType());
 		assertEquals("Godsword (Armadyl)", transmogSets.get(0).getSwaps().get(0).animationReplacements.get(0).animationSet.name);
