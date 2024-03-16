@@ -1196,7 +1196,7 @@ class TransmogSetPanel extends JPanel
 		soundToReplacePanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		JLabel soundToReplaceLabel = new JLabel("Replace");
 
-		toReplace = new JButton("");
+		toReplace = new JButton(Integer.toString(soundSwap.getToReplace()));
 		toReplace.setToolTipText("Old sound");
 		toReplace.addActionListener(new ActionListener() {
 			@Override
@@ -1219,7 +1219,7 @@ class TransmogSetPanel extends JPanel
 		soundToReplaceWithPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		JLabel soundToReplaceWithLabel = new JLabel("with");
 
-		replaceWith = new JButton("");
+		replaceWith = new JButton(Integer.toString(soundSwap.getToReplaceWith()));
 		replaceWith.setToolTipText("New sound");
 		replaceWith.addActionListener(new ActionListener() {
 			@Override
