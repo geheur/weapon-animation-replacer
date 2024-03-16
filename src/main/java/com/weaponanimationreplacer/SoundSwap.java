@@ -1,27 +1,16 @@
 package com.weaponanimationreplacer;
 
+import lombok.Getter;
+import lombok.Setter;
 public class SoundSwap
 {
+	@Getter
+	@Setter
 	int toReplace = -1;
+
+	@Getter
+	@Setter
 	int toReplaceWith = -1;
-
-	public int getToReplace() {
-		return toReplace;
-	}
-
-	public int getToReplaceWith() {
-		return toReplaceWith;
-	}
-
-	public void setToReplace(int newValue)
-	{
-		toReplace = newValue;
-	}
-
-	public void setToReplaceWith(int newValue)
-	{
-		toReplaceWith = newValue;
-	}
 
 	public static SoundSwap createTemplate()
 	{
