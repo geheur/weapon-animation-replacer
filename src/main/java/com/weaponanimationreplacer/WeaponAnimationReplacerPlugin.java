@@ -131,6 +131,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	private boolean handlePossibleNoProjectileSpellInClientTick = false;
 
 	private List<ProjectileSwap> projectileSwaps = Collections.emptyList();
+	private List<SoundSwap> soundSwaps = Collections.emptyList();
 
 	int previewItem = -1;
 	AnimationReplacements previewAnimationReplacements = null;
@@ -486,7 +487,26 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	@Subscribe
 	public void onSoundEffectPlayed(SoundEffectPlayed soundEffectPlayed)
 	{
-		return;
+		List<Swap> matchingSwaps = getApplicableSwaps();
+		soundSwaps = matchingSwaps.stream().flatMap(swap -> swap.getSoundSwaps().stream()).filter(swap -> swap.getToReplace() != -1 && swap.getToReplaceWith() != -1).collect(Collectors.toList());
+		if(soundSwaps.isEmpty())
+		{
+			log.debug("soundSwaps is empty");
+			return;
+		}
+		int sound = soundEffectPlayed.getSoundId();
+		for (SoundSwap soundSwap : soundSwaps)
+		{
+			if (soundSwap.toReplace == sound)
+			{
+				log.debug("Found sound to place, replacing with: "+soundSwap.toReplaceWith);
+				clientThread.invokeLater(() -> {
+					client.playSoundEffect(soundSwap.toReplaceWith);
+				});
+				soundEffectPlayed.consume();
+				return;
+			}
+		}
 	}
 
 	@Subscribe
@@ -901,7 +921,6 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		setPlayerPoseAnimations();
 
 		projectileSwaps = matchingSwaps.stream().flatMap(swap -> swap.getProjectileSwaps().stream()).filter(swap -> swap.getToReplace() != null && swap.getToReplaceWith() != null).collect(Collectors.toList());
-
 		currentScytheGraphicEffect = matchingSwaps.stream()
 			.filter(swap -> swap.getGraphicEffects().stream().anyMatch(e -> e.type == GraphicEffect.Type.SCYTHE_SWING))
 			.flatMap(swap -> swap.getGraphicEffects().stream())
