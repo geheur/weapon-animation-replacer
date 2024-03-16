@@ -19,6 +19,7 @@ import net.runelite.api.EquipmentInventorySlot;
  *  Item ids which trigger this swap.
  *  List of items whose models ot use when one of the trigger items is worn.
  *  List of animation replacements, which each contain an animation type to replace, and animation set to use for replacement, and, optionally, an animation type to use as the replacement (if it is different from the one being replaced).
+ *  List of sound replacements, which contain the sound to be replaced and the sound replacing
  */
 public class Swap
 {
@@ -43,6 +44,8 @@ public class Swap
 	private final List<ProjectileSwap> projectileSwaps;
 	@Getter
 	private final List<GraphicEffect> graphicEffects;
+	@Getter
+	public final List<SoundSwap> soundSwaps;
 	/**
 	 * Model swap overrides. For equipping items into the wrong slot, or for equipping items that have no known slot.
 	 */
@@ -57,17 +60,7 @@ public class Swap
 	// This is necessary for the gson to not do its own dumb stuff where it ignores default values of fields that are
 	// normally assigned in the constructor, and assigns them to null.
 	public Swap() {
-		this(Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
-	}
-
-	public Swap(
-		List<Integer> itemRestrictions,
-		List<Integer> modelSwaps,
-		List<AnimationReplacement> animationReplacements,
-		List<ProjectileSwap> projectileSwaps,
-		List<GraphicEffect> graphicEffects
-	) {
-		this(itemRestrictions, modelSwaps, animationReplacements, projectileSwaps, graphicEffects, new HashMap<>(), new HashMap<>());
+		this(Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
 	}
 
 	public Swap(
@@ -76,6 +69,18 @@ public class Swap
 		List<AnimationReplacement> animationReplacements,
 		List<ProjectileSwap> projectileSwaps,
 		List<GraphicEffect> graphicEffects,
+		List<SoundSwap> soundSwaps
+	) {
+		this(itemRestrictions, modelSwaps, animationReplacements, projectileSwaps, graphicEffects, soundSwaps, new HashMap<>(), new HashMap<>());
+	}
+
+	public Swap(
+		List<Integer> itemRestrictions,
+		List<Integer> modelSwaps,
+		List<AnimationReplacement> animationReplacements,
+		List<ProjectileSwap> projectileSwaps,
+		List<GraphicEffect> graphicEffects,
+		List<SoundSwap> soundsSwaps,
 		Map<Integer, Integer> slotOverrides,
 		Map<Integer, Integer> triggerItemSlotOverrides
 	) {
@@ -83,6 +88,7 @@ public class Swap
 		this.modelSwaps = new ArrayList<>(modelSwaps);
 		this.animationReplacements = new ArrayList<>(animationReplacements);
 		this.projectileSwaps = new ArrayList<>(projectileSwaps);
+		this.soundSwaps = new ArrayList<>(soundsSwaps);
 		this.graphicEffects = new ArrayList<>(graphicEffects);
 		this.slotOverrides = new HashMap<>(slotOverrides);
 		this.triggerItemSlotOverrides = new HashMap<>(triggerItemSlotOverrides);
@@ -262,6 +268,11 @@ public class Swap
 	public void addNewGraphicEffect()
 	{
 		graphicEffects.add(GraphicEffect.createTemplate());
+	}
+
+	public void addNewSoundSwap()
+	{
+		soundSwaps.add(SoundSwap.createTemplate());
 	}
 
 	public boolean appliesToGear(List<Integer> equippedItemIds, WeaponAnimationReplacerPlugin plugin)

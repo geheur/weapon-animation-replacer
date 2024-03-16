@@ -872,19 +872,19 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 			System.out.println("doing test.");
 			Swap swap;
 
-			swap = new Swap(Arrays.asList(-1), Arrays.asList(-1), Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
+			swap = new Swap(Arrays.asList(-1), Arrays.asList(-1), Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
 			swap.updateForSortOrderAndUniqueness(plugin);
 			if (swap.getModelSwaps().size() != 0 || swap.getItemRestrictions().size() != 0) {
 				System.out.println("test 1 failed.");
 			}
 
-			swap = new Swap(Arrays.asList(-1), Arrays.asList(-14, -15, -16), Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
+			swap = new Swap(Arrays.asList(-1), Arrays.asList(-14, -15, -16), Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
 			swap.updateForSortOrderAndUniqueness(plugin);
 
 			swap = new Swap(
 				Arrays.asList(ItemID.SLAYER_HELMET_I, ItemID.ABYSSAL_TENTACLE, ItemID.GHRAZI_RAPIER, ItemID.DRAGON_SCIMITAR, ItemID.CHEFS_HAT),
 				Arrays.asList(ItemID.SLAYER_HELMET_I, ItemID.ABYSSAL_TENTACLE, ItemID.GHRAZI_RAPIER, ItemID.DRAGON_SCIMITAR, ItemID.CHEFS_HAT, ItemID.SKIS),
-				Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
+				Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
 			swap.updateForSortOrderAndUniqueness(plugin);
 			if (
 				swap.getItemRestrictions().get(0) != ItemID.DRAGON_SCIMITAR || swap.getItemRestrictions().get(1) != ItemID.ABYSSAL_TENTACLE || swap.getItemRestrictions().get(2) != ItemID.GHRAZI_RAPIER || swap.getItemRestrictions().get(3) != ItemID.CHEFS_HAT || swap.getItemRestrictions().get(4) != ItemID.SLAYER_HELMET_I || swap.getItemRestrictions().size() != 5 ||

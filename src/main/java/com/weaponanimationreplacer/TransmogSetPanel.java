@@ -85,6 +85,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JSpinner;
+import javax.swing.JTextField;
 import javax.swing.SpinnerModel;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
@@ -265,6 +266,12 @@ class TransmogSetPanel extends JPanel
 				animationSwapsPanel.add(createGraphicsEffectPanel(swap, i, swap.getGraphicEffects().size()));
 			}
 		}
+		if (!swap.getSoundSwaps().isEmpty()) {
+			for (int i = 0; i < swap.getSoundSwaps().size(); i++)
+			{
+				animationSwapsPanel.add(createSoundSwapPanel(swap, i, swap.getSoundSwaps().size()));
+			}
+		}
 		panel.add(animationSwapsPanel, BorderLayout.CENTER);
 
 		return panel;
@@ -384,6 +391,7 @@ class TransmogSetPanel extends JPanel
 		addMenuItem(menu, "Add animation swap", e -> addAnimationReplacement(swap));
 		addMenuItem(menu, "Add projectile swap", e -> addProjectileSwap(swap));
 		addMenuItem(menu, "Add graphic effect", e -> addGraphicEffect(swap));
+		addMenuItem(menu, "Add sound swap", e -> addSoundSwap(swap));
 
 		if (moveUp) addMenuItem(menu, "Move up", e -> moveSwap(transmogSet, swap, -1));
 		if (moveDown) addMenuItem(menu, "Move down", e -> moveSwap(transmogSet, swap, +1));
@@ -459,6 +467,13 @@ class TransmogSetPanel extends JPanel
 	private void addGraphicEffect(Swap swap)
 	{
 		swap.addNewGraphicEffect();
+		plugin.clientThread.invokeLater(plugin::handleTransmogSetChange);
+		SwingUtilities.invokeLater(this::rebuild);
+	}
+
+	private void addSoundSwap(Swap swap)
+	{
+		swap.addNewSoundSwap();
 		plugin.clientThread.invokeLater(plugin::handleTransmogSetChange);
 		SwingUtilities.invokeLater(this::rebuild);
 	}
@@ -1163,6 +1178,48 @@ class TransmogSetPanel extends JPanel
 			});
 		}, (enabled) -> {
 		});
+	}
+
+	private Component createSoundSwapPanel(Swap swap, int i, int size)
+	{
+		JPanel animationReplacementPanel = new JPanel();
+		animationReplacementPanel.setBorder(new EmptyBorder(5, 0, 0, 0));
+		animationReplacementPanel.setLayout(new BoxLayout(animationReplacementPanel, BoxLayout.Y_AXIS));
+		animationReplacementPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+
+		JPanel soundToReplacePanel = new JPanel();
+		soundToReplacePanel.setLayout(new BorderLayout());
+		soundToReplacePanel.setBorder(new EmptyBorder(0, 10, 0, 10));
+		soundToReplacePanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		JLabel soundToReplaceLabel = new JLabel("Replace");
+		JTextField soundToReplace = new JTextField();
+		soundToReplacePanel.add(soundToReplaceLabel, BorderLayout.WEST);
+		soundToReplacePanel.add(soundToReplace, BorderLayout.EAST);
+
+		JPanel soundToReplaceWithPanel = new JPanel();
+		soundToReplaceWithPanel.setLayout(new BorderLayout());
+		soundToReplaceWithPanel.setBorder(new EmptyBorder(0, 10, 0, 10));
+		soundToReplaceWithPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		JLabel soundToReplaceWithLabel = new JLabel("with");
+		JTextField soundToReplaceWith = new JTextField();
+		soundToReplaceWithPanel.add(soundToReplaceWithLabel, BorderLayout.WEST);
+		soundToReplaceWithPanel.add(soundToReplaceWith, BorderLayout.EAST);
+		animationReplacementPanel.add(soundToReplacePanel);
+		animationReplacementPanel.add(soundToReplaceWithPanel);
+
+		return new EntryPanel(false, false, true, i == size - 1, animationReplacementPanel, () -> {
+			swap.getSoundSwaps().remove(i);
+			plugin.clientThread.invoke(plugin::handleTransmogSetChange);
+			SwingUtilities.invokeLater(this::rebuild);
+		}, () -> {
+			plugin.clientThread.invokeLater(() -> {
+				swap.addNewSoundSwap();
+				plugin.handleTransmogSetChange();
+				SwingUtilities.invokeLater(this::rebuild);
+			});
+		}, (enabled) -> {
+		});
+
 	}
 
 	public class ItemSelectionButton extends JButton {

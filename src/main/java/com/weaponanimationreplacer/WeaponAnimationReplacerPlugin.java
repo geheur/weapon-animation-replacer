@@ -60,6 +60,7 @@ import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.InteractingChanged;
 import net.runelite.api.events.PlayerChanged;
 import net.runelite.api.events.ProjectileMoved;
+import net.runelite.api.events.SoundEffectPlayed;
 import net.runelite.api.kit.KitType;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
@@ -332,6 +333,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 						Collections.singletonList(rule.modelSwap),
 						rule.animationReplacements,
 						Collections.emptyList(),
+						Collections.emptyList(),
 						Collections.emptyList())));
 			transmogSet.setName(rule.name);
 			transmogSets.add(transmogSet);
@@ -479,6 +481,12 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		if (currentScytheGraphicEffect != null && AnimationType.ATTACK.appliesTo(type.get())) {
 			scytheSwingCountdown = 20;
 		}
+	}
+
+	@Subscribe
+	public void onSoundEffectPlayed(SoundEffectPlayed soundEffectPlayed)
+	{
+		return;
 	}
 
 	@Subscribe
