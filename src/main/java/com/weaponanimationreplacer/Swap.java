@@ -276,7 +276,7 @@ public class Swap
 
 	public void addNewSoundSwap()
 	{
-		soundSwaps.add(SoundSwap.createTemplate());
+		soundSwaps.add(new SoundSwap());
 	}
 
 	public boolean appliesToGear(List<Integer> equippedItemIds, WeaponAnimationReplacerPlugin plugin)
@@ -460,4 +460,10 @@ public class Swap
     public String toString() {
         return itemRestrictions + " " + modelSwaps + " " + animationReplacements;
     }
+
+    @Data
+    public static final class SoundSwap {
+    	int toReplace = -1;
+    	int toReplaceWith = -1;
+	}
 }

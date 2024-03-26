@@ -34,6 +34,7 @@ import static com.weaponanimationreplacer.Constants.TriggerItemIds;
 import static com.weaponanimationreplacer.Swap.AnimationReplacement;
 import com.weaponanimationreplacer.Swap.AnimationType;
 import static com.weaponanimationreplacer.Swap.AnimationType.ATTACK;
+import com.weaponanimationreplacer.Swap.SoundSwap;
 import com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType;
 import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.MODEL_SWAP;
 import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.SPELL_L;
