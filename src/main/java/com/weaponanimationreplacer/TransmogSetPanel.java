@@ -50,7 +50,6 @@ import java.awt.FlowLayout;
 import java.awt.Graphics2D;
 import java.awt.MouseInfo;
 import java.awt.Point;
-import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
@@ -1179,58 +1178,23 @@ class TransmogSetPanel extends JPanel
 	{
 		SoundSwap soundSwap = swap.getSoundSwaps().get(i);
 		JPanel animationReplacementPanel = new JPanel();
-		JButton toReplace, replaceWith;
 		animationReplacementPanel.setBorder(new EmptyBorder(5, 0, 0, 0));
 		animationReplacementPanel.setLayout(new BoxLayout(animationReplacementPanel, BoxLayout.Y_AXIS));
 		animationReplacementPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 
-		JPanel soundToReplacePanel = new JPanel();
-		soundToReplacePanel.setLayout(new BorderLayout());
-		soundToReplacePanel.setBorder(new EmptyBorder(0, 10, 0, 10));
-		soundToReplacePanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		JLabel soundToReplaceLabel = new JLabel("Replace");
+		createProjectileEditPanelRow("Replace sound", ce -> {
+			int value = (int) ((JSpinner) ce.getSource()).getValue();
+			soundSwap.setToReplace(value);
+			plugin.saveTransmogSets();
+			plugin.clientThread.invoke(() -> plugin.client.playSoundEffect(value));
+		}, soundSwap.getToReplace(), animationReplacementPanel);
 
-		toReplace = new JButton(Integer.toString(soundSwap.getToReplace()));
-		toReplace.setToolTipText("Old sound");
-		toReplace.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				// Show input dialog to enter a new number
-				String newNumber = JOptionPane.showInputDialog("Sound to replace");
-				// Set the new number to the button if it's not null
-				if (newNumber != null && !newNumber.trim().isEmpty()) {
-					toReplace.setText(newNumber);
-					soundSwap.setToReplace(Integer.parseInt(newNumber.trim()));
-				}
-			}
-		});
-		soundToReplacePanel.add(soundToReplaceLabel, BorderLayout.WEST);
-		soundToReplacePanel.add(toReplace, BorderLayout.EAST);
-
-		JPanel soundToReplaceWithPanel = new JPanel();
-		soundToReplaceWithPanel.setLayout(new BorderLayout());
-		soundToReplaceWithPanel.setBorder(new EmptyBorder(0, 10, 0, 10));
-		soundToReplaceWithPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		JLabel soundToReplaceWithLabel = new JLabel("with");
-
-		replaceWith = new JButton(Integer.toString(soundSwap.getToReplaceWith()));
-		replaceWith.setToolTipText("New sound");
-		replaceWith.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				// Show input dialog to enter a new number
-				String newNumber = JOptionPane.showInputDialog("Sound to replace with");
-				// Set the new number to the button if it's not null
-				if (newNumber != null && !newNumber.trim().isEmpty()) {
-					replaceWith.setText(newNumber);
-					soundSwap.setToReplaceWith(Integer.parseInt(newNumber.trim()));
-				}
-			}
-		});
-		soundToReplaceWithPanel.add(soundToReplaceWithLabel, BorderLayout.WEST);
-		soundToReplaceWithPanel.add(replaceWith, BorderLayout.EAST);
-		animationReplacementPanel.add(soundToReplacePanel);
-		animationReplacementPanel.add(soundToReplaceWithPanel);
+		createProjectileEditPanelRow("with", ce -> {
+			int value = (int) ((JSpinner) ce.getSource()).getValue();
+			soundSwap.setToReplaceWith(value);
+			plugin.saveTransmogSets();
+			plugin.clientThread.invoke(() -> plugin.client.playSoundEffect(value));
+		}, soundSwap.getToReplaceWith(), animationReplacementPanel);
 
 		return new EntryPanel(false, false, true, i == size - 1, animationReplacementPanel, () -> {
 			swap.getSoundSwaps().remove(i);
