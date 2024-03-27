@@ -22,6 +22,7 @@ import com.weaponanimationreplacer.Swap.AnimationReplacement;
 import com.weaponanimationreplacer.Swap.AnimationType;
 import static com.weaponanimationreplacer.Swap.AnimationType.ALL;
 import static com.weaponanimationreplacer.Swap.AnimationType.ATTACK;
+import com.weaponanimationreplacer.Swap.SoundSwap;
 import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.MODEL_SWAP;
 import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.SPELL_R;
 import java.awt.Color;
@@ -60,6 +61,7 @@ import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.InteractingChanged;
 import net.runelite.api.events.PlayerChanged;
 import net.runelite.api.events.ProjectileMoved;
+import net.runelite.api.events.SoundEffectPlayed;
 import net.runelite.api.kit.KitType;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
@@ -120,6 +122,8 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	private List<Integer> equippedItemsFromKit = new ArrayList<>();
 	private final List<Integer> naturalPlayerPoseAnimations = new ArrayList<>();
 	private AnimationReplacements currentAnimations = new AnimationReplacements();
+	private List<ProjectileSwap> projectileSwaps = Collections.emptyList();
+	private List<SoundSwap> soundSwaps = new ArrayList<>();
 	private GraphicEffect currentScytheGraphicEffect = null;
 	int scytheSwingCountdown = -1;
 	int delayedGfxToApply = -1;
@@ -128,8 +132,6 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	int timeToApplyDelayedGfx = -1;
 	// For handling spells that have no projectiles which are harder to identify. This must be toggled off in onProjectileMoved the the spell is replaced there.
 	private boolean handlePossibleNoProjectileSpellInClientTick = false;
-
-	private List<ProjectileSwap> projectileSwaps = Collections.emptyList();
 
 	int previewItem = -1;
 	AnimationReplacements previewAnimationReplacements = null;
@@ -332,6 +334,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 						Collections.singletonList(rule.modelSwap),
 						rule.animationReplacements,
 						Collections.emptyList(),
+						Collections.emptyList(),
 						Collections.emptyList())));
 			transmogSet.setName(rule.name);
 			transmogSets.add(transmogSet);
@@ -429,6 +432,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		{
 			transmogManager.changeTransmog();
 			updateAnimations();
+			updateSoundSwaps();
 		}
     }
 
@@ -478,6 +482,24 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
 		if (currentScytheGraphicEffect != null && AnimationType.ATTACK.appliesTo(type.get())) {
 			scytheSwingCountdown = 20;
+		}
+	}
+
+	@Subscribe
+	public void onSoundEffectPlayed(SoundEffectPlayed soundEffectPlayed)
+	{
+		int sound = soundEffectPlayed.getSoundId();
+		for (SoundSwap soundSwap : soundSwaps)
+		{
+			if (soundSwap.toReplace == sound)
+			{
+				log.debug("Found sound to place, replacing with: "+soundSwap.toReplaceWith);
+				clientThread.invokeLater(() -> {
+					client.playSoundEffect(soundSwap.toReplaceWith);
+				});
+				soundEffectPlayed.consume();
+				return;
+			}
 		}
 	}
 
@@ -893,12 +915,15 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		setPlayerPoseAnimations();
 
 		projectileSwaps = matchingSwaps.stream().flatMap(swap -> swap.getProjectileSwaps().stream()).filter(swap -> swap.getToReplace() != null && swap.getToReplaceWith() != null).collect(Collectors.toList());
-
 		currentScytheGraphicEffect = matchingSwaps.stream()
 			.filter(swap -> swap.getGraphicEffects().stream().anyMatch(e -> e.type == GraphicEffect.Type.SCYTHE_SWING))
 			.flatMap(swap -> swap.getGraphicEffects().stream())
 			.findAny().orElse(null);
     }
+
+    private void updateSoundSwaps() {
+		soundSwaps = getApplicableSwaps().stream().flatMap(swap -> swap.getSoundSwaps().stream()).filter(swap -> swap.getToReplace() != -1 && swap.getToReplaceWith() != -1).collect(Collectors.toList());
+	}
 
     public String itemDisplayName(int itemId) {
 		return Constants.getName(itemId, itemManager.getItemComposition(itemId).getMembersName());
@@ -984,6 +1009,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
 		transmogManager.reapplyTransmog();
 		updateAnimations();
+		updateSoundSwaps();
 	}
 
 	private void recordNaturalPlayerPoseAnimations()

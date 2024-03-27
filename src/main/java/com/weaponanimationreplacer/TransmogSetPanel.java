@@ -34,6 +34,7 @@ import static com.weaponanimationreplacer.Constants.TriggerItemIds;
 import static com.weaponanimationreplacer.Swap.AnimationReplacement;
 import com.weaponanimationreplacer.Swap.AnimationType;
 import static com.weaponanimationreplacer.Swap.AnimationType.ATTACK;
+import com.weaponanimationreplacer.Swap.SoundSwap;
 import com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType;
 import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.MODEL_SWAP;
 import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.SPELL_L;
@@ -263,6 +264,12 @@ class TransmogSetPanel extends JPanel
 				animationSwapsPanel.add(createGraphicsEffectPanel(swap, i, swap.getGraphicEffects().size()));
 			}
 		}
+		if (!swap.getSoundSwaps().isEmpty()) {
+			for (int i = 0; i < swap.getSoundSwaps().size(); i++)
+			{
+				animationSwapsPanel.add(createSoundSwapPanel(swap, i, swap.getSoundSwaps().size()));
+			}
+		}
 		panel.add(animationSwapsPanel, BorderLayout.CENTER);
 
 		return panel;
@@ -378,6 +385,7 @@ class TransmogSetPanel extends JPanel
 		addMenuItem(menu, "Add animation swap", e -> addAnimationReplacement(swap));
 		addMenuItem(menu, "Add projectile swap", e -> addProjectileSwap(swap));
 		addMenuItem(menu, "Add graphic effect", e -> addGraphicEffect(swap));
+		addMenuItem(menu, "Add sound swap", e -> addSoundSwap(swap));
 
 		if (moveUp) addMenuItem(menu, "Move up", e -> moveSwap(transmogSet, swap, -1));
 		if (moveDown) addMenuItem(menu, "Move down", e -> moveSwap(transmogSet, swap, +1));
@@ -453,6 +461,13 @@ class TransmogSetPanel extends JPanel
 	private void addGraphicEffect(Swap swap)
 	{
 		swap.addNewGraphicEffect();
+		plugin.clientThread.invokeLater(plugin::handleTransmogSetChange);
+		SwingUtilities.invokeLater(this::rebuild);
+	}
+
+	private void addSoundSwap(Swap swap)
+	{
+		swap.addNewSoundSwap();
 		plugin.clientThread.invokeLater(plugin::handleTransmogSetChange);
 		SwingUtilities.invokeLater(this::rebuild);
 	}
@@ -540,7 +555,7 @@ class TransmogSetPanel extends JPanel
 	public class EntryPanel extends JPanel {
 		public EntryPanel(boolean checkbox, boolean enabled, boolean x, boolean plus, JPanel panel, Runnable onDelete, Runnable onAdd, Consumer<Boolean> onEnable) {
 			this(checkbox, enabled, false, false, false, false, false, x, plus, panel, onDelete, onAdd, onEnable);
-        }
+		}
 
 		public EntryPanel(boolean checkbox, boolean enabled, boolean minimize, boolean minimized, boolean updown, boolean up, boolean down, boolean x, boolean plus, JPanel panel, Runnable onDelete, Runnable onAdd, Consumer<Boolean> onEnable) {
 			setLayout(new BorderLayout());
@@ -564,14 +579,14 @@ class TransmogSetPanel extends JPanel
 			if (minimize) {
 				JLabel xButton = makeButton(minimized ? " + " : " - ", () -> {
 					plugin.clientThread.invokeLater(() -> {
-					    transmogSet.setMinimized(!minimized);;
+						transmogSet.setMinimized(!minimized);;
 						SwingUtilities.invokeLater(TransmogSetPanel.this::rebuild);
 					});
 				});
 				rightSide.add(xButton);
 			}
 			if (updown) {
-			    rightSide.add(new IconLabelButton(MOVE_RULE_UP_ICON, MOVE_RULE_UP_ICON_HOVER, () -> {
+				rightSide.add(new IconLabelButton(MOVE_RULE_UP_ICON, MOVE_RULE_UP_ICON_HOVER, () -> {
 					plugin.clientThread.invokeLater(() -> {
 						plugin.moveTransmogSet(index, true);
 					});
@@ -594,7 +609,7 @@ class TransmogSetPanel extends JPanel
 		}
 
 		private JLabel makeButton(String text, Runnable onClick) {
-		    JLabel label = new JLabel(text);
+			JLabel label = new JLabel(text);
 //			label.setToolTipText("Add a new animation replacement rule.");
 			label.addMouseListener(new MouseAdapter()
 			{
@@ -623,9 +638,9 @@ class TransmogSetPanel extends JPanel
 	private Component createAnimationReplacementPanel(Swap swap, int i, int size) {
 		AnimationReplacement animationReplacement = swap.animationReplacements.get(i);
 
-	    JPanel animationReplacementPanel = new JPanel();
-	    animationReplacementPanel.setBorder(new EmptyBorder(5, 0, 0, 0));
-	    animationReplacementPanel.setLayout(new BoxLayout(animationReplacementPanel, BoxLayout.Y_AXIS));
+		JPanel animationReplacementPanel = new JPanel();
+		animationReplacementPanel.setBorder(new EmptyBorder(5, 0, 0, 0));
+		animationReplacementPanel.setLayout(new BoxLayout(animationReplacementPanel, BoxLayout.Y_AXIS));
 		animationReplacementPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 
 		if (animationReplacement.auto != -1) {
@@ -709,7 +724,7 @@ class TransmogSetPanel extends JPanel
 			List<AnimationType> actions = animationReplacement.animationSet.getAttackAnimations();
 			log.debug("actions is : " + actions);
 			JComboBox<AnimationType> attackToUse = new JComboBox<>(actions.toArray(new AnimationType[] {})); // TODO remove indenting?
-            // TODO add "automatic" option.
+			// TODO add "automatic" option.
 			attackToUse.setRenderer(new DefaultListCellRenderer() {
 				@Override
 				public Component getListCellRendererComponent(JList list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
@@ -1159,6 +1174,43 @@ class TransmogSetPanel extends JPanel
 		});
 	}
 
+	private Component createSoundSwapPanel(Swap swap, int i, int size)
+	{
+		SoundSwap soundSwap = swap.getSoundSwaps().get(i);
+		JPanel animationReplacementPanel = new JPanel();
+		animationReplacementPanel.setBorder(new EmptyBorder(5, 0, 0, 0));
+		animationReplacementPanel.setLayout(new BoxLayout(animationReplacementPanel, BoxLayout.Y_AXIS));
+		animationReplacementPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+
+		createProjectileEditPanelRow("Replace sound", ce -> {
+			int value = (int) ((JSpinner) ce.getSource()).getValue();
+			soundSwap.setToReplace(value);
+			plugin.saveTransmogSets();
+			plugin.clientThread.invoke(() -> plugin.client.playSoundEffect(value));
+		}, soundSwap.getToReplace(), animationReplacementPanel);
+
+		createProjectileEditPanelRow("with", ce -> {
+			int value = (int) ((JSpinner) ce.getSource()).getValue();
+			soundSwap.setToReplaceWith(value);
+			plugin.saveTransmogSets();
+			plugin.clientThread.invoke(() -> plugin.client.playSoundEffect(value));
+		}, soundSwap.getToReplaceWith(), animationReplacementPanel);
+
+		return new EntryPanel(false, false, true, i == size - 1, animationReplacementPanel, () -> {
+			swap.getSoundSwaps().remove(i);
+			plugin.clientThread.invoke(plugin::handleTransmogSetChange);
+			SwingUtilities.invokeLater(this::rebuild);
+		}, () -> {
+			plugin.clientThread.invokeLater(() -> {
+				swap.addNewSoundSwap();
+				plugin.handleTransmogSetChange();
+				SwingUtilities.invokeLater(this::rebuild);
+			});
+		}, (enabled) -> {
+		});
+
+	}
+
 	/** Should really use a builder. atm you have to call setitem/setspell and addListeners last, after other fields are set. */
 	public class ItemSelectionButton extends JButton {
 		String nameWhenEmpty = "None";
@@ -1310,7 +1362,7 @@ class TransmogSetPanel extends JPanel
 		};
 		rename.setFont(FontManager.getRunescapeSmallFont());
 		rename.setForeground(ColorScheme.LIGHT_GRAY_COLOR.darker());
-//		nameActions.add(rename, BorderLayout.CENTER);
+		//nameActions.add(rename, BorderLayout.CENTER);
 
 		nameInput.setText(transmogSet.getName());
 		nameInput.setBorder(null);
@@ -1324,7 +1376,7 @@ class TransmogSetPanel extends JPanel
 			@Override
 			public void keyPressed(KeyEvent e)
 			{
-			    // Get the new value of the field, so you don't miss the last letter.
+				// Get the new value of the field, so you don't miss the last letter.
 				if (e.getKeyCode() == KeyEvent.VK_ENTER)
 				{
 					SwingUtilities.invokeLater(() -> {
@@ -1334,7 +1386,7 @@ class TransmogSetPanel extends JPanel
 				}
 				else if (e.getKeyCode() == KeyEvent.VK_ESCAPE)
 				{
-				    nameInput.setText(transmogSet.getName());
+					nameInput.setText(transmogSet.getName());
 				} else {
 					return;
 				}
@@ -1360,7 +1412,7 @@ class TransmogSetPanel extends JPanel
 			@Override
 			public void mousePressed(MouseEvent mouseEvent)
 			{
-			    if (!nameInput.getTextField().isEditable()) {
+				if (!nameInput.getTextField().isEditable()) {
 					plugin.clientThread.invokeLater(() -> {
 						transmogSet.setMinimized(!transmogSet.isMinimized());
 						SwingUtilities.invokeLater(TransmogSetPanel.this::rebuild);
