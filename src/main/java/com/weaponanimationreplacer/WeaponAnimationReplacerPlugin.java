@@ -11,6 +11,7 @@ import com.google.gson.JsonParseException;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
+import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
 import com.google.inject.Provides;
 import com.weaponanimationreplacer.ChatBoxFilterableSearch.SelectionResult;
@@ -27,13 +28,19 @@ import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchTy
 import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.SPELL_R;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.lang.reflect.Type;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -44,6 +51,7 @@ import lombok.Getter;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
+import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.JagexColor;
@@ -82,6 +90,9 @@ import net.runelite.client.util.AsyncBufferedImage;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.http.api.item.ItemEquipmentStats;
 import net.runelite.http.api.item.ItemStats;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 @Slf4j
 @PluginDescriptor(
@@ -109,6 +120,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	@Inject ColorPickerManager colorPickerManager;
 	@Inject private ChatboxPanelManager chatboxPanelManager;
 	@Inject private WeaponAnimationReplacerConfig config;
+	@Inject private OkHttpClient okHttpClient;
 
 	@Getter
 	List<TransmogSet> transmogSets = null;
@@ -137,6 +149,8 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	AnimationReplacements previewAnimationReplacements = null;
 
 	private Gson customGson = null; // Lazy initialized due to timing of @Injected runeliteGson and not being able to use constructor injection.
+	@Inject private ScheduledExecutorService executor;
+
 	Gson getGson()
 	{
 		if (customGson != null) return customGson;
@@ -193,7 +207,6 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 						s = newS;
 					}
 					AnimationSet animationSet = AnimationSet.getAnimationSet(s);
-					if (animationSet == null) Constants.animationSets.get(0);
 					return animationSet;
 				} else {
 					throw new JsonParseException("animationset is supposed to be a string.");
@@ -216,12 +229,11 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	@Override
     protected void startUp()
     {
-        clientThread.invokeLater(() -> {
+		clientThread.invokeLater(() -> {
 			transmogManager.startUp();
 			eventBus.register(transmogManager);
 
-        	Constants.loadData(runeliteGson);
-
+			loadAndUpdateData();
 			reloadTransmogSetsFromConfig();
 
 			// record player's untransmogged state.
@@ -243,6 +255,84 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			if (client.getGameState().getState() >= GameState.LOGIN_SCREEN.getState())
 			{
 				showSidePanel(!config.hideSidePanel());
+			}
+		});
+	}
+
+	private void loadAndUpdateData()
+	{
+		boolean updateLocalData = false;
+		boolean loadingFailure = false;
+
+		Constants.Data bundledData = Constants.getBundledData(runeliteGson);
+//		Constants.loadData(bundledData);
+
+		// check filesystem.
+		Constants.Data localData = null;
+		try {
+			byte[] bytes = Files.readAllBytes(Paths.get(System.getProperty("user.home"), ".runelite", "weaponanimationreplacerdata.json"));
+			localData = runeliteGson.fromJson(new String(bytes), Constants.Data.class);
+		}
+		catch (FileNotFoundException | NoSuchFileException e) {
+			updateLocalData = true; // This'll make it easy for people to edit if they want to.
+		}
+		catch (IOException | JsonSyntaxException e) {
+			loadingFailure = true;
+			clientThread.invoke(() -> client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "Weapon/Gear/Anim Replacer: Couldn't load local data, see logs for more info.", ""));
+			log.error("Couldn't load local data", e);
+		}
+
+		if (updateLocalData || bundledData.version > localData.version) {
+			try {
+				Files.write(Paths.get(System.getProperty("user.home"), ".runelite", "weaponanimationreplacerdata.json"), runeliteGson.toJson(bundledData).getBytes());
+			}
+			catch (IOException e) {
+				e.printStackTrace();
+			}
+			localData = bundledData;
+			log.info("updated local data.");
+		}
+
+		Constants.loadData(loadingFailure ? bundledData : localData);
+
+		if (loadingFailure) return; // don't bother updating from online if we already have a broken thing.
+
+		int localVersion = localData.version;
+		executor.submit(() -> {
+			try (Response res = okHttpClient.newCall(new Request.Builder().url("https://raw.githubusercontent.com/geheur/weapon-animation-replacer/data/dataversion.json").build()).execute()) {
+				if (res.code() != 200) {
+					log.error("Response code " + res.code());
+					return;
+				}
+
+				String requestBody = res.body().string();
+				int onlineVersion = Integer.parseInt(requestBody.trim());
+				log.info("online version is " + onlineVersion + ", local version is " + localVersion);
+				if (onlineVersion <= localVersion) return;
+
+				try (Response res2 = okHttpClient.newCall(new Request.Builder().url("https://raw.githubusercontent.com/geheur/weapon-animation-replacer/data/data.json").build()).execute()) {
+					String response = res2.body().string();
+					Constants.Data onlineData = runeliteGson.fromJson(response, Constants.Data.class);
+					if (onlineData.version != onlineVersion) {
+						log.warn("online versions do not match.");
+						return;
+					}
+
+					try {
+						Files.write(Paths.get(System.getProperty("user.home"), ".runelite", "weaponanimationreplacerdata.json"), runeliteGson.toJson(onlineData).getBytes());
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+					clientThread.invokeLater(() -> {
+						Constants.loadData(onlineData);
+						reloadTransmogSetsFromConfig();
+						SwingUtilities.invokeLater(() -> {
+							if (pluginPanel != null) pluginPanel.rebuild();
+						});
+					});
+				}
+			} catch (IOException | JsonSyntaxException e) {
+				log.error("error loading online data", e);
 			}
 		});
 	}
