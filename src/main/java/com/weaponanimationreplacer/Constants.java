@@ -70,6 +70,12 @@ public class Constants
 		return null;
 	}
 
+	public static Data getBundledData(Gson gson) {
+		InputStream resourceAsStream = Constants.class.getResourceAsStream("data.json");
+		Data data = gson.fromJson(new InputStreamReader(resourceAsStream), Data.class);
+		return data;
+	}
+
 	public static void loadData(Gson gson)
 	{
 		if (SLOT_OVERRIDES.size() > 0) return; // Already loaded.
@@ -138,6 +144,7 @@ public class Constants
 
 	static final class Data
 	{
+		int version;
 		Set<Integer> showArms;
 		Set<Integer> hideHair;
 		Set<Integer> hideJaw;

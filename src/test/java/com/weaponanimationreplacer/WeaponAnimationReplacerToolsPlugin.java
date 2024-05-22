@@ -1385,6 +1385,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		OVERRIDE_EQUIPPABILITY_OR_SLOT.clear();
 		EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT_NAMES.clear();
 		Constants.Data data = new Constants.Data();
+		data.version = 1;
 
 		addUnequippable(48, WEAPON); // Longbow (u)
 		addUnequippable(50, WEAPON); // Shortbow (u)
