@@ -396,7 +396,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 			uhoh = list.size() > 1;
 			if (uhoh) System.out.println("more than 1 set of pose animations: " + itemId + " " + variationId);
 			poseanims = list.iterator().next();
-			for (AnimationSet animationSet : AnimationSet.animationSets)
+			for (AnimationSet animationSet : Constants.animationSets)
 			{
 				if (
 					Objects.equals(animationSet.getAnimation(Swap.AnimationType.STAND), poseanims.get(0))
@@ -498,7 +498,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 					if (!Objects.equals(next.get(1), next.get(7))) {
 						System.out.println("different rotate animations! " + name + " " + itemId + " " + next.get(1) + " " + next.get(7));
 					}
-					for (AnimationSet animationSet : AnimationSet.animationSets)
+					for (AnimationSet animationSet : Constants.animationSets)
 					{
 						if (
 							Objects.equals(animationSet.getAnimation(Swap.AnimationType.STAND), next.get(0))
@@ -896,8 +896,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		}
 
 		if (command.equals("reload")) {
-			AnimationSet.loadAnimationSets();
-			Constants.loadData(plugin.getGson());
+			Constants.loadData(plugin.runeliteGson);
 			SwingUtilities.invokeLater(plugin.pluginPanel::rebuild);
 			System.out.println("reloaded animations sets, projectiles, and equippable.");
 		}
@@ -924,7 +923,6 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 				System.out.println(integerIntegerEntry.getKey() + " " + integerIntegerEntry.getValue());
 			}
 			System.out.println("reloading animations sets");
-			AnimationSet.loadAnimationSets();
 		}
 
 		if (command.equals("demo")) {
@@ -2423,12 +2421,15 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		}
 
 		data.projectiles = getProjectileCasts();
+		data.animationSets = AnimationSets.getAnimationSets();
+		data.descriptions = AnimationSets.descriptions;
 
-		String s = plugin.getGson().toJson(data);
+		String s = plugin.runeliteGson.toJson(data);
 		System.out.println("your uhohlist is " + uhohList);
 		System.out.println("json is \n" + s);
 
-		Constants.loadData(plugin.getGson().fromJson(s, Constants.Data.class));
+		Constants.loadData(plugin.runeliteGson.fromJson(s, Constants.Data.class));
+		if (plugin.pluginPanel != null) plugin.pluginPanel.rebuild();
 	}
 
 	private List<ProjectileCast> getProjectileCasts()

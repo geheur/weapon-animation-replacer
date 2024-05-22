@@ -10,6 +10,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +50,10 @@ public class Constants
 	// key is item id, value is the slot id it should go in. A slot id of -1 means the item should be considered unequippable.
 	public static Map<Integer, Integer> SLOT_OVERRIDES = new HashMap<>();
 	public static Map<Integer, NameAndIconId> NAME_ICON_OVERRIDES = new HashMap<>();
+
+	public static final List<AnimationSet> animationSets = new ArrayList<>();
+	public static final List<Integer> doNotReplaceIdles = new ArrayList<>();
+	public static final Map<Integer, String> descriptions = new HashMap<>();
 
 	public static AnimationSet getAnimationSet(int itemId)
 	{
@@ -99,6 +104,21 @@ public class Constants
 		NAME_ICON_OVERRIDES = data.nameIconOverrides;
 		projectiles = data.projectiles;
 		projectilesById = createProjectilesById(projectiles);
+
+		animationSets.clear();
+		animationSets.addAll(data.animationSets);
+		Collections.sort(animationSets);
+
+		doNotReplaceIdles.clear();
+		for (AnimationSet animationSet : animationSets)
+		{
+			if (animationSet.doNotReplace) {
+				doNotReplaceIdles.add(animationSet.getAnimation(STAND));
+			}
+		}
+
+		descriptions.clear();
+		descriptions.putAll(data.descriptions);
 	}
 
 	private static ProjectileCast[] createProjectilesById(List<ProjectileCast> projectiles)
@@ -125,6 +145,8 @@ public class Constants
 		Map<Integer, NameAndIconId> nameIconOverrides;
 		Map<String, int[]> poseanims;
 		List<ProjectileCast> projectiles;
+		public Map<Integer, String> descriptions;
+		public List<AnimationSet> animationSets;
 	}
 
 	private static void addUnequippable(int itemId, KitType kitType) {

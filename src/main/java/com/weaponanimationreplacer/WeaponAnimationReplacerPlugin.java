@@ -101,7 +101,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	@Inject private ClientToolbar clientToolbar;
 	@Inject private ConfigManager configManager;
 	@Inject private TransmogrificationManager transmogManager;
-	@Inject private Gson runeliteGson;
+	@Inject Gson runeliteGson;
 	@Inject ClientUI clientUI;
 	@Inject ItemManager itemManager;
 	@Inject private SpriteManager spriteManager;
@@ -193,7 +193,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 						s = newS;
 					}
 					AnimationSet animationSet = AnimationSet.getAnimationSet(s);
-					if (animationSet == null) return AnimationSet.animationSets.get(0);
+					if (animationSet == null) Constants.animationSets.get(0);
 					return animationSet;
 				} else {
 					throw new JsonParseException("animationset is supposed to be a string.");
@@ -220,7 +220,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			transmogManager.startUp();
 			eventBus.register(transmogManager);
 
-        	Constants.loadData(getGson());
+        	Constants.loadData(runeliteGson);
 
 			reloadTransmogSetsFromConfig();
 
@@ -467,7 +467,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		int playerAnimation = player.getAnimation();
 		if (playerAnimation == -1) return;
 
-		Optional<AnimationType> type = AnimationSet.animationSets.stream()
+		Optional<AnimationType> type = Constants.animationSets.stream()
 			.map(set -> set.getType(playerAnimation))
 			.filter(t -> t != null)
 			.findFirst();
@@ -947,7 +947,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		Player player = client.getLocalPlayer();
 		if (player == null || naturalPlayerPoseAnimations.isEmpty()) return;
 
-		if (AnimationSet.doNotReplaceIdles.contains(naturalPlayerPoseAnimations.get(Constants.ActorAnimation.IDLE.ordinal()))) return;
+		if (Constants.doNotReplaceIdles.contains(naturalPlayerPoseAnimations.get(Constants.ActorAnimation.IDLE.ordinal()))) return;
 
 		for (Constants.ActorAnimation animation : Constants.ActorAnimation.values())
 		{

@@ -685,7 +685,7 @@ class TransmogSetPanel extends JPanel
 		row2.setLayout(new BoxLayout(row2, BoxLayout.X_AXIS));
 		row2.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		row2.add(new JLabel("with"));
-		JComboBox<AnimationSet> animationSetToUse = new JComboBox<>(AnimationSet.animationSets.toArray(new AnimationSet[]{}));
+		JComboBox<AnimationSet> animationSetToUse = new JComboBox<>(Constants.animationSets.toArray(new AnimationSet[]{}));
 		animationSetToUse.setRenderer(new DefaultListCellRenderer() {
 			@Override
 			public Component getListCellRendererComponent(JList list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
