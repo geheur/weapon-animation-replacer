@@ -318,6 +318,12 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			.put(ATTACK_CRUSH2, 423, "crush2 (kick)")
 			.put(DEFEND, 424)
 			.build();
+		new AnimationSetBuilder("Drunk")
+			.poseAnims(2770, 823, 2769, 820, 821, 822, 824)
+			.build();
+		new AnimationSetBuilder("Stealing")
+			.poseAnims(10684, 10683, 10682, 10683, 10683, 10683, 824)
+			.build();
 		new AnimationSetBuilder("Chinchompa")
 			.poseAnims(3175, 3177, 3177, 3177, 3177, 3177, 3178)
 			.put(ATTACK, 7618)
@@ -393,6 +399,10 @@ public class AnimationSet implements Comparable<AnimationSet> {
 			.poseAnims(813, 1209, 1205, 1206, 1207, 1208, 1210)
 			.put(ATTACK, 5061)
 			.put(DEFEND, 430)
+			.build();
+		new AnimationSetBuilder("Blazing blowpipe")
+			.copy("Toxic blowpipe")
+			.put(ATTACK, 10656)
 			.build();
 		new AnimationSetBuilder("Thrownaxe")
 			.poseAnims(808, 823, 819, 820, 821, 822, 824)
