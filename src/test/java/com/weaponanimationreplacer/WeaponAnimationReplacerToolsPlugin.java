@@ -23,10 +23,15 @@ import static com.weaponanimationreplacer.Constants.WEAPON_SLOT;
 import static com.weaponanimationreplacer.Constants.mapNegativeId;
 import static com.weaponanimationreplacer.ProjectileCast.p;
 import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.io.IOException;
 import static java.lang.Boolean.FALSE;
 import static java.lang.Boolean.TRUE;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -43,6 +48,7 @@ import javax.inject.Inject;
 import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
+import net.runelite.api.EquipmentInventorySlot;
 import net.runelite.api.ItemComposition;
 import net.runelite.api.ItemID;
 import net.runelite.api.Perspective;
@@ -1050,6 +1056,25 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 	Set<Integer> tempShowsJaw;
 	private void addHidesHairAndJaw()
 	{
+		Path path = Paths.get("C:\\Users\\samue\\Downloads\\dump\\item_defs");
+		for (File file : path.toFile().listFiles())
+		{
+			try
+			{
+				ItemDef itemDef = plugin.runeliteGson.fromJson(Files.readString(file.toPath()), ItemDef.class);
+				if (itemDef.wearPos1 == EquipmentInventorySlot.HEAD.getSlotIdx()) {
+					if (itemDef.wearPos2 == KitType.HAIR.getIndex() || itemDef.wearPos3 == KitType.HAIR.getIndex()) {
+
+					}
+				} else if (itemDef.wearPos1 == EquipmentInventorySlot.BODY.getSlotIdx()) {
+
+				}
+			}
+			catch (IOException e)
+			{
+				e.printStackTrace();
+			}
+		}
 		List<Integer> removeItem = new ArrayList<>();
 
 		follow(ItemID.OCHRE_SNELM_3341, ItemID.OCHRE_SNELM);
@@ -1127,260 +1152,6 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 			}
 		}
 		System.out.println(removeItem);
-	}
-
-	private void showAll(int itemId)
-	{
-		showHairJaw(itemId, true, true);
-	}
-
-	private void showHairJaw(int itemId, boolean showHair, boolean showJaw)
-	{
-		if (
-			((hidesHair.contains(itemId) && !showHair) || (showsHair.contains(itemId) && showHair)) &&
-			((hidesJaw.contains(itemId) && !showJaw) || (showsJaw.contains(itemId) && showJaw))
-		) {
-			System.out.println("superflous " + itemId);
-		}
-		if (
-			(hidesHair.contains(itemId) && showHair) ||
-			(showsHair.contains(itemId) && !showHair) ||
-			(hidesJaw.contains(itemId) && showJaw) ||
-			(showsJaw.contains(itemId) && !showJaw)
-		) {
-			System.out.println("goes against collected hair and jaw data " + itemId);
-		}
-		if (!showHair) tempHidesHair.add(itemId);
-		else tempShowsHair.add(itemId);
-		if (!showJaw) tempHidesJaw.add(itemId);
-		else tempShowsJaw.add(itemId);
-	}
-
-	private void follow(int itemId, int itemIdToCopy)
-	{
-		Boolean currentlyHidingHair = hidesHair.contains(itemId) ? TRUE : showsHair.contains(itemId) ? FALSE : null;
-		Boolean currentlyHidingJaw = hidesJaw.contains(itemId) ? TRUE : showsJaw.contains(itemId) ? FALSE : null;
-		Boolean hairToCopy = hidesHair.contains(itemIdToCopy) ? TRUE : showsHair.contains(itemIdToCopy) ? FALSE : null;
-		Boolean jawToCopy = hidesJaw.contains(itemIdToCopy) ? TRUE : showsJaw.contains(itemIdToCopy) ? FALSE : null;
-		if (hairToCopy == null || jawToCopy == null) {
-			System.out.println("copied item " + itemId + " didn't have enough data " + hairToCopy + " " + jawToCopy);
-			return;
-		}
-
-		boolean warnSuperfluous = false;
-		if (hairToCopy) {
-			if (currentlyHidingHair == null) {
-				tempHidesHair.add(itemId);
-			} else if (currentlyHidingHair) {
-				// skip;
-				warnSuperfluous = true;
-			} else {
-				System.out.println("item " + itemId + " was told to follow something that the data disagrees with.");
-			}
-		} else {
-			if (currentlyHidingHair == null) {
-				tempShowsHair.add(itemId);
-			} else if (currentlyHidingHair) {
-				System.out.println("item " + itemId + " was told to follow something that the data disagrees with.");
-			} else {
-				// skip;
-				warnSuperfluous = true;
-			}
-		}
-		if (jawToCopy) {
-			if (currentlyHidingJaw == null) {
-				tempHidesJaw.add(itemId);
-			} else if (currentlyHidingJaw) {
-				// skip;
-				if (warnSuperfluous) {
-					System.out.println("itemId " + itemId + " follow is superfluous.");
-				}
-			} else {
-				System.out.println("item " + itemId + " was told to follow something that the data disagrees with.");
-			}
-		} else {
-			if (currentlyHidingJaw == null) {
-				tempShowsJaw.add(itemId);
-			} else if (currentlyHidingJaw) {
-				System.out.println("item " + itemId + " was told to follow something that the data disagrees with.");
-			} else {
-				// skip;
-				if (warnSuperfluous) {
-					System.out.println("itemId " + itemId + " follow is superfluous.");
-				}
-			}
-		}
-	}
-
-	private void addSlotData(Set<Integer> showsArms, Set<Integer> hidesHair, Set<Integer> hidesJaw, Map<Integer, Set<List<Integer>>> poseanims)
-	{
-		for (int i = 0; i < client.getItemCount(); i++)
-		{
-			ItemComposition itemComposition = plugin.itemManager.getItemComposition(i);
-			if (itemComposition.getPlaceholderTemplateId() != -1 || itemComposition.getNote() != -1) continue;
-
-			Integer slot = SLOT_OVERRIDES.get(i);
-			if (slot == null) {
-				ItemStats itemStats = plugin.itemManager.getItemStats(i, false);
-				if (itemStats != null && itemStats.isEquipable())
-				{
-					slot = itemStats.getEquipment().getSlot();
-				}
-			}
-			if (slot == null) continue;
-
-			if (slot == TORSO_SLOT)
-			{
-				if (!hidesArms.contains(i) && !this.showsArms.contains(i))
-				{
-					Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
-					boolean shown = false;
-					for (Integer variation : variations)
-					{
-						if (this.showsArms.contains(variation)) {
-							shown = true;
-							break;
-						}
-					}
-					if (shown)
-					{
-						showsArms.add(i);
-					} else {
-//								System.out.println(itemManager.getItemComposition(i).getName() + " " + i);
-					}
-				}
-			}
-			else if (slot == HEAD_SLOT)
-			{
-				if (!hidesHair.contains(i) && !this.showsHair.contains(i))
-				{
-					Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
-					boolean hides = false;
-					for (Integer variation : variations)
-					{
-						if (this.hidesHair.contains(variation)) {
-							hides = true;
-							break;
-						}
-					}
-					if (hides)
-					{
-						hidesHair.add(i);
-					} else {
-//								System.out.println(itemManager.getItemComposition(i).getName() + " " + i);
-					}
-				}
-				if (!hidesJaw.contains(i) && !this.showsJaw.contains(i))
-				{
-					Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
-					boolean hides = false;
-					for (Integer variation : variations)
-					{
-						if (this.hidesJaw.contains(variation)) {
-							hides = true;
-							break;
-						}
-					}
-					if (hides)
-					{
-						hidesJaw.add(i);
-					} else {
-//								System.out.println(itemManager.getItemComposition(i).getName() + " " + i);
-					}
-				}
-			}
-//			else if (slot == WEAPON_SLOT)
-//			{
-//				if (!this.poseanims.containsKey(i))
-//				{
-//					Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
-//					boolean found = false;
-//					for (Integer variation : variations)
-//					{
-//						if (this.poseanims.containsKey(variation)) {
-//							poseanims.put(i, this.poseanims.get(variation));
-//							found = true;
-//							break;
-//						}
-//					}
-//					if (found)
-//					{
-//					} else {
-////						System.out.println(itemManager.getItemComposition(i).getName() + " " + i);
-//					}
-//				}
-//			}
-		}
-	}
-
-	private static void addUnequippable(int itemId, KitType kitType) {
-		addUnequippable(itemId, kitType, null);
-	}
-
-	private static void addUnequippable(int itemId, KitType kitType, String name) {
-		addUnequippable(itemId, kitType, name, -1);
-	}
-
-	private static void addUnequippable(int itemId, KitType kitType, String name, int iconId) {
-		OVERRIDE_EQUIPPABILITY_OR_SLOT.put(itemId, kitType.getIndex());
-		if (name != null || iconId != -1) {
-			EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT_NAMES.put(itemId, new Constants.NameAndIconId(name, iconId));
-		}
-	}
-
-	@Subscribe
-	public void onClientTick(ClientTick clientTick) {
-//		for (int i = 0; i < Math.min(100, client.getLocalPlayer().getModel().getFaceColors1().length); i++)
-//		for (int i = 0; i < client.getLocalPlayer().getModel().getFaceColors1().length; i++)
-//		{
-//			client.getLocalPlayer().getModel().getFaceColors1()[i] = 0;
-//		}
-		if (demoanim != -1) {
-//			client.getLocalPlayer().setAnimation(demoanim);
-//			client.getLocalPlayer().setAnimationFrame(0);
-		}
-		if (demogfx != -1 && client.getLocalPlayer().getGraphic() != demogfx) {
-			client.getLocalPlayer().setGraphic(demogfx);
-			client.getLocalPlayer().setSpotAnimFrame(0);
-		}
-	}
-
-	@Subscribe
-	public void onMenuOptionClicked(MenuOptionClicked menuOptionClicked)
-	{
-		if (menuOptionClicked.getMenuOption().equals("Use") && menuOptionClicked.getItemId() == 563) {
-			if (demoanim != -1) {
-				demoanim--;
-				for (Constants.ActorAnimation value : values())
-				{
-					value.setAnimation(client.getLocalPlayer(), demoanim);
-				}
-				System.out.println("demo anim " + demoanim);
-				client.playSoundEffect(demoanim);
-			}
-			if (demogfx != -1) {
-				demogfx--;
-				client.getLocalPlayer().setGraphic(demogfx);
-				client.getLocalPlayer().setSpotAnimFrame(0);
-				client.getLocalPlayer().setGraphicHeight(0);
-				System.out.println("demo gfx " + demogfx);
-			}
-		} else if (menuOptionClicked.getMenuOption().equals("Use") && menuOptionClicked.getItemId() == 995){
-			if (demoanim != -1) {
-				demoanim++;
-				client.playSoundEffect(demoanim);
-				for (Constants.ActorAnimation value : values())
-				{
-					value.setAnimation(client.getLocalPlayer(), demoanim);
-				}
-				System.out.println("demo anim " + demoanim);
-			}
-			if (demogfx != -1) {
-				demogfx++;
-				System.out.println("demo gfx " + demogfx);
-			}
-		}
-//		System.out.println(menuOptionClicked.getMenuOption() + " " + Text.removeTags(menuOptionClicked.getMenuTarget()));
 	}
 
 	private void json()
@@ -1889,15 +1660,46 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 			kitIndexToItemIds.put(OVERRIDE_EQUIPPABILITY_OR_SLOT.get(itemId), itemIds);
 		}
 
+		Path path = Paths.get("C:\\Users\\samue\\Downloads\\dump\\item_defs");
+		HashSet<Integer> showsArmsFromCache = new HashSet<>();
+		HashSet<Integer> hidesHairFromCache = new HashSet<>();
+		HashSet<Integer> hidesJawFromCache = new HashSet<>();
+		for (File file : path.toFile().listFiles()) {
+			try {
+				ItemDef itemDef = plugin.runeliteGson.fromJson(Files.readString(file.toPath()), ItemDef.class);
+				if (itemDef.wearPos1 == EquipmentInventorySlot.HEAD.getSlotIdx()) {
+					if (itemDef.wearPos2 == KitType.HAIR.getIndex() || itemDef.wearPos3 == KitType.HAIR.getIndex()) {
+						hidesHairFromCache.add(itemDef.id);
+					}
+					if (itemDef.wearPos2 == KitType.JAW.getIndex() || itemDef.wearPos3 == KitType.JAW.getIndex()) {
+						hidesJawFromCache.add(itemDef.id);
+					}
+				} else if (itemDef.wearPos1 == EquipmentInventorySlot.BODY.getSlotIdx()) {
+					if (!(itemDef.wearPos2 == KitType.ARMS.getIndex() || itemDef.wearPos3 == KitType.ARMS.getIndex())) {
+						showsArmsFromCache.add(itemDef.id);
+					}
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+
 //		Set<Integer> showsArms = addShowsArms(this.showsArms); // nothing to add.
 		tempHidesHair = new HashSet<>(this.hidesHair);
 		tempHidesJaw = new HashSet<>(this.hidesJaw);
 		tempShowsHair = new HashSet<>(this.showsHair);
 		tempShowsJaw = new HashSet<>(this.showsJaw);
 		addHidesHairAndJaw();
-		data.showArms = showsArms;
-		data.hideHair = tempHidesHair;
-		data.hideJaw = tempHidesJaw;
+		showDiffs(showsArmsFromCache, showsArms, "show arms");
+		showDiffs(hidesHairFromCache, hidesHair, "hide hair");
+		showDiffs(hidesJawFromCache, hidesJaw, "hide jaw");
+
+//		data.showArms = showsArms;
+//		data.hideHair = tempHidesHair;
+//		data.hideJaw = tempHidesJaw;
+		data.showArms = showsArmsFromCache;
+		data.hideHair = hidesHairFromCache;
+		data.hideJaw = hidesJawFromCache;
 
 //		Map<Integer, Set<List<Integer>>> poseanims = new HashMap<>(this.poseanims);
 //		addSlotData(showsArms, hidesHair, hidesJaw, poseanims);
@@ -2434,6 +2236,279 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 
 		Constants.loadData(plugin.runeliteGson.fromJson(s, Constants.Data.class));
 		if (plugin.pluginPanel != null) plugin.pluginPanel.rebuild();
+	}
+
+	private void showAll(int itemId)
+	{
+		showHairJaw(itemId, true, true);
+	}
+
+	private void showHairJaw(int itemId, boolean showHair, boolean showJaw)
+	{
+		if (
+			((hidesHair.contains(itemId) && !showHair) || (showsHair.contains(itemId) && showHair)) &&
+			((hidesJaw.contains(itemId) && !showJaw) || (showsJaw.contains(itemId) && showJaw))
+		) {
+			System.out.println("superflous " + itemId);
+		}
+		if (
+			(hidesHair.contains(itemId) && showHair) ||
+			(showsHair.contains(itemId) && !showHair) ||
+			(hidesJaw.contains(itemId) && showJaw) ||
+			(showsJaw.contains(itemId) && !showJaw)
+		) {
+			System.out.println("goes against collected hair and jaw data " + itemId);
+		}
+		if (!showHair) tempHidesHair.add(itemId);
+		else tempShowsHair.add(itemId);
+		if (!showJaw) tempHidesJaw.add(itemId);
+		else tempShowsJaw.add(itemId);
+	}
+
+	private void follow(int itemId, int itemIdToCopy)
+	{
+		Boolean currentlyHidingHair = hidesHair.contains(itemId) ? TRUE : showsHair.contains(itemId) ? FALSE : null;
+		Boolean currentlyHidingJaw = hidesJaw.contains(itemId) ? TRUE : showsJaw.contains(itemId) ? FALSE : null;
+		Boolean hairToCopy = hidesHair.contains(itemIdToCopy) ? TRUE : showsHair.contains(itemIdToCopy) ? FALSE : null;
+		Boolean jawToCopy = hidesJaw.contains(itemIdToCopy) ? TRUE : showsJaw.contains(itemIdToCopy) ? FALSE : null;
+		if (hairToCopy == null || jawToCopy == null) {
+			System.out.println("copied item " + itemId + " didn't have enough data " + hairToCopy + " " + jawToCopy);
+			return;
+		}
+
+		boolean warnSuperfluous = false;
+		if (hairToCopy) {
+			if (currentlyHidingHair == null) {
+				tempHidesHair.add(itemId);
+			} else if (currentlyHidingHair) {
+				// skip;
+				warnSuperfluous = true;
+			} else {
+				System.out.println("item " + itemId + " was told to follow something that the data disagrees with.");
+			}
+		} else {
+			if (currentlyHidingHair == null) {
+				tempShowsHair.add(itemId);
+			} else if (currentlyHidingHair) {
+				System.out.println("item " + itemId + " was told to follow something that the data disagrees with.");
+			} else {
+				// skip;
+				warnSuperfluous = true;
+			}
+		}
+		if (jawToCopy) {
+			if (currentlyHidingJaw == null) {
+				tempHidesJaw.add(itemId);
+			} else if (currentlyHidingJaw) {
+				// skip;
+				if (warnSuperfluous) {
+					System.out.println("itemId " + itemId + " follow is superfluous.");
+				}
+			} else {
+				System.out.println("item " + itemId + " was told to follow something that the data disagrees with.");
+			}
+		} else {
+			if (currentlyHidingJaw == null) {
+				tempShowsJaw.add(itemId);
+			} else if (currentlyHidingJaw) {
+				System.out.println("item " + itemId + " was told to follow something that the data disagrees with.");
+			} else {
+				// skip;
+				if (warnSuperfluous) {
+					System.out.println("itemId " + itemId + " follow is superfluous.");
+				}
+			}
+		}
+	}
+
+	private void addSlotData(Set<Integer> showsArms, Set<Integer> hidesHair, Set<Integer> hidesJaw, Map<Integer, Set<List<Integer>>> poseanims)
+	{
+		for (int i = 0; i < client.getItemCount(); i++)
+		{
+			ItemComposition itemComposition = plugin.itemManager.getItemComposition(i);
+			if (itemComposition.getPlaceholderTemplateId() != -1 || itemComposition.getNote() != -1) continue;
+
+			Integer slot = SLOT_OVERRIDES.get(i);
+			if (slot == null) {
+				ItemStats itemStats = plugin.itemManager.getItemStats(i, false);
+				if (itemStats != null && itemStats.isEquipable())
+				{
+					slot = itemStats.getEquipment().getSlot();
+				}
+			}
+			if (slot == null) continue;
+
+			if (slot == TORSO_SLOT)
+			{
+				if (!hidesArms.contains(i) && !this.showsArms.contains(i))
+				{
+					Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
+					boolean shown = false;
+					for (Integer variation : variations)
+					{
+						if (this.showsArms.contains(variation)) {
+							shown = true;
+							break;
+						}
+					}
+					if (shown)
+					{
+						showsArms.add(i);
+					} else {
+//								System.out.println(itemManager.getItemComposition(i).getName() + " " + i);
+					}
+				}
+			}
+			else if (slot == HEAD_SLOT)
+			{
+				if (!hidesHair.contains(i) && !this.showsHair.contains(i))
+				{
+					Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
+					boolean hides = false;
+					for (Integer variation : variations)
+					{
+						if (this.hidesHair.contains(variation)) {
+							hides = true;
+							break;
+						}
+					}
+					if (hides)
+					{
+						hidesHair.add(i);
+					} else {
+//								System.out.println(itemManager.getItemComposition(i).getName() + " " + i);
+					}
+				}
+				if (!hidesJaw.contains(i) && !this.showsJaw.contains(i))
+				{
+					Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
+					boolean hides = false;
+					for (Integer variation : variations)
+					{
+						if (this.hidesJaw.contains(variation)) {
+							hides = true;
+							break;
+						}
+					}
+					if (hides)
+					{
+						hidesJaw.add(i);
+					} else {
+//								System.out.println(itemManager.getItemComposition(i).getName() + " " + i);
+					}
+				}
+			}
+//			else if (slot == WEAPON_SLOT)
+//			{
+//				if (!this.poseanims.containsKey(i))
+//				{
+//					Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
+//					boolean found = false;
+//					for (Integer variation : variations)
+//					{
+//						if (this.poseanims.containsKey(variation)) {
+//							poseanims.put(i, this.poseanims.get(variation));
+//							found = true;
+//							break;
+//						}
+//					}
+//					if (found)
+//					{
+//					} else {
+////						System.out.println(itemManager.getItemComposition(i).getName() + " " + i);
+//					}
+//				}
+//			}
+		}
+	}
+
+	private static void addUnequippable(int itemId, KitType kitType) {
+		addUnequippable(itemId, kitType, null);
+	}
+
+	private static void addUnequippable(int itemId, KitType kitType, String name) {
+		addUnequippable(itemId, kitType, name, -1);
+	}
+
+	private static void addUnequippable(int itemId, KitType kitType, String name, int iconId) {
+		OVERRIDE_EQUIPPABILITY_OR_SLOT.put(itemId, kitType.getIndex());
+		if (name != null || iconId != -1) {
+			EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT_NAMES.put(itemId, new Constants.NameAndIconId(name, iconId));
+		}
+	}
+
+	@Subscribe
+	public void onClientTick(ClientTick clientTick) {
+//		for (int i = 0; i < Math.min(100, client.getLocalPlayer().getModel().getFaceColors1().length); i++)
+//		for (int i = 0; i < client.getLocalPlayer().getModel().getFaceColors1().length; i++)
+//		{
+//			client.getLocalPlayer().getModel().getFaceColors1()[i] = 0;
+//		}
+		if (demoanim != -1) {
+//			client.getLocalPlayer().setAnimation(demoanim);
+//			client.getLocalPlayer().setAnimationFrame(0);
+		}
+		if (demogfx != -1 && client.getLocalPlayer().getGraphic() != demogfx) {
+			client.getLocalPlayer().setGraphic(demogfx);
+			client.getLocalPlayer().setSpotAnimFrame(0);
+		}
+	}
+
+	@Subscribe
+	public void onMenuOptionClicked(MenuOptionClicked menuOptionClicked)
+	{
+		if (menuOptionClicked.getMenuOption().equals("Use") && menuOptionClicked.getItemId() == 563) {
+			if (demoanim != -1) {
+				demoanim--;
+				for (Constants.ActorAnimation value : values())
+				{
+					value.setAnimation(client.getLocalPlayer(), demoanim);
+				}
+				System.out.println("demo anim " + demoanim);
+				client.playSoundEffect(demoanim);
+			}
+			if (demogfx != -1) {
+				demogfx--;
+				client.getLocalPlayer().setGraphic(demogfx);
+				client.getLocalPlayer().setSpotAnimFrame(0);
+				client.getLocalPlayer().setGraphicHeight(0);
+				System.out.println("demo gfx " + demogfx);
+			}
+		} else if (menuOptionClicked.getMenuOption().equals("Use") && menuOptionClicked.getItemId() == 995){
+			if (demoanim != -1) {
+				demoanim++;
+				client.playSoundEffect(demoanim);
+				for (Constants.ActorAnimation value : values())
+				{
+					value.setAnimation(client.getLocalPlayer(), demoanim);
+				}
+				System.out.println("demo anim " + demoanim);
+			}
+			if (demogfx != -1) {
+				demogfx++;
+				System.out.println("demo gfx " + demogfx);
+			}
+		}
+//		System.out.println(menuOptionClicked.getMenuOption() + " " + Text.removeTags(menuOptionClicked.getMenuTarget()));
+	}
+
+	private void showDiffs(Set<Integer> fromCache, Set<Integer> fromInGame, String name)
+	{
+		Set<Integer> extraFromCache = new HashSet<>();
+		extraFromCache.addAll(fromCache);
+		extraFromCache.removeAll(fromInGame);
+		System.out.println(name + " extra from cache " + extraFromCache);
+		Set<Integer> extraFromManual = new HashSet<>();
+		extraFromManual.addAll(fromInGame);
+		extraFromManual.removeAll(fromCache);
+		System.out.println(name + " extra from manual " + extraFromManual);
+	}
+
+	private final class ItemDef {
+		int id;
+		int wearPos1;
+		int wearPos2;
+		int wearPos3;
 	}
 
 	private List<ProjectileCast> getProjectileCasts()
