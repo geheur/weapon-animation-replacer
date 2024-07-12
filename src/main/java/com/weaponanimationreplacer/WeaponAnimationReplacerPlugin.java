@@ -128,6 +128,8 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	WeaponAnimationReplacerPluginPanel pluginPanel;
 	private NavigationButton navigationButton;
 
+	boolean debug = false;
+
 	/**
 	 * This is updated earlier than the player's equipment inventory. It uses the kit data, so it will have some negative numbers in it if there is no gear in that slot, or it is a jaw/hair/arms or something like that.
 	 */

@@ -206,7 +206,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 						addItemWidgetItem(
 							itemId,
 							iconId,
-							name,
+							name + (plugin.debug ? " (" + itemId + ")" : ""),
 							container,
 							x,
 							y,
