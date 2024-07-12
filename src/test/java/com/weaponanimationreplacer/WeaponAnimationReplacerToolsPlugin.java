@@ -117,6 +117,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 	@Override
 	public void startUp()
 	{
+		plugin.debug = true;
 		SpellDataCollector sdc = new SpellDataCollector(plugin);
 		this.getInjector().injectMembers(sdc);
 		eventBus.register(sdc);
@@ -151,6 +152,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 
 	@Override
 	public void shutDown() {
+		plugin.debug = false;
 		for (int i = 0; i < fileNames.length; i++)
 		{
 			String fileName = fileNames[i];
