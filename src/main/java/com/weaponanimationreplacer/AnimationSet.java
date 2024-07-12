@@ -83,7 +83,7 @@ public class AnimationSet implements Comparable<AnimationSet> {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		AnimationSet that = (AnimationSet) o;
-		return Objects.equals(name, that.name) && Objects.equals(animations, that.animations);
+		return Objects.equals(name, that.name) && Arrays.equals(animations, that.animations);
 	}
 
 	@Override

@@ -46,6 +46,7 @@ public final class ProjectileCast
 
 		int castAnimation = -1;
 		int castGfx = -1;
+		int castGfxHeight = -1;
 		int projectileId = -1;
 		int hitGfx = -1;
 		int hitGfxHeight = -1;
@@ -83,15 +84,16 @@ public final class ProjectileCast
 		// TODO ideally remove this once you have the right values.
 		// reasonable default.
 		public ProjectileCastBuilder ids(int castAnimation, int castGfx, int projectileId, int hitGfx, int startMovement, int startHeight, int endHeight, int slope) {
-			return ids(castAnimation, castGfx, projectileId, hitGfx, startMovement, startHeight, -172, endHeight, slope);
+			return ids(castAnimation, castGfx, 0, projectileId, hitGfx, startMovement, startHeight, -172, endHeight, slope);
 		}
 
-		public ProjectileCastBuilder ids(int castAnimation, int castGfx, int projectileId, int hitGfx, int startMovement, int startHeight, int height, int endHeight, int slope) {
+		public ProjectileCastBuilder ids(int castAnimation, int castGfx, int castGfxHeight, int projectileId, int hitGfx, int startMovement, int startHeight, int height, int endHeight, int slope) {
 			this.castAnimation = castAnimation;
 			this.castGfx = castGfx;
+			this.castGfxHeight = castGfxHeight;
 			this.projectileId = projectileId;
 			this.hitGfx = hitGfx;
-			this.hitGfxHeight = endHeight; // Good enough for most spells, only a few have a different value here.
+			this.hitGfxHeight = endHeight;
 			this.startMovement = startMovement;
 			this.startHeight = startHeight;
 			this.endHeight = endHeight;
