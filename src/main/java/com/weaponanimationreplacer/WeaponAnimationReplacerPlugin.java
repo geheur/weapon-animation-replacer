@@ -30,6 +30,7 @@ import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -54,6 +55,7 @@ import net.runelite.api.Actor;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
+import net.runelite.api.ItemComposition;
 import net.runelite.api.JagexColor;
 import net.runelite.api.Model;
 import net.runelite.api.NPC;
@@ -69,6 +71,7 @@ import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.InteractingChanged;
 import net.runelite.api.events.PlayerChanged;
+import net.runelite.api.events.PostItemComposition;
 import net.runelite.api.events.ProjectileMoved;
 import net.runelite.api.events.SoundEffectPlayed;
 import net.runelite.api.kit.KitType;
@@ -1020,6 +1023,42 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
     public String itemDisplayName(int itemId) {
 		return Constants.getName(itemId, itemManager.getItemComposition(itemId).getMembersName());
+	}
+
+	@Subscribe public void onPostItemComposition(PostItemComposition e) {
+		ItemComposition itemComposition = e.getItemComposition();
+		if (itemComposition.getId() == 12791) {
+			itemComposition.setInventoryModel(5453);
+			itemComposition.setXan2d(512);
+			itemComposition.setYan2d(475);
+			itemComposition.setZan2d(13);
+			System.out.println(itemComposition.getClass().getSimpleName());
+			for (Field declaredField : itemComposition.getClass().getDeclaredFields())
+			{
+				declaredField.setAccessible(true);
+				Object o = null;
+				try
+				{
+					o = declaredField.get(itemComposition);
+				}
+				catch (IllegalAccessException illegalAccessException)
+				{
+					illegalAccessException.printStackTrace();
+				}
+				System.out.println(declaredField.getName() + " " + o);
+				if (declaredField.getName().equals("aw")) { //offsetx2d?
+					System.out.println("\t" + (-174695287 * (Integer) o));
+					try
+					{
+						declaredField.set(itemComposition, -1091577415 * 320);
+					}
+					catch (IllegalAccessException illegalAccessException)
+					{
+						illegalAccessException.printStackTrace();
+					}
+				}
+			}
+		}
 	}
 
 	public String itemName(Integer itemId)

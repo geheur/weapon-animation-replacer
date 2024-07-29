@@ -42,6 +42,7 @@ public class AnimationSets
 			.put(ATTACK_SLASH, 8289)
 			.put(ATTACK_CRUSH, 8290)
 			.put(ATTACK_STAB, 8288)
+			.put(DEFEND, 420)
 			.build();
 		new AnimationSetBuilder("Flying Carpet")
 			.poseAnims(6936, 6936, 6936, 6936, 6936, 6936, 6936)
@@ -666,6 +667,12 @@ public class AnimationSets
 		new AnimationSetBuilder("Warped sceptre")
 			.copy("Staff")
 			.put(ATTACK, 10501)
+			.build();
+		new AnimationSetBuilder("Shield")
+			.put(DEFEND, 1156)
+			.build();
+		new AnimationSetBuilder("Defender")
+			.put(DEFEND, 4177)
 			.build();
 
 		return animationSets;

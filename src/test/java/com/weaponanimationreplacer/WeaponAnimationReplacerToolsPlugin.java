@@ -464,6 +464,11 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 
 	@Subscribe
 	public void onCommandExecuted(CommandExecuted commandExecuted) {
+		System.out.println("clearing cache");
+		System.out.println(itemManager.getClass().getSimpleName());
+		client.getItemCompositionCache().reset();
+		client.getItemSpriteCache().reset();
+		client.getItemModelCache().reset();
 		Player player2 = client.getLocalPlayer();
 		final WorldPoint playerPos = player2.getWorldLocation();
 		if (playerPos == null)
@@ -476,6 +481,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		Projectile p = client.createProjectile(1465, playerPos.getPlane(), playerPosLocal.getX(), playerPosLocal.getY(), -636, client.getGameCycle(), client.getGameCycle() + 50, 16, 64, 124, null, 6208, 6464);
 //		Projectile p = client.createProjectile(1465, plane, playerPosLocal.getX(), playerPosLocal.getY(), -636, client.getGameCycle(), client.getGameCycle() + 50, 16, 64, 124, null, targetX, targetY);
 		String[] arguments = commandExecuted.getArguments();
+		List<String> argumentsList = Arrays.asList(commandExecuted.getArguments());
 		String command = commandExecuted.getCommand();
 
 		if (command.equals("sfx")) {
@@ -699,7 +705,8 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		}
 
 		if (command.equals("json")) {
-			json();
+			boolean skipItemDefs = !argumentsList.contains("full");
+			json(skipItemDefs);
 		}
 
 		if (command.equals("checkunequippables"))
@@ -1154,18 +1161,27 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		System.out.println(removeItem);
 	}
 
-	private void json()
+	private void json(boolean skipItemDefs)
 	{
 		Constants.Data data = new Constants.Data();
-		data.version = 3;
+		data.version = 4;
 
-		List<ItemDef> itemDefs = getItemDefs();
+		Constants.Data bundledData = Constants.getBundledData(plugin.runeliteGson);
+		if (!skipItemDefs) {
+			List<ItemDef> itemDefs = getItemDefs();
 
-		Map<Integer, List<Integer>> kitIndexToItemIds = getSlotAndNameData(itemDefs);
-		data.slotOverrides = kitIndexToItemIds;
-		data.nameIconOverrides = EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT_NAMES;
+			Map<Integer, List<Integer>> kitIndexToItemIds = getSlotAndNameData(itemDefs);
+			data.slotOverrides = kitIndexToItemIds;
+			data.nameIconOverrides = EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT_NAMES;
 
-		addHidesArmsHairAndJaw(data, itemDefs);
+			addHidesArmsHairAndJaw(data, itemDefs);
+		} else {
+			data.slotOverrides = bundledData.slotOverrides;
+			data.nameIconOverrides = bundledData.nameIconOverrides;
+			data.showArms = bundledData.showArms;
+			data.hideHair = bundledData.hideHair;
+			data.hideJaw = bundledData.hideJaw;
+		}
 
 		Map<Integer, AnimationSet> itemIdToAnimationSet = getWeaponToAnimationSet();
 		Map<String, List<Integer>> poseanims = new HashMap<>();
@@ -1188,8 +1204,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		String s = plugin.runeliteGson.toJson(data);
 		System.out.println("your uhohlist is " + uhohList);
 
-		System.out.println("Json diffs:");
-		Constants.Data bundledData = Constants.getBundledData(plugin.runeliteGson);
+		System.out.println("     ##### Json diffs: #####");
 		System.out.println(bundledData.version + " " + data.version);
 		showDiffs(bundledData.showArms, data.showArms, "show arms");
 		showDiffs(bundledData.hideHair, data.hideHair, "hide hair");
@@ -1202,11 +1217,11 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 			ids2 = ids2 == null ? new ArrayList<>() : ids2;
 			showDiffs(ids1, ids2, "kittype " + value);
 		}
-		System.out.println(bundledData.poseanims.equals(data.poseanims));
-		System.out.println(bundledData.animationSets.equals(data.animationSets));
-		System.out.println(bundledData.descriptions.equals(data.descriptions));
-		System.out.println(bundledData.nameIconOverrides.equals(data.nameIconOverrides));
-		System.out.println(bundledData.projectiles.equals(data.projectiles));
+		System.out.println("poseanims: " + bundledData.poseanims.equals(data.poseanims) + " " + bundledData.poseanims.size() + " " + data.poseanims.size());
+		System.out.println("animationsets: " + bundledData.animationSets.equals(data.animationSets) + " " + bundledData.animationSets.size() + " " + data.animationSets.size());
+		System.out.println("descriptions: " + bundledData.descriptions.equals(data.descriptions));
+		System.out.println("nameiconoverrides: " + bundledData.nameIconOverrides.equals(data.nameIconOverrides));
+		System.out.println("projectiles: " + bundledData.projectiles.equals(data.projectiles));
 //		showDiffs(bundledData.slotOverrides, data.slotOverrides, "slot overrides");
 
 		System.out.println("json is \n" + s);
@@ -2609,16 +2624,18 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 //		System.out.println(menuOptionClicked.getMenuOption() + " " + Text.removeTags(menuOptionClicked.getMenuTarget()));
 	}
 
-	private void showDiffs(Collection<Integer> fromCache, Collection<Integer> fromInGame, String name)
+	private void showDiffs(Collection<Integer> before, Collection<Integer> after, String name)
 	{
 		Set<Integer> extraFromCache = new HashSet<>();
-		extraFromCache.addAll(fromCache);
-		extraFromCache.removeAll(fromInGame);
-		System.out.println(name + " extra from cache " + extraFromCache);
+		extraFromCache.addAll(before);
+		extraFromCache.removeAll(after);
 		Set<Integer> extraFromManual = new HashSet<>();
-		extraFromManual.addAll(fromInGame);
-		extraFromManual.removeAll(fromCache);
-		System.out.println(name + " extra from manual " + extraFromManual);
+		extraFromManual.addAll(after);
+		extraFromManual.removeAll(before);
+		if (!extraFromCache.isEmpty() || !extraFromManual.isEmpty()) {
+			System.out.print(name + " removed " + extraFromCache);
+			System.out.println(" added " + extraFromManual);
+		}
 	}
 
 //	private void showDiffs(Map<Integer, List<Integer>> slotOverrides, Map<Integer, List<Integer>> slotOverrides1, String slot_overrides)
