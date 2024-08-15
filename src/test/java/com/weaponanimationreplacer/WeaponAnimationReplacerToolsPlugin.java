@@ -464,11 +464,6 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 
 	@Subscribe
 	public void onCommandExecuted(CommandExecuted commandExecuted) {
-		System.out.println("clearing cache");
-		System.out.println(itemManager.getClass().getSimpleName());
-		client.getItemCompositionCache().reset();
-		client.getItemSpriteCache().reset();
-		client.getItemModelCache().reset();
 		Player player2 = client.getLocalPlayer();
 		final WorldPoint playerPos = player2.getWorldLocation();
 		if (playerPos == null)
@@ -1164,7 +1159,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 	private void json(boolean skipItemDefs)
 	{
 		Constants.Data data = new Constants.Data();
-		data.version = 4;
+		data.version = 5;
 
 		Constants.Data bundledData = Constants.getBundledData(plugin.runeliteGson);
 		if (!skipItemDefs) {
@@ -1305,9 +1300,11 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		Map<Integer, List<Integer>> kitIndexToItemIds = new HashMap<>();
 		for (Integer itemId : OVERRIDE_EQUIPPABILITY_OR_SLOT.keySet())
 		{
-			List<Integer> itemIds = kitIndexToItemIds.getOrDefault(OVERRIDE_EQUIPPABILITY_OR_SLOT.get(itemId), new ArrayList<>());
+			Integer slot = OVERRIDE_EQUIPPABILITY_OR_SLOT.get(itemId);
+			if (slot == -1) continue;
+			List<Integer> itemIds = kitIndexToItemIds.getOrDefault(slot, new ArrayList<>());
 			itemIds.add(itemId);
-			kitIndexToItemIds.put(OVERRIDE_EQUIPPABILITY_OR_SLOT.get(itemId), itemIds);
+			kitIndexToItemIds.put(slot, itemIds);
 		}
 		return kitIndexToItemIds;
 	}

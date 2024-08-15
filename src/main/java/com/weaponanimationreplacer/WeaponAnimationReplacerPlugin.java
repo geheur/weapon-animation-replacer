@@ -27,10 +27,12 @@ import com.weaponanimationreplacer.Swap.SoundSwap;
 import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.MODEL_SWAP;
 import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.SPELL_R;
 import java.awt.Color;
+import java.awt.Point;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -55,7 +57,7 @@ import net.runelite.api.Actor;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
-import net.runelite.api.ItemComposition;
+import net.runelite.api.ItemID;
 import net.runelite.api.JagexColor;
 import net.runelite.api.Model;
 import net.runelite.api.NPC;
@@ -75,6 +77,8 @@ import net.runelite.api.events.PostItemComposition;
 import net.runelite.api.events.ProjectileMoved;
 import net.runelite.api.events.SoundEffectPlayed;
 import net.runelite.api.kit.KitType;
+import net.runelite.api.widgets.ComponentID;
+import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
@@ -84,6 +88,10 @@ import net.runelite.client.events.ProfileChanged;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.SpriteManager;
 import net.runelite.client.game.chatbox.ChatboxPanelManager;
+import net.runelite.client.input.KeyListener;
+import net.runelite.client.input.KeyManager;
+import net.runelite.client.input.MouseListener;
+import net.runelite.client.input.MouseManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
@@ -232,9 +240,123 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		return customGson;
 	}
 
+//	@Subscribe public void onPostItemComposition(PostItemComposition e) {
+//	}
+//
+	@Inject KeyManager keyManager;
+	@Inject MouseManager mouseManager;
+	boolean down;
+	int horizonal;
+	int vertical;
+	int originalx;
+	int originaly;
+	int itemId;
 	@Override
     protected void startUp()
     {
+    	mouseManager.registerMouseListener(new MouseListener()
+		{
+			@Override
+			public MouseEvent mouseClicked(MouseEvent mouseEvent)
+			{
+				return mouseEvent;
+			}
+
+			@Override
+			public MouseEvent mousePressed(MouseEvent mouseEvent)
+			{
+				Widget widget = client.getWidget(ComponentID.INVENTORY_CONTAINER);
+				System.out.println(widget.getDynamicChildren().length);
+				int i = 0;
+				for (Widget dynamicChild : widget.getDynamicChildren())
+				{
+					i++;
+					if (dynamicChild.getBounds().contains(new Point(mouseEvent.getX(), mouseEvent.getY()))) {
+
+						itemId = dynamicChild.getItemId();
+						System.out.println("here " + i + " " + itemId);
+					}
+				}
+				horizonal = vertical = 0;
+				originalx = mouseEvent.getX();
+				originaly = mouseEvent.getY();
+				return mouseEvent;
+			}
+
+			@Override
+			public MouseEvent mouseReleased(MouseEvent mouseEvent)
+			{
+				if (down) {
+					System.out.println("resetting " + horizonal + " " + vertical);
+					horizonal = originalx - mouseEvent.getX();
+					vertical = originaly - mouseEvent.getY();
+//					client.getItemCompositionCache().reset();
+//					client.getItemModelCache().reset();
+//					client.getItemSpriteCache().reset();
+				}
+				return mouseEvent;
+			}
+
+			@Override
+			public MouseEvent mouseEntered(MouseEvent mouseEvent)
+			{
+				return mouseEvent;
+			}
+
+			@Override
+			public MouseEvent mouseExited(MouseEvent mouseEvent)
+			{
+				return mouseEvent;
+			}
+
+			@Override
+			public MouseEvent mouseDragged(MouseEvent mouseEvent)
+			{
+				if (!down) return mouseEvent;
+				System.out.println("here");
+				horizonal = originalx - mouseEvent.getX();
+				vertical = originaly - mouseEvent.getY();
+				if (client.getGameCycle() % 10 == 0)
+				{
+					clientThread.invoke(() -> {
+						client.getItemCompositionCache().reset();
+						client.getItemModelCache().reset();
+						client.getItemSpriteCache().reset();
+					});
+				}
+				return mouseEvent;
+			}
+
+			@Override
+			public MouseEvent mouseMoved(MouseEvent mouseEvent)
+			{
+				return mouseEvent;
+			}
+		});
+    	keyManager.registerKeyListener(new KeyListener()
+		{
+			@Override
+			public void keyTyped(KeyEvent e)
+			{
+
+			}
+
+			@Override
+			public void keyPressed(KeyEvent e)
+			{
+				if (e.getKeyCode() == 27) {
+					down = true;
+				}
+			}
+
+			@Override
+			public void keyReleased(KeyEvent e)
+			{
+				if (e.getKeyCode() == 27) {
+					down = false;
+				}
+			}
+		});
 		clientThread.invokeLater(() -> {
 			transmogManager.startUp();
 			eventBus.register(transmogManager);
@@ -1026,39 +1148,45 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	}
 
 	@Subscribe public void onPostItemComposition(PostItemComposition e) {
-		ItemComposition itemComposition = e.getItemComposition();
-		if (itemComposition.getId() == 12791) {
-			itemComposition.setInventoryModel(5453);
-			itemComposition.setXan2d(512);
-			itemComposition.setYan2d(475);
-			itemComposition.setZan2d(13);
-			System.out.println(itemComposition.getClass().getSimpleName());
-			for (Field declaredField : itemComposition.getClass().getDeclaredFields())
-			{
-				declaredField.setAccessible(true);
-				Object o = null;
-				try
-				{
-					o = declaredField.get(itemComposition);
-				}
-				catch (IllegalAccessException illegalAccessException)
-				{
-					illegalAccessException.printStackTrace();
-				}
-				System.out.println(declaredField.getName() + " " + o);
-				if (declaredField.getName().equals("aw")) { //offsetx2d?
-					System.out.println("\t" + (-174695287 * (Integer) o));
-					try
-					{
-						declaredField.set(itemComposition, -1091577415 * 320);
-					}
-					catch (IllegalAccessException illegalAccessException)
-					{
-						illegalAccessException.printStackTrace();
-					}
-				}
-			}
+		if (e.getItemComposition().getId() == ItemID.GHRAZI_RAPIER) {
+			System.out.println("postitemcomposition " + itemId + " " + horizonal + " " + vertical);
+			e.getItemComposition().setXan2d(e.getItemComposition().getXan2d() + horizonal * 4);
+//			e.getItemComposition().setYan2d();
+			e.getItemComposition().setZan2d(e.getItemComposition().getZan2d() + vertical * 4);
 		}
+//		ItemComposition itemComposition = e.getItemComposition();
+//		if (itemComposition.getId() == 12791) {
+//			itemComposition.setInventoryModel(5453);
+//			itemComposition.setXan2d(512);
+//			itemComposition.setYan2d(475);
+//			itemComposition.setZan2d(13);
+//			System.out.println(itemComposition.getClass().getSimpleName());
+//			for (Field declaredField : itemComposition.getClass().getDeclaredFields())
+//			{
+//				declaredField.setAccessible(true);
+//				Object o = null;
+//				try
+//				{
+//					o = declaredField.get(itemComposition);
+//				}
+//				catch (IllegalAccessException illegalAccessException)
+//				{
+//					illegalAccessException.printStackTrace();
+//				}
+//				System.out.println(declaredField.getName() + " " + o);
+//				if (declaredField.getName().equals("aw")) { //offsetx2d?
+//					System.out.println("\t" + (-174695287 * (Integer) o));
+//					try
+//					{
+//						declaredField.set(itemComposition, -1091577415 * 320);
+//					}
+//					catch (IllegalAccessException illegalAccessException)
+//					{
+//						illegalAccessException.printStackTrace();
+//					}
+//				}
+//			}
+//		}
 	}
 
 	public String itemName(Integer itemId)
@@ -1098,6 +1226,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		Player player = client.getLocalPlayer();
 		if (!e.getActor().equals(player)) return;
 //		System.out.println("onanimationchanged");
+		System.out.println("animation changed " + player.getAnimation() + " " + lastRealAnimation);
 
 		lastRealAnimation = player.getAnimation();
 
