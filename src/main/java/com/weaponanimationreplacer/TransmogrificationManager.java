@@ -41,6 +41,7 @@ import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.Player;
 import net.runelite.api.PlayerComposition;
+import static net.runelite.api.PlayerComposition.ITEM_OFFSET;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.RuneScapeProfileChanged;
@@ -122,15 +123,15 @@ public class TransmogrificationManager
 		// show slots.
 		Integer arms = swaps[ARMS_SLOT];
 		if (arms != null && arms == SHOW_SLOT) {
-        	swaps[ARMS_SLOT] = getBaseArms() - 512;
+        	swaps[ARMS_SLOT] = getBaseArms() - ITEM_OFFSET;
 		}
 		Integer hair = swaps[HAIR_SLOT];
 		if (hair != null && hair == SHOW_SLOT) {
-			swaps[HAIR_SLOT] = getBaseHair() - 512;
+			swaps[HAIR_SLOT] = getBaseHair() - ITEM_OFFSET;
 		}
 		Integer jaw = swaps[JAW_SLOT];
 		if (jaw != null && jaw == SHOW_SLOT) {
-			swaps[JAW_SLOT] = getBaseJaw() - 512;
+			swaps[JAW_SLOT] = getBaseJaw() - ITEM_OFFSET;
 		}
 
 		// auto-apply arms/hair/jaw.
@@ -139,7 +140,7 @@ public class TransmogrificationManager
 		{
 			if (swaps[ARMS_SLOT] == null)
 			{
-				swaps[ARMS_SLOT] = SHOWS_ARMS.contains(torso) ? getBaseArms() - 512 : 0;
+				swaps[ARMS_SLOT] = SHOWS_ARMS.contains(torso) ? getBaseArms() - ITEM_OFFSET : 0;
 			}
 		}
 		Integer head = swaps[HEAD_SLOT];
@@ -147,18 +148,18 @@ public class TransmogrificationManager
 		{
 			if (swaps[HAIR_SLOT] == null)
 			{
-				swaps[HAIR_SLOT] = !HIDES_HAIR.contains(head) ? getBaseHair() - 512 : 0;
+				swaps[HAIR_SLOT] = !HIDES_HAIR.contains(head) ? getBaseHair() - ITEM_OFFSET : 0;
 			}
-			if (swaps[JAW_SLOT] == null && kits[JAW_SLOT] <= 512) // Do not replace people's blue icons.
+			if (swaps[JAW_SLOT] == null && kits[JAW_SLOT] <= ITEM_OFFSET) // Do not replace people's blue icons.
 			{
-				swaps[JAW_SLOT] = !HIDES_JAW.contains(head) ? getBaseJaw() - 512 : 0;
+				swaps[JAW_SLOT] = !HIDES_JAW.contains(head) ? getBaseJaw() - ITEM_OFFSET : 0;
 			}
 		}
 
 		for (int i = 0; i < swaps.length; i++)
 		{
 			if (swaps[i] != null) {
-				kits[i] = swaps[i] + 512;
+				kits[i] = swaps[i] + ITEM_OFFSET;
 			}
 		}
 

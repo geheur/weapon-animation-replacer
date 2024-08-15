@@ -59,6 +59,7 @@ import net.runelite.api.Model;
 import net.runelite.api.NPC;
 import net.runelite.api.Perspective;
 import net.runelite.api.Player;
+import static net.runelite.api.PlayerComposition.ITEM_OFFSET;
 import net.runelite.api.Projectile;
 import net.runelite.api.RuneLiteObject;
 import net.runelite.api.coords.LocalPoint;
@@ -1094,7 +1095,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	public void onPlayerChanged(PlayerChanged playerChanged) {
 		if (playerChanged.getPlayer() != client.getLocalPlayer()) return;
 
-		equippedItemsFromKit = IntStream.of(client.getLocalPlayer().getPlayerComposition().getEquipmentIds()).map(i -> itemManager.canonicalize(i - 512)).boxed().collect(Collectors.toList());
+		equippedItemsFromKit = IntStream.of(client.getLocalPlayer().getPlayerComposition().getEquipmentIds()).map(i -> itemManager.canonicalize(i - ITEM_OFFSET)).boxed().collect(Collectors.toList());
 		recordNaturalPlayerPoseAnimations();
 
 		transmogManager.reapplyTransmog();

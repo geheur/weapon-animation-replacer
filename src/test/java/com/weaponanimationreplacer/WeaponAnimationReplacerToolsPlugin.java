@@ -48,6 +48,7 @@ import net.runelite.api.ItemID;
 import net.runelite.api.Perspective;
 import net.runelite.api.Player;
 import net.runelite.api.PlayerComposition;
+import static net.runelite.api.PlayerComposition.ITEM_OFFSET;
 import net.runelite.api.Projectile;
 import net.runelite.api.SpriteID;
 import net.runelite.api.WorldType;
@@ -203,9 +204,9 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 //		System.out.println(player.getName());
 		PlayerComposition comp = player.getPlayerComposition();
 		int[] kits = comp.getEquipmentIds();
-		int body = kits[TORSO_SLOT] - 512;
+		int body = kits[TORSO_SLOT] - ITEM_OFFSET;
 		int arms = kits[ARMS_SLOT];
-		int head = kits[HEAD_SLOT] - 512;
+		int head = kits[HEAD_SLOT] - ITEM_OFFSET;
 		int hair = kits[HAIR_SLOT];
 		int jaw = kits[JAW_SLOT];
 		boolean female = comp.getGender() == 1;
@@ -231,7 +232,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		}
 		if (uhoh) System.out.println("\tuhoh " + player.getName() + " " + Arrays.stream(kits).boxed().collect(Collectors.toList()) + " " + female);
 
-		int weapon = kits[WEAPON_SLOT] - 512;
+		int weapon = kits[WEAPON_SLOT] - ITEM_OFFSET;
 		if (weapon >= 0) {
 			if (plugin.itemManager.getItemComposition(weapon).isMembers() && !client.getWorldType().contains(WorldType.MEMBERS))
 				return;
