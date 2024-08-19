@@ -205,12 +205,11 @@ public class TransmogrificationManager
 	private static final int DEFAULT_MALE_HAIR = 256 + 0;
 	private static final int DEFAULT_FEMALE_HAIR = 256 + 45;
 	private static final int DEFAULT_MALE_JAW = 256 + 14;
+	private static final int DEFAULT_FEMALE_JAW = 552;
 
 	private int getBaseJaw()
 	{
-		// Female characters don't use the jaw slot in their base model.
-		if (client.getLocalPlayer().getPlayerComposition().getGender() == 1 /* female */) return 0;
-		return getBaseModel(baseJawKit, 0, DEFAULT_MALE_JAW);
+		return getBaseModel(baseJawKit, DEFAULT_FEMALE_JAW, DEFAULT_MALE_JAW);
 	}
 
 	private int getBaseHair()
