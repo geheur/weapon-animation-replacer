@@ -631,6 +631,10 @@ public class AnimationSets
 			.copy("Dragon sword")
 			.put(ATTACK_SPEC, 11275)
 			.build();
+		new AnimationSetBuilder("Voidwaker (old spec)")
+			.copy("Voidwaker")
+			.put(ATTACK_SPEC, 1378)
+			.build();
 		new AnimationSetBuilder("Venator Bow")
 			.poseAnims(9857, 9863, 9859, 9859, 9861, 9862, 9860) // unconfirmed
 			.put(ATTACK, 9858) // unconfirmed
