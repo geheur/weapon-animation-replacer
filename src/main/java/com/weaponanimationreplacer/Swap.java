@@ -304,7 +304,7 @@ public class Swap
 
 			int slot = getTriggerItemSlot(itemRestriction, plugin);
 			slots.add(slot);
-			if (itemRestriction < 0 && equippedItemIds.get(slot) == -512 || equippedItemIds.contains(itemRestriction)) {
+			if (itemRestriction < 0 && equippedItemIds.get(slot) < 0 || equippedItemIds.contains(itemRestriction)) {
 				slotsSatisfied.add(slot);
 			}
 		}
