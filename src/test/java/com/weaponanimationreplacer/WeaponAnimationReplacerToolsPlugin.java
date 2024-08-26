@@ -698,6 +698,20 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 			System.out.println(torsoSeen + " (" + (torso - torsoSeen) + ") " + hairSeen + " (" + (head - hairSeen) + ") " + jawSeen + " (" + (head - jawSeen) + ") " + weaponSeen + " (" + (weapon - weaponSeen) + ") ");
 		}
 
+		if (command.equals("slotdata")) {
+			int i = Integer.parseInt(arguments[0]);
+			ItemStats itemStats = itemManager.getItemStats(i, false);
+			if (itemStats == null) {
+				System.out.println("itemStats was null");
+			} else {
+				ItemEquipmentStats equipment = itemStats.getEquipment();
+				if (equipment != null) {
+					System.out.println(equipment.getSlot());
+				} else {
+					System.out.println("equipmentstats was null");
+				}
+			}
+		}
 		if (command.equals("json")) {
 			boolean skipItemDefs = !argumentsList.contains("full");
 			json(skipItemDefs);
@@ -1248,6 +1262,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 				}
 			}
 		}
+		int count = 0;
 		for (ItemDef itemDef : itemDefs) {
 			if (itemDef == null) break;
 			int id = itemDef.id;
@@ -1260,6 +1275,13 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 
 			Integer cacheSlot = itemDef.getEquipSlot();
 			Integer cacheModelSlot = itemDef.getModelEquipSlot();
+			if (id == 8856) {
+
+				System.out.println(8856);
+				System.out.println(cacheSlot);
+				System.out.println(cacheModelSlot);
+				System.out.println(wikiSlot);
+			}
 			Integer myOverrideSlot = OVERRIDE_EQUIPPABILITY_OR_SLOT.get(id);
 			if (myOverrideSlot == null) {
 				if (wikiSlot != -1) {
@@ -1269,7 +1291,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 				} else {
 					if (cacheModelSlot != -1 && !modelIds.contains(itemDef.getModelHash())) {
 						OVERRIDE_EQUIPPABILITY_OR_SLOT.put(id, cacheModelSlot);
-						modelIds.add(itemDef.getModelHash());
+//						modelIds.add(itemDef.getModelHash());
 					}
 				}
 			}
@@ -1278,6 +1300,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 //				OVERRIDE_EQUIPPABILITY_OR_SLOT.put(id, cacheModelSlot);
 //			}
 			if (cacheModelSlot != -1) {
+				count++;
 				if (myOverrideSlot == cacheModelSlot && itemDef.name != null) {
 					System.out.println("not needed " + itemDef.name + " " + itemDef.id);
 				}
@@ -1299,6 +1322,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 			}
 			// check for null name.
 		}
+		System.out.println("count " + count);
 
 		Map<Integer, List<Integer>> kitIndexToItemIds = new HashMap<>();
 		for (Integer itemId : OVERRIDE_EQUIPPABILITY_OR_SLOT.keySet())
