@@ -472,7 +472,6 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		}
 
 		final LocalPoint playerPosLocal = LocalPoint.fromWorld(client, playerPos);
-		System.out.println("here");
 		Projectile p = client.createProjectile(1465, playerPos.getPlane(), playerPosLocal.getX(), playerPosLocal.getY(), -636, client.getGameCycle(), client.getGameCycle() + 50, 16, 64, 124, null, 6208, 6464);
 //		Projectile p = client.createProjectile(1465, plane, playerPosLocal.getX(), playerPosLocal.getY(), -636, client.getGameCycle(), client.getGameCycle() + 50, 16, 64, 124, null, targetX, targetY);
 		String[] arguments = commandExecuted.getArguments();
@@ -1243,10 +1242,14 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 			ItemStats itemStats = itemManager.getItemStats(i, false);
 			if (itemStats != null && itemStats.getEquipment() != null) {
 				ItemDef itemDef = itemDefs.get(i);
-				modelIds.add(itemDef.getModelHash());
+				if (itemDef != null) {
+					modelIds.add(itemDef.getModelHash());
+					break;
+				}
 			}
 		}
 		for (ItemDef itemDef : itemDefs) {
+			if (itemDef == null) break;
 			int id = itemDef.id;
 
 			int wikiSlot = -1;
@@ -1275,7 +1278,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 //				OVERRIDE_EQUIPPABILITY_OR_SLOT.put(id, cacheModelSlot);
 //			}
 			if (cacheModelSlot != -1) {
-				if (myOverrideSlot == cacheModelSlot) {
+				if (myOverrideSlot == cacheModelSlot && itemDef.name != null) {
 					System.out.println("not needed " + itemDef.name + " " + itemDef.id);
 				}
 				if (plugin.getSlotForNonNegativeModelId(id) == null && !modelIds.contains(itemDef.getModelHash())) {
@@ -1830,6 +1833,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 				ItemDef itemDef = plugin.runeliteGson.fromJson(Files.readString(path.resolve(i + ".json")), ItemDef.class);
 				itemDefs.add(itemDef);
 			} catch (IOException e) {
+				System.out.println("null item def " + i + ". Try updating cache?");
 				itemDefs.add(null);
 				e.printStackTrace();
 			}
@@ -1843,6 +1847,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		HashSet<Integer> hidesHairFromCache = new HashSet<>();
 		HashSet<Integer> hidesJawFromCache = new HashSet<>();
 		for (ItemDef itemDef : itemDefs) {
+			if (itemDef == null) break;
 			if (itemDef.wearPos1 == EquipmentInventorySlot.HEAD.getSlotIdx()) {
 				if (itemDef.wearPos2 == KitType.HAIR.getIndex() || itemDef.wearPos3 == KitType.HAIR.getIndex()) {
 					hidesHairFromCache.add(itemDef.id);
@@ -1889,7 +1894,6 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		addUnequippable(72, WEAPON); // Magic shortbow (u)
 		addUnequippable(229, WEAPON); // Vial
 		addUnequippable(6664, WEAPON); // Fishing explosive
-		addUnequippable(272, SHIELD); // Fish food
 		addUnequippable(301, WEAPON); // Lobster pot
 		addUnequippable(303, WEAPON); // Small fishing net
 		addUnequippable(305, WEAPON); // Big fishing net
@@ -1898,12 +1902,9 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		addUnequippable(309, WEAPON); // Fly fishing rod
 		addUnequippable(311, WEAPON); // Harpoon
 		addUnequippable(314, WEAPON); // Feather
-		addUnequippable(413, SHIELD); // Oyster pearls
-		addUnequippable(421, AMULET); // Lathas' amulet
 		addUnequippable(583, WEAPON); // Bailing bucket (icon empty, appears empty)
 		addUnequippable(1925, WEAPON); // Bucket
 		addUnequippable(590, WEAPON); // Tinderbox
-		addUnequippable(675, WEAPON); // Rock pick
 		addUnequippable(677, WEAPON); // Panning tray
 		addUnequippable(717, SHIELD); // Scrawled note
 		addUnequippable(718, SHIELD); // A scribbled note
@@ -1913,14 +1914,11 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		addUnequippable(796, WEAPON, "Exploding vial"); // null
 		addUnequippable(797, SHIELD, "Mortar (Pestle and mortar)"); // null
 		addUnequippable(798, WEAPON, "Pestle (Pestle and mortar)"); // null (item icon is invisible)
-		addUnequippable(818, WEAPON); // Poisoned dart(p)
-		addUnequippable(945, WEAPON); // Throwing rope
 		addUnequippable(946, WEAPON); // Knife
 		addUnequippable(952, WEAPON); // Spade
 		addUnequippable(954, WEAPON); // Rope
 		addUnequippable(970, SHIELD); // Papyrus
 		addUnequippable(973, WEAPON); // Charcoal
-		addUnequippable(1235, WEAPON); // Poisoned dagger(p)
 		addUnequippable(1511, SHIELD); // Logs
 		addUnequippable(1601, WEAPON); // Diamond
 		addUnequippable(1603, WEAPON); // Ruby
@@ -1935,30 +1933,24 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		addUnequippable(1741, SHIELD); // Leather
 		addUnequippable(1761, SHIELD); // Soft clay
 		addUnequippable(1785, WEAPON); // Glassblowing pipe
-		addUnequippable(1917, WEAPON); // Beer
 		addUnequippable(1919, WEAPON); // Beer glass. This one is the same model as one the wiki considers
 		// equippable, but this one has the better icon so I choose to include this one.
 		addUnequippable(1931, WEAPON); // Pot
 		addUnequippable(1963, WEAPON); // banana (right-handed)
 		addUnequippable(1973, SHIELD); // Chocolate bar
 		addUnequippable(2347, WEAPON); // Hammer
-		addUnequippable(2395, WEAPON); // Magic ogre potion
 		addUnequippable(2520, WEAPON); // Brown toy horsey
 		addUnequippable(2522, WEAPON); // White toy horsey
 		addUnequippable(2524, WEAPON); // Black toy horsey
 		addUnequippable(2526, WEAPON); // Grey toy horsey
-		addUnequippable(2888, WEAPON); // A stone bowl
 		addUnequippable(2946, WEAPON); // Golden tinderbox
 		addUnequippable(2949, WEAPON); // Golden hammer
 		addUnequippable(2968, SHIELD); // Druidic spell
 		addUnequippable(3080, WEAPON, "Infernal pickaxe (yellow)"); // null
-		addUnequippable(3157, WEAPON); // Karambwan vessel
 		addUnequippable(3164, SHIELD); // Karamjan rum
-		addUnequippable(3177, SHIELD); // Left-handed banana
 		addUnequippable(3711, WEAPON); // Keg of beer
 		addUnequippable(3803, WEAPON); // Beer tankard
 		addUnequippable(3850, WEAPON, "Open book (green)"); // null
-		addUnequippable(3893, WEAPON); // Stool
 		addUnequippable(3935, WEAPON, "Bench"); // null
 		addUnequippable(3937, WEAPON, "Bench"); // null
 		addUnequippable(3939, WEAPON, "Bench"); // null
@@ -1972,11 +1964,8 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 //		addUnequippable(3971, WEAPON); // null (infernal harpoon but floating)
 		addUnequippable(4032, WEAPON, "Mod ash's mug"); // null
 		addUnequippable(4080, WEAPON, "Yoyo"); // null
-		addUnequippable(4085, SHIELD); // Wax
 		addUnequippable(4155, WEAPON); // Enchanted gem
 		addUnequippable(4161, WEAPON); // Bag of salt
-		addUnequippable(4162, WEAPON); // Rock hammer
-		addUnequippable(4193, WEAPON); // Extended brush
 		addUnequippable(4251, WEAPON); // Ectophial
 		addUnequippable(4435, SHIELD); // Weather report
 		addUnequippable(4498, WEAPON); // Rope

@@ -27,7 +27,6 @@ import com.weaponanimationreplacer.Swap.SoundSwap;
 import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.MODEL_SWAP;
 import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.SPELL_R;
 import java.awt.Color;
-import java.awt.Point;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
@@ -266,20 +265,20 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			public MouseEvent mousePressed(MouseEvent mouseEvent)
 			{
 				Widget widget = client.getWidget(ComponentID.INVENTORY_CONTAINER);
-				System.out.println(widget.getDynamicChildren().length);
-				int i = 0;
-				for (Widget dynamicChild : widget.getDynamicChildren())
-				{
-					i++;
-					if (dynamicChild.getBounds().contains(new Point(mouseEvent.getX(), mouseEvent.getY()))) {
-
-						itemId = dynamicChild.getItemId();
-						System.out.println("here " + i + " " + itemId);
-					}
-				}
-				horizonal = vertical = 0;
-				originalx = mouseEvent.getX();
-				originaly = mouseEvent.getY();
+//				System.out.println(widget.getDynamicChildren().length);
+//				int i = 0;
+//				for (Widget dynamicChild : widget.getDynamicChildren())
+//				{
+//					i++;
+//					if (dynamicChild.getBounds().contains(new Point(mouseEvent.getX(), mouseEvent.getY()))) {
+//
+//						itemId = dynamicChild.getItemId();
+//						System.out.println("here " + i + " " + itemId);
+//					}
+//				}
+//				horizonal = vertical = 0;
+//				originalx = mouseEvent.getX();
+//				originaly = mouseEvent.getY();
 				return mouseEvent;
 			}
 
@@ -313,7 +312,6 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			public MouseEvent mouseDragged(MouseEvent mouseEvent)
 			{
 				if (!down) return mouseEvent;
-				System.out.println("here");
 				horizonal = originalx - mouseEvent.getX();
 				vertical = originaly - mouseEvent.getY();
 				if (client.getGameCycle() % 10 == 0)
@@ -1149,7 +1147,6 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
 	@Subscribe public void onPostItemComposition(PostItemComposition e) {
 		if (e.getItemComposition().getId() == ItemID.GHRAZI_RAPIER) {
-			System.out.println("postitemcomposition " + itemId + " " + horizonal + " " + vertical);
 			e.getItemComposition().setXan2d(e.getItemComposition().getXan2d() + horizonal * 4);
 //			e.getItemComposition().setYan2d();
 			e.getItemComposition().setZan2d(e.getItemComposition().getZan2d() + vertical * 4);
