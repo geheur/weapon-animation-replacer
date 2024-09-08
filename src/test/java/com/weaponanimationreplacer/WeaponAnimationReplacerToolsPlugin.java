@@ -1172,7 +1172,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 	private void json(boolean skipItemDefs)
 	{
 		Constants.Data data = new Constants.Data();
-		data.version = 5;
+		data.version = 6;
 
 		Constants.Data bundledData = Constants.getBundledData(plugin.runeliteGson);
 		if (!skipItemDefs) {

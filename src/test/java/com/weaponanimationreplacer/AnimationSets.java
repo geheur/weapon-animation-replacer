@@ -139,6 +139,10 @@ public class AnimationSets
 			.put(ATTACK_CRUSH, 6278)
 			.put(DEFEND, 6279)
 			.build();
+		new AnimationSetBuilder("Crab")
+			.copy("Cursed banana")
+			.put(STAND, 10051)
+			.build();
 		new AnimationSetBuilder("Elder maul")
 			.poseAnims(7518, 823, 7520, 7520, 7520, 7520, 7519)
 			.put(ATTACK_CRUSH, 7516)
@@ -479,6 +483,11 @@ public class AnimationSets
 			.poseAnims(808, 823, 819, 820, 821, 822, 824)
 			.put(ATTACK_CRUSH, 2068)
 			.put(DEFEND, 424)
+			.build();
+		new AnimationSetBuilder("Dual Macauhuitl")
+			.copy("Torag's hammers")
+			.put(ATTACK_CRUSH, 10989)
+			.put(ATTACK_SPEC, 10990)
 			.build();
 		new AnimationSetBuilder("Zamorakian spear")
 			.poseAnims(1713, 1702, 1703, 1704, 1706, 1705, 1707)
