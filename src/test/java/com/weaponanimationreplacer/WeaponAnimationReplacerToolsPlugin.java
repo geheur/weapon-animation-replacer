@@ -74,14 +74,14 @@ import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ClientShutdown;
+import net.runelite.client.game.ItemEquipmentStats;
 import net.runelite.client.game.ItemManager;
+import net.runelite.client.game.ItemStats;
 import net.runelite.client.game.ItemVariationMapping;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDependency;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.util.Text;
-import net.runelite.http.api.item.ItemEquipmentStats;
-import net.runelite.http.api.item.ItemStats;
 
 @Slf4j
 @PluginDescriptor(
@@ -436,7 +436,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		for (int i = 0; i < client.getItemCount(); i++)
 		{
 			if (s.contains(i)) continue;
-			ItemStats itemStats = itemManager.getItemStats(i, false);
+			ItemStats itemStats = itemManager.getItemStats(i);
 			if (
 				itemStats != null
 				&& itemStats.isEquipable()
@@ -530,7 +530,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 				if (comp.getPlaceholderTemplateId() != -1 || comp.getNote() != -1) continue;
 
 				Integer mySlot = SLOT_OVERRIDES.get(i);
-				ItemStats itemStats = itemManager.getItemStats(i, false);
+				ItemStats itemStats = itemManager.getItemStats(i);
 				Integer wikiSlot = itemStats != null && itemStats.isEquipable() ? itemStats.getEquipment().getSlot() : null;
 				if (mySlot == null) mySlot = wikiSlot;
 				if (mySlot == null) continue;
@@ -549,7 +549,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 			{
 				int itemId = entry.getKey();
 				ItemComposition comp = itemManager.getItemComposition(itemId);
-				ItemStats stats = itemManager.getItemStats(itemId, false);
+				ItemStats stats = itemManager.getItemStats(itemId);
 			}
 		}
 
@@ -580,7 +580,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 				Integer slot = SLOT_OVERRIDES.get(i);
 				if (slot == -1) continue;
 				if (slot == null) {
-					ItemStats itemStats = plugin.itemManager.getItemStats(i, false);
+					ItemStats itemStats = plugin.itemManager.getItemStats(i);
 					if (itemStats != null && itemStats.isEquipable())
 					{
 						slot = itemStats.getEquipment().getSlot();
@@ -699,7 +699,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 			System.out.println("checking unequippables");
 			for (Map.Entry<Integer, Integer> integerIntegerEntry : Constants.SLOT_OVERRIDES.entrySet())
 			{
-				ItemStats itemStats = itemManager.getItemStats(integerIntegerEntry.getKey(), false);
+				ItemStats itemStats = itemManager.getItemStats(integerIntegerEntry.getKey());
 				if (itemStats == null || !itemStats.isEquipable())
 					continue;
 				if (itemStats.getEquipment().getSlot() != integerIntegerEntry.getValue()) {
@@ -802,7 +802,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 							0
 						;
 					hashToItemIds.put(h, i);
-					ItemStats itemStats = itemManager.getItemStats(i, false);
+					ItemStats itemStats = itemManager.getItemStats(i);
 					if (itemStats != null && itemStats.isEquipable()) continue;
 					unequippableWithModel.add(i);
 //					System.out.println(i + " " + itemManager.getItemComposition(i).getName());
@@ -822,7 +822,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 					if (itemIds.stream().sorted(Integer::compare).findFirst().get() != itemId) dupe = true;
 					for (Integer id : itemIds)
 					{
-						ItemStats itemStats = itemManager.getItemStats(id, false);
+						ItemStats itemStats = itemManager.getItemStats(id);
 						if (itemStats != null && itemStats.isEquipable()) {
 							hasEquippableCounterpart = true;
 							break;
@@ -837,7 +837,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 						{
 							if (integer1 == itemId) continue;
 							boolean equippable = false;
-							ItemStats itemStats = itemManager.getItemStats(integer1, false);
+							ItemStats itemStats = itemManager.getItemStats(integer1);
 							if (itemStats != null && itemStats.isEquipable()) {
 								equippable = true;
 							}
@@ -911,7 +911,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 			Map<Integer, Integer> map = new HashMap<>();
 			for (int i = 0; i < client.getItemCount(); i++)
 			{
-				ItemStats itemStats = itemManager.getItemStats(i, false);
+				ItemStats itemStats = itemManager.getItemStats(i);
 				if (itemStats == null) continue;
 				ItemEquipmentStats equipment = itemStats.getEquipment();
 				if (equipment == null) continue;
@@ -1050,7 +1050,6 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 	{
 		List<Integer> removeItem = new ArrayList<>();
 
-		follow(ItemID.OCHRE_SNELM_3341, ItemID.OCHRE_SNELM);
 		follow(ItemID.LAW_TIARA, ItemID.COSMIC_TIARA);
 		follow(ItemID.A_SPECIAL_TIARA, ItemID.COSMIC_TIARA);
 		follow(ItemID.ASTRAL_TIARA, ItemID.COSMIC_TIARA);
@@ -1219,7 +1218,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 
 			Integer slot = SLOT_OVERRIDES.get(i);
 			if (slot == null) {
-				ItemStats itemStats = plugin.itemManager.getItemStats(i, false);
+				ItemStats itemStats = plugin.itemManager.getItemStats(i);
 				if (itemStats != null && itemStats.isEquipable())
 				{
 					slot = itemStats.getEquipment().getSlot();

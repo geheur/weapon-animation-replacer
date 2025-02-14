@@ -67,6 +67,7 @@ import net.runelite.api.SpriteID;
 import net.runelite.api.events.MenuOpened;
 import net.runelite.api.events.MenuShouldLeftClick;
 import net.runelite.api.kit.KitType;
+import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.ItemQuantityMode;
 import net.runelite.api.widgets.JavaScriptCallback;
 import net.runelite.api.widgets.Widget;
@@ -74,15 +75,14 @@ import net.runelite.api.widgets.WidgetPositionMode;
 import net.runelite.api.widgets.WidgetSizeMode;
 import net.runelite.api.widgets.WidgetTextAlignment;
 import net.runelite.api.widgets.WidgetType;
-import net.runelite.api.widgets.WidgetUtil;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
+import net.runelite.client.game.ItemStats;
 import net.runelite.client.game.chatbox.ChatboxPanelManager;
 import net.runelite.client.game.chatbox.ChatboxTextInput;
 import net.runelite.client.ui.JagexColors;
 import net.runelite.client.util.ColorUtil;
-import net.runelite.http.api.item.ItemStats;
 
 @Singleton
 public class ChatBoxFilterableSearch extends ChatboxTextInput
@@ -842,7 +842,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 			return slotOverride == -1 ? null : itemComposition;
 		}
 
-		ItemStats itemStats = itemManager.getItemStats(itemComposition.getId(), false);
+		ItemStats itemStats = itemManager.getItemStats(itemComposition.getId());
 		if (!showUnequippableItems)
 		{
 			if (itemStats == null || !itemStats.isEquipable())
@@ -863,7 +863,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 		for (MenuEntry menuEntry : client.getMenuEntries())
 		{
 			Widget widget = menuEntry.getWidget();
-			if (widget == null || widget.getId() != WidgetUtil.packComponentId(162, 37))
+			if (widget == null || widget.getId() != ComponentID.CHATBOX_CONTAINER)
 			{
 				continue;
 			}
@@ -889,7 +889,7 @@ public class ChatBoxFilterableSearch extends ChatboxTextInput
 		for (MenuEntry menuEntry : e.getMenuEntries())
 		{
 			Widget widget = menuEntry.getWidget();
-			if (widget == null || widget.getId() != WidgetUtil.packComponentId(162, 37)) continue;
+			if (widget == null || widget.getId() != ComponentID.CHATBOX_CONTAINER) continue;
 
 			if (widget.getText().startsWith(" ("))
 			{

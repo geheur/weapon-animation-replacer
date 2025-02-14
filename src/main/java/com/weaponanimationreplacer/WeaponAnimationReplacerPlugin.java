@@ -78,7 +78,9 @@ import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.events.ProfileChanged;
+import net.runelite.client.game.ItemEquipmentStats;
 import net.runelite.client.game.ItemManager;
+import net.runelite.client.game.ItemStats;
 import net.runelite.client.game.SpriteManager;
 import net.runelite.client.game.chatbox.ChatboxPanelManager;
 import net.runelite.client.plugins.Plugin;
@@ -89,8 +91,6 @@ import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.components.colorpicker.ColorPickerManager;
 import net.runelite.client.util.AsyncBufferedImage;
 import net.runelite.client.util.ImageUtil;
-import net.runelite.http.api.item.ItemEquipmentStats;
-import net.runelite.http.api.item.ItemStats;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -1209,7 +1209,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
     }
 
 	public Integer getWikiScrapeSlot(int itemId) {
-		ItemStats itemStats = itemManager.getItemStats(itemId, false);
+		ItemStats itemStats = itemManager.getItemStats(itemId);
 		if (itemStats == null) return null;
 		ItemEquipmentStats equipment = itemStats.getEquipment();
 		if (equipment == null) return null;
@@ -1292,7 +1292,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			return slot;
 		}
 
-		ItemStats itemStats = itemManager.getItemStats(modelSwap, false);
+		ItemStats itemStats = itemManager.getItemStats(modelSwap);
 		if (itemStats == null || itemStats.getEquipment() == null) return null;
 		return itemStats.getEquipment().getSlot();
 	}
