@@ -22,6 +22,7 @@ import static com.weaponanimationreplacer.Constants.TORSO_SLOT;
 import static com.weaponanimationreplacer.Constants.WEAPON_SLOT;
 import static com.weaponanimationreplacer.Constants.mapNegativeId;
 import static com.weaponanimationreplacer.ProjectileCast.p;
+import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileReader;
@@ -47,6 +48,7 @@ import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.EquipmentInventorySlot;
 import net.runelite.api.ItemComposition;
@@ -85,6 +87,7 @@ import net.runelite.client.game.ItemVariationMapping;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDependency;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.util.ColorUtil;
 import net.runelite.client.util.Text;
 import net.runelite.http.api.item.ItemEquipmentStats;
 import net.runelite.http.api.item.ItemStats;
@@ -464,6 +467,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 
 	@Subscribe
 	public void onCommandExecuted(CommandExecuted commandExecuted) {
+		System.out.println(commandExecuted.getCommand());
 		Player player2 = client.getLocalPlayer();
 		final WorldPoint playerPos = player2.getWorldLocation();
 		if (playerPos == null)
@@ -561,143 +565,6 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 			}
 		}
 
-		if (command.equals("countslots"))
-		{
-			tempHidesHair = new HashSet<>(this.hidesHair);
-			tempHidesJaw = new HashSet<>(this.hidesJaw);
-			tempShowsHair = new HashSet<>(this.showsHair);
-			tempShowsJaw = new HashSet<>(this.showsJaw);
-			addHidesHairAndJaw();
-
-			int torso = 0;
-			int head = 0;
-			int weapon = 0;
-			int torsoSeen = 0;
-			int hairSeen = 0;
-			int jawSeen = 0;
-			int weaponSeen = 0;
-			int torsoVar = 0;
-			int hairVar = 0;
-			int jawVar = 0;
-			int weaponVar = 0;
-			for (int i = 0; i < client.getItemCount(); i++)
-			{
-				ItemComposition itemComposition = plugin.itemManager.getItemComposition(i);
-				if (itemComposition.getPlaceholderTemplateId() != -1 || itemComposition.getNote() != -1) continue;
-
-				Integer slot = SLOT_OVERRIDES.get(i);
-				if (slot == -1) continue;
-				if (slot == null) {
-					ItemStats itemStats = plugin.itemManager.getItemStats(i, false);
-					if (itemStats != null && itemStats.isEquipable())
-					{
-						slot = itemStats.getEquipment().getSlot();
-					}
-				}
-				if (slot == null) continue;
-
-				if (slot == TORSO.ordinal())
-				{
-					torso++;
-					if (hidesArms.contains(i) || showsArms.contains(i)) {
-						torsoSeen++;
-						torsoVar++;
-					} else {
-						Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
-						boolean found = false;
-						for (Integer variation : variations)
-						{
-							if (hidesArms.contains(variation) || showsArms.contains(variation)) {
-								found = true;
-								break;
-							}
-						}
-						if (found)
-						{
-							torsoVar++;
-						} else {
-//								System.out.println(itemManager.getItemComposition(i).getName() + " " + i);
-						}
-					}
-				}
-				else if (slot == HEAD.ordinal())
-				{
-					head++;
-					if (tempHidesHair.contains(i) || tempShowsHair.contains(i)) {
-						hairSeen++;
-						hairVar++;
-					} else {
-						Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
-						boolean found = false;
-						for (Integer variation : variations)
-						{
-							if (hidesHair.contains(variation) || showsHair.contains(variation)) {
-								found = true;
-								break;
-							}
-						}
-						if (found)
-						{
-							hairVar++;
-						} else {
-								System.out.println("hair: " + itemManager.getItemComposition(i).getName() + " " + i);
-						}
-					}
-					if (tempHidesJaw.contains(i) || tempShowsJaw.contains(i)) {
-						if (i == 27400) {
-
-							System.out.println("in here 2");
-						}
-						jawSeen++;
-						jawVar++;
-					} else {
-						Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
-						boolean found = false;
-						for (Integer variation : variations)
-						{
-							if (hidesJaw.contains(variation) || showsJaw.contains(variation)) {
-								found = true;
-								break;
-							}
-						}
-						if (found)
-						{
-							jawVar++;
-						} else {
-								System.out.println("jaw: " + itemManager.getItemComposition(i).getName() + " " + i);
-						}
-					}
-				}
-				else if (slot == WEAPON.ordinal())
-				{
-					weapon++;
-					if (poseanims.containsKey(i)) {
-						weaponSeen++;
-						weaponVar++;
-					} else {
-						Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
-						boolean found = false;
-						for (Integer variation : variations)
-						{
-							if (poseanims.containsKey(variation)) {
-								found = true;
-								break;
-							}
-						}
-						if (found)
-						{
-							weaponVar++;
-						} else {
-//							System.out.println(Constants.getName(i, itemComposition.getName()) + " " + i);
-						}
-					}
-				}
-			}
-			System.out.println(torso + " " + head + " " + weapon);
-			System.out.println(torsoVar + " (" + (torso - torsoVar) + ") " + hairVar + " (" + (head - hairVar) + ") " + jawVar + " (" + (head - jawVar) + ") " + weaponVar + " (" + (weapon - weaponVar) + ") ");
-			System.out.println(torsoSeen + " (" + (torso - torsoSeen) + ") " + hairSeen + " (" + (head - hairSeen) + ") " + jawSeen + " (" + (head - jawSeen) + ") " + weaponSeen + " (" + (weapon - weaponSeen) + ") ");
-		}
-
 		if (command.equals("slotdata")) {
 			int i = Integer.parseInt(arguments[0]);
 			ItemStats itemStats = itemManager.getItemStats(i, false);
@@ -715,6 +582,11 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		if (command.equals("json")) {
 			boolean skipItemDefs = !argumentsList.contains("full");
 			json(skipItemDefs);
+		}
+
+		if (command.equals("iccache")) {
+			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "bla", ColorUtil.wrapWithColorTag("iccache", Color.RED), "bla");
+			client.getItemCompositionCache().reset();
 		}
 
 		if (command.equals("checkunequippables"))
@@ -1063,110 +935,6 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		}
 
 		itemIdToAnimationSet.put(baseId, animationSet);
-	}
-
-	Set<Integer> tempHidesHair;
-	Set<Integer> tempHidesJaw;
-	Set<Integer> tempShowsHair;
-	Set<Integer> tempShowsJaw;
-	private void addHidesHairAndJaw()
-	{
-		Path path = Paths.get("C:\\Users\\samue\\Downloads\\dump\\item_defs");
-		for (File file : path.toFile().listFiles())
-		{
-			try
-			{
-				ItemDef itemDef = plugin.runeliteGson.fromJson(Files.readString(file.toPath()), ItemDef.class);
-				if (itemDef.wearPos1 == EquipmentInventorySlot.HEAD.getSlotIdx()) {
-					if (itemDef.wearPos2 == KitType.HAIR.getIndex() || itemDef.wearPos3 == KitType.HAIR.getIndex()) {
-
-					}
-				} else if (itemDef.wearPos1 == EquipmentInventorySlot.BODY.getSlotIdx()) {
-
-				}
-			}
-			catch (IOException e)
-			{
-				e.printStackTrace();
-			}
-		}
-		List<Integer> removeItem = new ArrayList<>();
-
-		follow(ItemID.OCHRE_SNELM_3341, ItemID.OCHRE_SNELM);
-		follow(ItemID.LAW_TIARA, ItemID.COSMIC_TIARA);
-		follow(ItemID.A_SPECIAL_TIARA, ItemID.COSMIC_TIARA);
-		follow(ItemID.ASTRAL_TIARA, ItemID.COSMIC_TIARA);
-		follow(ItemID.ORANGE_BOATER, ItemID.PURPLE_BOATER);
-		follow(ItemID.SWEET_NUTCRACKER_HAT, ItemID.FESTIVE_NUTCRACKER_HAT);
-		showAll(ItemID.MOUTH_GRIP);
-		showAll(ItemID.A_CHAIR);
-		showAll(ItemID.ONE_BARREL);
-		showAll(ItemID.TWO_BARRELS);
-		showAll(ItemID.THREE_BARRELS);
-		showAll(ItemID.FOUR_BARRELS);
-		showAll(ItemID.FIVE_BARRELS);
-		showAll(ItemID.PIRATE_HAT);
-		follow(ItemID.ADVENTURERS_HOOD_T1, ItemID.MAX_HOOD);
-		follow(ItemID.SARADOMIN_MAX_HOOD, ItemID.MAX_HOOD);
-		follow(ItemID.ZAMORAK_MAX_HOOD, ItemID.MAX_HOOD);
-		follow(ItemID.GUTHIX_MAX_HOOD, ItemID.MAX_HOOD);
-		follow(ItemID.ACCUMULATOR_MAX_HOOD, ItemID.MAX_HOOD);
-		follow(ItemID.SANGUINE_TORVA_FULL_HELM, ItemID.TORVA_FULL_HELM);
-		follow(ItemID.SANGUINE_TORVA_PLATEBODY, ItemID.TORVA_PLATEBODY);
-		removeItem.add(ItemID.SCYTHE_OF_VITUR_22664);
-		removeItem.add(ItemID.ARMADYL_GODSWORD_22665);
-		removeItem.add(ItemID.RUBBER_CHICKEN_22666);
-		removeItem.add(ItemID.DRAGON_KNIFE_22812);
-		removeItem.add(ItemID.DRAGON_KNIFE_22814);
-		// broken pvp arena gear. no model.
-		removeItem.addAll(Arrays.asList(26686, 26686, 26687, 26687, 26688, 26688, 26698, 26698, 26699, 26699, 26700, 26700, 26701, 26701, 26702, 26702, 26703, 26703));
-		for (int i = 0; i < client.getItemCount(); i++)
-		{
-			ItemComposition itemComposition = itemManager.getItemComposition(i);
-			if (itemComposition.getPlaceholderTemplateId() != -1 || itemComposition.getNote() != -1) continue;
-
-			Integer slot = SLOT_OVERRIDES.get(i);
-			if (slot == null) {
-				slot = plugin.getWikiScrapeSlot(i);
-			}
-			if (slot == null || slot != HEAD_SLOT) continue;
-			if (removeItem.contains(i)) continue;
-
-			Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
-			for (Integer variation : variations)
-			{
-				if (tempHidesHair.contains(variation)) {
-					tempHidesHair.add(i);
-				}
-				if (tempHidesJaw.contains(variation)) {
-					tempHidesJaw.add(i);
-				}
-				if (tempShowsHair.contains(variation)) {
-					tempShowsHair.add(i);
-				}
-				if (tempShowsJaw.contains(variation)) {
-					tempShowsJaw.add(i);
-				}
-			}
-
-			String name = itemComposition.getName().toLowerCase();
-			if (name.contains("bedsheet")) {
-				removeItem.add(i);
-			}
-			if (name.contains("tricorn hat")) {
-				showAll(i);
-			}
-			if (name.contains("saika's")) {
-				showHairJaw(i, false, !name.contains("shroud"));
-			}
-			if (name.contains("koriff's")) {
-				showHairJaw(i, false, !name.contains("cowl"));
-			}
-			if (name.contains("maoma's")) {
-				showHairJaw(i, false, name.contains("med"));
-			}
-		}
-		System.out.println(removeItem);
 	}
 
 	private void json(boolean skipItemDefs)
@@ -1886,17 +1654,6 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 			}
 		}
 
-		if (false) {
-			tempHidesHair = new HashSet<>(this.hidesHair);
-			tempHidesJaw = new HashSet<>(this.hidesJaw);
-			tempShowsHair = new HashSet<>(this.showsHair);
-			tempShowsJaw = new HashSet<>(this.showsJaw);
-			addHidesHairAndJaw();
-			showDiffs(showsArmsFromCache, showsArms, "show arms");
-			showDiffs(hidesHairFromCache, hidesHair, "hide hair");
-			showDiffs(hidesJawFromCache, hidesJaw, "hide jaw");
-		}
-
 		data.showArms = showsArmsFromCache;
 		data.hideHair = hidesHairFromCache;
 		data.hideJaw = hidesJawFromCache;
@@ -2377,190 +2134,6 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		for (Integer itemId : jawSlotItems)
 		{
 			OVERRIDE_EQUIPPABILITY_OR_SLOT.put(itemId, Constants.JAW_SLOT);
-		}
-	}
-
-	private void showAll(int itemId)
-	{
-		showHairJaw(itemId, true, true);
-	}
-
-	private void showHairJaw(int itemId, boolean showHair, boolean showJaw)
-	{
-		if (
-			((hidesHair.contains(itemId) && !showHair) || (showsHair.contains(itemId) && showHair)) &&
-			((hidesJaw.contains(itemId) && !showJaw) || (showsJaw.contains(itemId) && showJaw))
-		) {
-			System.out.println("superflous " + itemId);
-		}
-		if (
-			(hidesHair.contains(itemId) && showHair) ||
-			(showsHair.contains(itemId) && !showHair) ||
-			(hidesJaw.contains(itemId) && showJaw) ||
-			(showsJaw.contains(itemId) && !showJaw)
-		) {
-			System.out.println("goes against collected hair and jaw data " + itemId);
-		}
-		if (!showHair) tempHidesHair.add(itemId);
-		else tempShowsHair.add(itemId);
-		if (!showJaw) tempHidesJaw.add(itemId);
-		else tempShowsJaw.add(itemId);
-	}
-
-	private void follow(int itemId, int itemIdToCopy)
-	{
-		Boolean currentlyHidingHair = hidesHair.contains(itemId) ? TRUE : showsHair.contains(itemId) ? FALSE : null;
-		Boolean currentlyHidingJaw = hidesJaw.contains(itemId) ? TRUE : showsJaw.contains(itemId) ? FALSE : null;
-		Boolean hairToCopy = hidesHair.contains(itemIdToCopy) ? TRUE : showsHair.contains(itemIdToCopy) ? FALSE : null;
-		Boolean jawToCopy = hidesJaw.contains(itemIdToCopy) ? TRUE : showsJaw.contains(itemIdToCopy) ? FALSE : null;
-		if (hairToCopy == null || jawToCopy == null) {
-			System.out.println("copied item " + itemId + " didn't have enough data " + hairToCopy + " " + jawToCopy);
-			return;
-		}
-
-		boolean warnSuperfluous = false;
-		if (hairToCopy) {
-			if (currentlyHidingHair == null) {
-				tempHidesHair.add(itemId);
-			} else if (currentlyHidingHair) {
-				// skip;
-				warnSuperfluous = true;
-			} else {
-				System.out.println("item " + itemId + " was told to follow something that the data disagrees with.");
-			}
-		} else {
-			if (currentlyHidingHair == null) {
-				tempShowsHair.add(itemId);
-			} else if (currentlyHidingHair) {
-				System.out.println("item " + itemId + " was told to follow something that the data disagrees with.");
-			} else {
-				// skip;
-				warnSuperfluous = true;
-			}
-		}
-		if (jawToCopy) {
-			if (currentlyHidingJaw == null) {
-				tempHidesJaw.add(itemId);
-			} else if (currentlyHidingJaw) {
-				// skip;
-				if (warnSuperfluous) {
-					System.out.println("itemId " + itemId + " follow is superfluous.");
-				}
-			} else {
-				System.out.println("item " + itemId + " was told to follow something that the data disagrees with.");
-			}
-		} else {
-			if (currentlyHidingJaw == null) {
-				tempShowsJaw.add(itemId);
-			} else if (currentlyHidingJaw) {
-				System.out.println("item " + itemId + " was told to follow something that the data disagrees with.");
-			} else {
-				// skip;
-				if (warnSuperfluous) {
-					System.out.println("itemId " + itemId + " follow is superfluous.");
-				}
-			}
-		}
-	}
-
-	private void addSlotData(Set<Integer> showsArms, Set<Integer> hidesHair, Set<Integer> hidesJaw, Map<Integer, Set<List<Integer>>> poseanims)
-	{
-		for (int i = 0; i < client.getItemCount(); i++)
-		{
-			ItemComposition itemComposition = plugin.itemManager.getItemComposition(i);
-			if (itemComposition.getPlaceholderTemplateId() != -1 || itemComposition.getNote() != -1) continue;
-
-			Integer slot = SLOT_OVERRIDES.get(i);
-			if (slot == null) {
-				ItemStats itemStats = plugin.itemManager.getItemStats(i, false);
-				if (itemStats != null && itemStats.isEquipable())
-				{
-					slot = itemStats.getEquipment().getSlot();
-				}
-			}
-			if (slot == null) continue;
-
-			if (slot == TORSO_SLOT)
-			{
-				if (!hidesArms.contains(i) && !this.showsArms.contains(i))
-				{
-					Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
-					boolean shown = false;
-					for (Integer variation : variations)
-					{
-						if (this.showsArms.contains(variation)) {
-							shown = true;
-							break;
-						}
-					}
-					if (shown)
-					{
-						showsArms.add(i);
-					} else {
-//								System.out.println(itemManager.getItemComposition(i).getName() + " " + i);
-					}
-				}
-			}
-			else if (slot == HEAD_SLOT)
-			{
-				if (!hidesHair.contains(i) && !this.showsHair.contains(i))
-				{
-					Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
-					boolean hides = false;
-					for (Integer variation : variations)
-					{
-						if (this.hidesHair.contains(variation)) {
-							hides = true;
-							break;
-						}
-					}
-					if (hides)
-					{
-						hidesHair.add(i);
-					} else {
-//								System.out.println(itemManager.getItemComposition(i).getName() + " " + i);
-					}
-				}
-				if (!hidesJaw.contains(i) && !this.showsJaw.contains(i))
-				{
-					Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
-					boolean hides = false;
-					for (Integer variation : variations)
-					{
-						if (this.hidesJaw.contains(variation)) {
-							hides = true;
-							break;
-						}
-					}
-					if (hides)
-					{
-						hidesJaw.add(i);
-					} else {
-//								System.out.println(itemManager.getItemComposition(i).getName() + " " + i);
-					}
-				}
-			}
-//			else if (slot == WEAPON_SLOT)
-//			{
-//				if (!this.poseanims.containsKey(i))
-//				{
-//					Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
-//					boolean found = false;
-//					for (Integer variation : variations)
-//					{
-//						if (this.poseanims.containsKey(variation)) {
-//							poseanims.put(i, this.poseanims.get(variation));
-//							found = true;
-//							break;
-//						}
-//					}
-//					if (found)
-//					{
-//					} else {
-////						System.out.println(itemManager.getItemComposition(i).getName() + " " + i);
-//					}
-//				}
-//			}
 		}
 	}
 
