@@ -65,7 +65,7 @@ public class TransmogrificationManager
 
 	public void startUp()
 	{
-		onRuneScapeProfileChanged(new RuneScapeProfileChanged());
+		onRuneScapeProfileChanged(null);
 	}
 
     public void shutDown()
