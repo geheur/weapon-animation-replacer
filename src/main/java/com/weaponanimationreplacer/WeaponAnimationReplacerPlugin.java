@@ -300,7 +300,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
 		int localVersion = localData.version;
 		executor.submit(() -> {
-			try (Response res = okHttpClient.newCall(new Request.Builder().url("https://raw.githubusercontent.com/geheur/weapon-animation-replacer/data/dataversion.json").build()).execute()) {
+			try (Response res = okHttpClient.newCall(new Request.Builder().url("https://raw.githubusercontent.com/geheur/weapon-animation-replacer/master/src/main/resources/com/weaponanimationreplacer/dataversion.json").build()).execute()) {
 				if (res.code() != 200) {
 					log.error("Response code " + res.code());
 					return;
@@ -311,7 +311,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 				log.info("online version is " + onlineVersion + ", local version is " + localVersion);
 				if (onlineVersion <= localVersion) return;
 
-				try (Response res2 = okHttpClient.newCall(new Request.Builder().url("https://raw.githubusercontent.com/geheur/weapon-animation-replacer/data/data.json").build()).execute()) {
+				try (Response res2 = okHttpClient.newCall(new Request.Builder().url("https://raw.githubusercontent.com/geheur/weapon-animation-replacer/master/src/main/resources/com/weaponanimationreplacer/data.json").build()).execute()) {
 					String response = res2.body().string();
 					Constants.Data onlineData = runeliteGson.fromJson(response, Constants.Data.class);
 					if (onlineData.version != onlineVersion) {
