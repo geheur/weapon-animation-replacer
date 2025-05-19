@@ -907,6 +907,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		runeLiteObject.setAnimation(client.loadAnimation(1204));
 		LocalPoint localPoint = LocalPoint.fromWorld(client, point);
 		runeLiteObject.setLocation(localPoint, client.getPlane());
+		runeLiteObject.getAnimationController().setOnFinished(ac -> runeLiteObject.setActive(false));
 		// TODO should I set these to inactive at some point?
 		runeLiteObject.setActive(true);
 	}
