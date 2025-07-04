@@ -33,7 +33,7 @@ public class ProjectileSwap
 		if (toReplaceWith == -1) {
 			toReplaceWithCustom = ProjectileCast.p().build();
 		} else {
-			toReplaceWithCustom = ProjectileCast.copy(Constants.projectilesById[toReplaceWith]);
+			toReplaceWithCustom = Constants.projectilesById[toReplaceWith].toBuilder().build();
 		}
 	}
 }

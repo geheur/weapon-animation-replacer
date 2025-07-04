@@ -22,11 +22,14 @@ import static com.weaponanimationreplacer.Constants.TORSO_SLOT;
 import static com.weaponanimationreplacer.Constants.WEAPON_SLOT;
 import static com.weaponanimationreplacer.Constants.mapNegativeId;
 import static com.weaponanimationreplacer.ProjectileCast.p;
+import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.FileReader;
 import java.io.FileWriter;
-import static java.lang.Boolean.FALSE;
-import static java.lang.Boolean.TRUE;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -42,7 +45,9 @@ import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
+import net.runelite.api.EquipmentInventorySlot;
 import net.runelite.api.ItemComposition;
 import net.runelite.api.ItemID;
 import net.runelite.api.Perspective;
@@ -74,14 +79,15 @@ import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ClientShutdown;
-import net.runelite.client.game.ItemEquipmentStats;
 import net.runelite.client.game.ItemManager;
-import net.runelite.client.game.ItemStats;
 import net.runelite.client.game.ItemVariationMapping;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDependency;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.util.ColorUtil;
 import net.runelite.client.util.Text;
+import net.runelite.http.api.item.ItemEquipmentStats;
+import net.runelite.http.api.item.ItemStats;
 
 @Slf4j
 @PluginDescriptor(
@@ -295,12 +301,18 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		return uhoh;
 	}
 
+	public static final Map<Integer, Integer> OVERRIDE_EQUIPPABILITY_OR_SLOT = new HashMap<>();
+
+	private static void addUnequippable(int itemId, KitType kitType) {
+		addUnequippable(itemId, kitType, null);
+	}
+
 	@Subscribe
 	public void onProjectileMoved(ProjectileMoved projectileMoved) {
 		Projectile projectile = projectileMoved.getProjectile();
 
 		// skip already seen projectiles.
-		if (client.getGameCycle() >= projectile.getStartCycle()) {
+		if (client.getGameCycle() > projectile.getStartCycle()) {
 			return;
 		}
 
@@ -335,7 +347,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 				(projectile.getStartCycle() - client.getGameCycle()) + ", " +
 				projectile.getStartHeight() + ", " +
 				projectile.getEndHeight() + ", " +
-					projectile.getScalar() + " " + projectile.getHeight() + " " + projectile.getZ() + " " +
+					projectile.getHeight() + " " + projectile.getZ() + " " +
 				projectile.getSlope() + ", "
 		);
 
@@ -369,52 +381,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 			}
 		}
 	}
-
-	private List<AnimationSet> findMatchingAnimationSets(int itemId)
-	{
-		Set<List<Integer>> list = this.poseanims.get(itemId);
-		int variationId = itemId;
-		if (list == null)
-		{
-			Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(itemId));
-			for (Integer variation : variations)
-			{
-				if (this.poseanims.containsKey(variation))
-				{
-					list = poseanims.get(variation);
-					variationId = variation;
-					break;
-				}
-			}
-		}
-
-		boolean hasPoseAnims = list != null;
-		List<AnimationSet> matchingSets = new ArrayList<>();
-		boolean uhoh = false;
-		List<Integer> poseanims = null;
-		if (hasPoseAnims)
-		{
-			uhoh = list.size() > 1;
-			if (uhoh) System.out.println("more than 1 set of pose animations: " + itemId + " " + variationId);
-			poseanims = list.iterator().next();
-			for (AnimationSet animationSet : Constants.animationSets)
-			{
-				if (
-					Objects.equals(animationSet.getAnimation(Swap.AnimationType.STAND), poseanims.get(0))
-						&& Objects.equals(animationSet.getAnimation(Swap.AnimationType.ROTATE), poseanims.get(1))
-						&& Objects.equals(animationSet.getAnimation(Swap.AnimationType.WALK), poseanims.get(2))
-						&& Objects.equals(animationSet.getAnimation(Swap.AnimationType.WALK_BACKWARD), poseanims.get(3))
-						&& Objects.equals(animationSet.getAnimation(Swap.AnimationType.SHUFFLE_LEFT), poseanims.get(4))
-						&& Objects.equals(animationSet.getAnimation(Swap.AnimationType.SHUFFLE_RIGHT), poseanims.get(5))
-						&& Objects.equals(animationSet.getAnimation(Swap.AnimationType.RUN), poseanims.get(6))
-				)
-				{
-					matchingSets.add(animationSet);
-				}
-			}
-		}
-		return matchingSets;
-	}
+	public static final Map<Integer, Constants.NameAndIconId> EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT_NAMES = new HashMap<>();
 
 	private void listUnseen(Set<Integer> shows, Set<Integer> hides, KitType kitType)
 	{
@@ -436,7 +403,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		for (int i = 0; i < client.getItemCount(); i++)
 		{
 			if (s.contains(i)) continue;
-			ItemStats itemStats = itemManager.getItemStats(i);
+			ItemStats itemStats = itemManager.getItemStats(i, false);
 			if (
 				itemStats != null
 				&& itemStats.isEquipable()
@@ -451,23 +418,11 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		System.out.println(count);
 	}
 
-	public static final Map<Integer, Integer> OVERRIDE_EQUIPPABILITY_OR_SLOT = new HashMap<>();
-	public static final Map<Integer, Constants.NameAndIconId> EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT_NAMES = new HashMap<>();
-
 	@Subscribe
 	public void onCommandExecuted(CommandExecuted commandExecuted) {
-		Player player2 = client.getLocalPlayer();
-		final WorldPoint playerPos = player2.getWorldLocation();
-		if (playerPos == null)
-		{
-			return;
-		}
-
-		final LocalPoint playerPosLocal = LocalPoint.fromWorld(client, playerPos);
-		System.out.println("here");
-		Projectile p = client.createProjectile(1465, playerPos.getPlane(), playerPosLocal.getX(), playerPosLocal.getY(), -636, client.getGameCycle(), client.getGameCycle() + 50, 16, 64, 124, null, 6208, 6464);
-//		Projectile p = client.createProjectile(1465, plane, playerPosLocal.getX(), playerPosLocal.getY(), -636, client.getGameCycle(), client.getGameCycle() + 50, 16, 64, 124, null, targetX, targetY);
+		System.out.println(commandExecuted.getCommand());
 		String[] arguments = commandExecuted.getArguments();
+		List<String> argumentsList = Arrays.asList(commandExecuted.getArguments());
 		String command = commandExecuted.getCommand();
 
 		if (command.equals("sfx")) {
@@ -530,7 +485,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 				if (comp.getPlaceholderTemplateId() != -1 || comp.getNote() != -1) continue;
 
 				Integer mySlot = SLOT_OVERRIDES.get(i);
-				ItemStats itemStats = itemManager.getItemStats(i);
+				ItemStats itemStats = itemManager.getItemStats(i, false);
 				Integer wikiSlot = itemStats != null && itemStats.isEquipable() ? itemStats.getEquipment().getSlot() : null;
 				if (mySlot == null) mySlot = wikiSlot;
 				if (mySlot == null) continue;
@@ -549,149 +504,32 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 			{
 				int itemId = entry.getKey();
 				ItemComposition comp = itemManager.getItemComposition(itemId);
-				ItemStats stats = itemManager.getItemStats(itemId);
+				ItemStats stats = itemManager.getItemStats(itemId, false);
 			}
 		}
 
-		if (command.equals("countslots"))
-		{
-			tempHidesHair = new HashSet<>(this.hidesHair);
-			tempHidesJaw = new HashSet<>(this.hidesJaw);
-			tempShowsHair = new HashSet<>(this.showsHair);
-			tempShowsJaw = new HashSet<>(this.showsJaw);
-			addHidesHairAndJaw();
-
-			int torso = 0;
-			int head = 0;
-			int weapon = 0;
-			int torsoSeen = 0;
-			int hairSeen = 0;
-			int jawSeen = 0;
-			int weaponSeen = 0;
-			int torsoVar = 0;
-			int hairVar = 0;
-			int jawVar = 0;
-			int weaponVar = 0;
-			for (int i = 0; i < client.getItemCount(); i++)
-			{
-				ItemComposition itemComposition = plugin.itemManager.getItemComposition(i);
-				if (itemComposition.getPlaceholderTemplateId() != -1 || itemComposition.getNote() != -1) continue;
-
-				Integer slot = SLOT_OVERRIDES.get(i);
-				if (slot == -1) continue;
-				if (slot == null) {
-					ItemStats itemStats = plugin.itemManager.getItemStats(i);
-					if (itemStats != null && itemStats.isEquipable())
-					{
-						slot = itemStats.getEquipment().getSlot();
-					}
-				}
-				if (slot == null) continue;
-
-				if (slot == TORSO.ordinal())
-				{
-					torso++;
-					if (hidesArms.contains(i) || showsArms.contains(i)) {
-						torsoSeen++;
-						torsoVar++;
-					} else {
-						Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
-						boolean found = false;
-						for (Integer variation : variations)
-						{
-							if (hidesArms.contains(variation) || showsArms.contains(variation)) {
-								found = true;
-								break;
-							}
-						}
-						if (found)
-						{
-							torsoVar++;
-						} else {
-//								System.out.println(itemManager.getItemComposition(i).getName() + " " + i);
-						}
-					}
-				}
-				else if (slot == HEAD.ordinal())
-				{
-					head++;
-					if (tempHidesHair.contains(i) || tempShowsHair.contains(i)) {
-						hairSeen++;
-						hairVar++;
-					} else {
-						Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
-						boolean found = false;
-						for (Integer variation : variations)
-						{
-							if (hidesHair.contains(variation) || showsHair.contains(variation)) {
-								found = true;
-								break;
-							}
-						}
-						if (found)
-						{
-							hairVar++;
-						} else {
-								System.out.println("hair: " + itemManager.getItemComposition(i).getName() + " " + i);
-						}
-					}
-					if (tempHidesJaw.contains(i) || tempShowsJaw.contains(i)) {
-						if (i == 27400) {
-
-							System.out.println("in here 2");
-						}
-						jawSeen++;
-						jawVar++;
-					} else {
-						Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
-						boolean found = false;
-						for (Integer variation : variations)
-						{
-							if (hidesJaw.contains(variation) || showsJaw.contains(variation)) {
-								found = true;
-								break;
-							}
-						}
-						if (found)
-						{
-							jawVar++;
-						} else {
-								System.out.println("jaw: " + itemManager.getItemComposition(i).getName() + " " + i);
-						}
-					}
-				}
-				else if (slot == WEAPON.ordinal())
-				{
-					weapon++;
-					if (poseanims.containsKey(i)) {
-						weaponSeen++;
-						weaponVar++;
-					} else {
-						Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
-						boolean found = false;
-						for (Integer variation : variations)
-						{
-							if (poseanims.containsKey(variation)) {
-								found = true;
-								break;
-							}
-						}
-						if (found)
-						{
-							weaponVar++;
-						} else {
-//							System.out.println(Constants.getName(i, itemComposition.getName()) + " " + i);
-						}
-					}
+		if (command.equals("slotdata")) {
+			int i = Integer.parseInt(arguments[0]);
+			ItemStats itemStats = itemManager.getItemStats(i, false);
+			if (itemStats == null) {
+				System.out.println("itemStats was null");
+			} else {
+				ItemEquipmentStats equipment = itemStats.getEquipment();
+				if (equipment != null) {
+					System.out.println(equipment.getSlot());
+				} else {
+					System.out.println("equipmentstats was null");
 				}
 			}
-			System.out.println(torso + " " + head + " " + weapon);
-			System.out.println(torsoVar + " (" + (torso - torsoVar) + ") " + hairVar + " (" + (head - hairVar) + ") " + jawVar + " (" + (head - jawVar) + ") " + weaponVar + " (" + (weapon - weaponVar) + ") ");
-			System.out.println(torsoSeen + " (" + (torso - torsoSeen) + ") " + hairSeen + " (" + (head - hairSeen) + ") " + jawSeen + " (" + (head - jawSeen) + ") " + weaponSeen + " (" + (weapon - weaponSeen) + ") ");
 		}
-
 		if (command.equals("json")) {
-			json();
+			boolean skipItemDefs = !argumentsList.contains("full");
+			json(skipItemDefs);
+		}
+
+		if (command.equals("iccache")) {
+			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "bla", ColorUtil.wrapWithColorTag("iccache", Color.RED), "bla");
+			client.getItemCompositionCache().reset();
 		}
 
 		if (command.equals("checkunequippables"))
@@ -699,7 +537,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 			System.out.println("checking unequippables");
 			for (Map.Entry<Integer, Integer> integerIntegerEntry : Constants.SLOT_OVERRIDES.entrySet())
 			{
-				ItemStats itemStats = itemManager.getItemStats(integerIntegerEntry.getKey());
+				ItemStats itemStats = itemManager.getItemStats(integerIntegerEntry.getKey(), false);
 				if (itemStats == null || !itemStats.isEquipable())
 					continue;
 				if (itemStats.getEquipment().getSlot() != integerIntegerEntry.getValue()) {
@@ -802,7 +640,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 							0
 						;
 					hashToItemIds.put(h, i);
-					ItemStats itemStats = itemManager.getItemStats(i);
+					ItemStats itemStats = itemManager.getItemStats(i, false);
 					if (itemStats != null && itemStats.isEquipable()) continue;
 					unequippableWithModel.add(i);
 //					System.out.println(i + " " + itemManager.getItemComposition(i).getName());
@@ -822,7 +660,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 					if (itemIds.stream().sorted(Integer::compare).findFirst().get() != itemId) dupe = true;
 					for (Integer id : itemIds)
 					{
-						ItemStats itemStats = itemManager.getItemStats(id);
+						ItemStats itemStats = itemManager.getItemStats(id, false);
 						if (itemStats != null && itemStats.isEquipable()) {
 							hasEquippableCounterpart = true;
 							break;
@@ -837,7 +675,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 						{
 							if (integer1 == itemId) continue;
 							boolean equippable = false;
-							ItemStats itemStats = itemManager.getItemStats(integer1);
+							ItemStats itemStats = itemManager.getItemStats(integer1, false);
 							if (itemStats != null && itemStats.isEquipable()) {
 								equippable = true;
 							}
@@ -911,7 +749,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 			Map<Integer, Integer> map = new HashMap<>();
 			for (int i = 0; i < client.getItemCount(); i++)
 			{
-				ItemStats itemStats = itemManager.getItemStats(i);
+				ItemStats itemStats = itemManager.getItemStats(i, false);
 				if (itemStats == null) continue;
 				ItemEquipmentStats equipment = itemStats.getEquipment();
 				if (equipment == null) continue;
@@ -1016,304 +854,6 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		}
 	}
 
-	private void putWeapon(Map<Integer, AnimationSet> itemIdToAnimationSet, int itemId, String animationSetName)
-	{
-		int baseId = ItemVariationMapping.map(itemId);
-		AnimationSet animationSet;
-		if ("".equals(animationSetName)) {
-			List<AnimationSet> matchingAnimationSets = findMatchingAnimationSets(baseId);
-			if (matchingAnimationSets.size() > 1) {
-				System.out.println("multiple matching sets for item " + itemId + " " + matchingAnimationSets);
-				return;
-			} else if (matchingAnimationSets.isEmpty()) {
-				System.out.println("no matching sets for item " + itemId + " " + matchingAnimationSets);
-				return;
-			}
-			animationSet = matchingAnimationSets.iterator().next();
-		} else {
-			animationSet = AnimationSet.getAnimationSet(animationSetName);
-		}
-
-		if (animationSet == null) {
-			System.out.println("null animationset " + animationSetName);
-			return;
-		}
-
-		itemIdToAnimationSet.put(baseId, animationSet);
-	}
-
-	Set<Integer> tempHidesHair;
-	Set<Integer> tempHidesJaw;
-	Set<Integer> tempShowsHair;
-	Set<Integer> tempShowsJaw;
-	private void addHidesHairAndJaw()
-	{
-		List<Integer> removeItem = new ArrayList<>();
-
-		follow(ItemID.LAW_TIARA, ItemID.COSMIC_TIARA);
-		follow(ItemID.A_SPECIAL_TIARA, ItemID.COSMIC_TIARA);
-		follow(ItemID.ASTRAL_TIARA, ItemID.COSMIC_TIARA);
-		follow(ItemID.ORANGE_BOATER, ItemID.PURPLE_BOATER);
-		follow(ItemID.SWEET_NUTCRACKER_HAT, ItemID.FESTIVE_NUTCRACKER_HAT);
-		showAll(ItemID.MOUTH_GRIP);
-		showAll(ItemID.A_CHAIR);
-		showAll(ItemID.ONE_BARREL);
-		showAll(ItemID.TWO_BARRELS);
-		showAll(ItemID.THREE_BARRELS);
-		showAll(ItemID.FOUR_BARRELS);
-		showAll(ItemID.FIVE_BARRELS);
-		showAll(ItemID.PIRATE_HAT);
-		follow(ItemID.ADVENTURERS_HOOD_T1, ItemID.MAX_HOOD);
-		follow(ItemID.SARADOMIN_MAX_HOOD, ItemID.MAX_HOOD);
-		follow(ItemID.ZAMORAK_MAX_HOOD, ItemID.MAX_HOOD);
-		follow(ItemID.GUTHIX_MAX_HOOD, ItemID.MAX_HOOD);
-		follow(ItemID.ACCUMULATOR_MAX_HOOD, ItemID.MAX_HOOD);
-		follow(ItemID.SANGUINE_TORVA_FULL_HELM, ItemID.TORVA_FULL_HELM);
-		follow(ItemID.SANGUINE_TORVA_PLATEBODY, ItemID.TORVA_PLATEBODY);
-		removeItem.add(ItemID.SCYTHE_OF_VITUR_22664);
-		removeItem.add(ItemID.ARMADYL_GODSWORD_22665);
-		removeItem.add(ItemID.RUBBER_CHICKEN_22666);
-		removeItem.add(ItemID.DRAGON_KNIFE_22812);
-		removeItem.add(ItemID.DRAGON_KNIFE_22814);
-		// broken pvp arena gear. no model.
-		removeItem.addAll(Arrays.asList(26686, 26686, 26687, 26687, 26688, 26688, 26698, 26698, 26699, 26699, 26700, 26700, 26701, 26701, 26702, 26702, 26703, 26703));
-		for (int i = 0; i < client.getItemCount(); i++)
-		{
-			ItemComposition itemComposition = itemManager.getItemComposition(i);
-			if (itemComposition.getPlaceholderTemplateId() != -1 || itemComposition.getNote() != -1) continue;
-
-			Integer slot = SLOT_OVERRIDES.get(i);
-			if (slot == null) {
-				slot = plugin.getWikiScrapeSlot(i);
-			}
-			if (slot == null || slot != HEAD_SLOT) continue;
-			if (removeItem.contains(i)) continue;
-
-			Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
-			for (Integer variation : variations)
-			{
-				if (tempHidesHair.contains(variation)) {
-					tempHidesHair.add(i);
-				}
-				if (tempHidesJaw.contains(variation)) {
-					tempHidesJaw.add(i);
-				}
-				if (tempShowsHair.contains(variation)) {
-					tempShowsHair.add(i);
-				}
-				if (tempShowsJaw.contains(variation)) {
-					tempShowsJaw.add(i);
-				}
-			}
-
-			String name = itemComposition.getName().toLowerCase();
-			if (name.contains("bedsheet")) {
-				removeItem.add(i);
-			}
-			if (name.contains("tricorn hat")) {
-				showAll(i);
-			}
-			if (name.contains("saika's")) {
-				showHairJaw(i, false, !name.contains("shroud"));
-			}
-			if (name.contains("koriff's")) {
-				showHairJaw(i, false, !name.contains("cowl"));
-			}
-			if (name.contains("maoma's")) {
-				showHairJaw(i, false, name.contains("med"));
-			}
-		}
-		System.out.println(removeItem);
-	}
-
-	private void showAll(int itemId)
-	{
-		showHairJaw(itemId, true, true);
-	}
-
-	private void showHairJaw(int itemId, boolean showHair, boolean showJaw)
-	{
-		if (
-			((hidesHair.contains(itemId) && !showHair) || (showsHair.contains(itemId) && showHair)) &&
-			((hidesJaw.contains(itemId) && !showJaw) || (showsJaw.contains(itemId) && showJaw))
-		) {
-			System.out.println("superflous " + itemId);
-		}
-		if (
-			(hidesHair.contains(itemId) && showHair) ||
-			(showsHair.contains(itemId) && !showHair) ||
-			(hidesJaw.contains(itemId) && showJaw) ||
-			(showsJaw.contains(itemId) && !showJaw)
-		) {
-			System.out.println("goes against collected hair and jaw data " + itemId);
-		}
-		if (!showHair) tempHidesHair.add(itemId);
-		else tempShowsHair.add(itemId);
-		if (!showJaw) tempHidesJaw.add(itemId);
-		else tempShowsJaw.add(itemId);
-	}
-
-	private void follow(int itemId, int itemIdToCopy)
-	{
-		Boolean currentlyHidingHair = hidesHair.contains(itemId) ? TRUE : showsHair.contains(itemId) ? FALSE : null;
-		Boolean currentlyHidingJaw = hidesJaw.contains(itemId) ? TRUE : showsJaw.contains(itemId) ? FALSE : null;
-		Boolean hairToCopy = hidesHair.contains(itemIdToCopy) ? TRUE : showsHair.contains(itemIdToCopy) ? FALSE : null;
-		Boolean jawToCopy = hidesJaw.contains(itemIdToCopy) ? TRUE : showsJaw.contains(itemIdToCopy) ? FALSE : null;
-		if (hairToCopy == null || jawToCopy == null) {
-			System.out.println("copied item " + itemId + " didn't have enough data " + hairToCopy + " " + jawToCopy);
-			return;
-		}
-
-		boolean warnSuperfluous = false;
-		if (hairToCopy) {
-			if (currentlyHidingHair == null) {
-				tempHidesHair.add(itemId);
-			} else if (currentlyHidingHair) {
-				// skip;
-				warnSuperfluous = true;
-			} else {
-				System.out.println("item " + itemId + " was told to follow something that the data disagrees with.");
-			}
-		} else {
-			if (currentlyHidingHair == null) {
-				tempShowsHair.add(itemId);
-			} else if (currentlyHidingHair) {
-				System.out.println("item " + itemId + " was told to follow something that the data disagrees with.");
-			} else {
-				// skip;
-				warnSuperfluous = true;
-			}
-		}
-		if (jawToCopy) {
-			if (currentlyHidingJaw == null) {
-				tempHidesJaw.add(itemId);
-			} else if (currentlyHidingJaw) {
-				// skip;
-				if (warnSuperfluous) {
-					System.out.println("itemId " + itemId + " follow is superfluous.");
-				}
-			} else {
-				System.out.println("item " + itemId + " was told to follow something that the data disagrees with.");
-			}
-		} else {
-			if (currentlyHidingJaw == null) {
-				tempShowsJaw.add(itemId);
-			} else if (currentlyHidingJaw) {
-				System.out.println("item " + itemId + " was told to follow something that the data disagrees with.");
-			} else {
-				// skip;
-				if (warnSuperfluous) {
-					System.out.println("itemId " + itemId + " follow is superfluous.");
-				}
-			}
-		}
-	}
-
-	private void addSlotData(Set<Integer> showsArms, Set<Integer> hidesHair, Set<Integer> hidesJaw, Map<Integer, Set<List<Integer>>> poseanims)
-	{
-		for (int i = 0; i < client.getItemCount(); i++)
-		{
-			ItemComposition itemComposition = plugin.itemManager.getItemComposition(i);
-			if (itemComposition.getPlaceholderTemplateId() != -1 || itemComposition.getNote() != -1) continue;
-
-			Integer slot = SLOT_OVERRIDES.get(i);
-			if (slot == null) {
-				ItemStats itemStats = plugin.itemManager.getItemStats(i);
-				if (itemStats != null && itemStats.isEquipable())
-				{
-					slot = itemStats.getEquipment().getSlot();
-				}
-			}
-			if (slot == null) continue;
-
-			if (slot == TORSO_SLOT)
-			{
-				if (!hidesArms.contains(i) && !this.showsArms.contains(i))
-				{
-					Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
-					boolean shown = false;
-					for (Integer variation : variations)
-					{
-						if (this.showsArms.contains(variation)) {
-							shown = true;
-							break;
-						}
-					}
-					if (shown)
-					{
-						showsArms.add(i);
-					} else {
-//								System.out.println(itemManager.getItemComposition(i).getName() + " " + i);
-					}
-				}
-			}
-			else if (slot == HEAD_SLOT)
-			{
-				if (!hidesHair.contains(i) && !this.showsHair.contains(i))
-				{
-					Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
-					boolean hides = false;
-					for (Integer variation : variations)
-					{
-						if (this.hidesHair.contains(variation)) {
-							hides = true;
-							break;
-						}
-					}
-					if (hides)
-					{
-						hidesHair.add(i);
-					} else {
-//								System.out.println(itemManager.getItemComposition(i).getName() + " " + i);
-					}
-				}
-				if (!hidesJaw.contains(i) && !this.showsJaw.contains(i))
-				{
-					Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
-					boolean hides = false;
-					for (Integer variation : variations)
-					{
-						if (this.hidesJaw.contains(variation)) {
-							hides = true;
-							break;
-						}
-					}
-					if (hides)
-					{
-						hidesJaw.add(i);
-					} else {
-//								System.out.println(itemManager.getItemComposition(i).getName() + " " + i);
-					}
-				}
-			}
-//			else if (slot == WEAPON_SLOT)
-//			{
-//				if (!this.poseanims.containsKey(i))
-//				{
-//					Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(i));
-//					boolean found = false;
-//					for (Integer variation : variations)
-//					{
-//						if (this.poseanims.containsKey(variation)) {
-//							poseanims.put(i, this.poseanims.get(variation));
-//							found = true;
-//							break;
-//						}
-//					}
-//					if (found)
-//					{
-//					} else {
-////						System.out.println(itemManager.getItemComposition(i).getName() + " " + i);
-//					}
-//				}
-//			}
-		}
-	}
-
-	private static void addUnequippable(int itemId, KitType kitType) {
-		addUnequippable(itemId, kitType, null);
-	}
-
 	private static void addUnequippable(int itemId, KitType kitType, String name) {
 		addUnequippable(itemId, kitType, name, -1);
 	}
@@ -1325,582 +865,107 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		}
 	}
 
-	@Subscribe
-	public void onClientTick(ClientTick clientTick) {
-//		for (int i = 0; i < Math.min(100, client.getLocalPlayer().getModel().getFaceColors1().length); i++)
-//		for (int i = 0; i < client.getLocalPlayer().getModel().getFaceColors1().length; i++)
-//		{
-//			client.getLocalPlayer().getModel().getFaceColors1()[i] = 0;
-//		}
-		if (demoanim != -1) {
-//			client.getLocalPlayer().setAnimation(demoanim);
-//			client.getLocalPlayer().setAnimationFrame(0);
-		}
-		if (demogfx != -1 && client.getLocalPlayer().getGraphic() != demogfx) {
-			client.getLocalPlayer().setGraphic(demogfx);
-			client.getLocalPlayer().setSpotAnimFrame(0);
-		}
-	}
-
-	@Subscribe
-	public void onMenuOptionClicked(MenuOptionClicked menuOptionClicked)
+	private Map<Integer, List<Integer>> getSlotAndNameData(List<ItemDef> itemDefs)
 	{
-		if (menuOptionClicked.getMenuOption().equals("Use") && menuOptionClicked.getItemId() == 563) {
-			if (demoanim != -1) {
-				demoanim--;
-				for (Constants.ActorAnimation value : values())
-				{
-					value.setAnimation(client.getLocalPlayer(), demoanim);
-				}
-				System.out.println("demo anim " + demoanim);
-				client.playSoundEffect(demoanim);
-			}
-			if (demogfx != -1) {
-				demogfx--;
-				client.getLocalPlayer().setGraphic(demogfx);
-				client.getLocalPlayer().setSpotAnimFrame(0);
-				client.getLocalPlayer().setGraphicHeight(0);
-				System.out.println("demo gfx " + demogfx);
-			}
-		} else if (menuOptionClicked.getMenuOption().equals("Use") && menuOptionClicked.getItemId() == 995){
-			if (demoanim != -1) {
-				demoanim++;
-				client.playSoundEffect(demoanim);
-				for (Constants.ActorAnimation value : values())
-				{
-					value.setAnimation(client.getLocalPlayer(), demoanim);
-				}
-				System.out.println("demo anim " + demoanim);
-			}
-			if (demogfx != -1) {
-				demogfx++;
-				System.out.println("demo gfx " + demogfx);
-			}
-		}
-//		System.out.println(menuOptionClicked.getMenuOption() + " " + Text.removeTags(menuOptionClicked.getMenuTarget()));
-	}
-
-	private void json()
-	{
-		OVERRIDE_EQUIPPABILITY_OR_SLOT.clear();
 		EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT_NAMES.clear();
-		Constants.Data data = new Constants.Data();
-		data.version = 1;
+		OVERRIDE_EQUIPPABILITY_OR_SLOT.clear();
+		AddCustomSlotAndNames();
 
-		addUnequippable(48, WEAPON); // Longbow (u)
-		addUnequippable(50, WEAPON); // Shortbow (u)
-		addUnequippable(54, WEAPON); // Oak shortbow (u)
-		addUnequippable(56, WEAPON); // Oak longbow (u)
-		addUnequippable(58, WEAPON); // Willow longbow (u)
-		addUnequippable(60, WEAPON); // Willow shortbow (u)
-		addUnequippable(62, WEAPON); // Maple longbow (u)
-		addUnequippable(64, WEAPON); // Maple shortbow (u)
-		addUnequippable(66, WEAPON); // Yew longbow (u)
-		addUnequippable(68, WEAPON); // Yew shortbow (u)
-		addUnequippable(70, WEAPON); // Magic longbow (u)
-		addUnequippable(72, WEAPON); // Magic shortbow (u)
-		addUnequippable(229, WEAPON); // Vial
-		addUnequippable(6664, WEAPON); // Fishing explosive
-		addUnequippable(272, SHIELD); // Fish food
-		addUnequippable(301, WEAPON); // Lobster pot
-		addUnequippable(303, WEAPON); // Small fishing net
-		addUnequippable(305, WEAPON); // Big fishing net
-		addUnequippable(21652, WEAPON); // Drift net
-		addUnequippable(307, WEAPON); // Fishing rod
-		addUnequippable(309, WEAPON); // Fly fishing rod
-		addUnequippable(311, WEAPON); // Harpoon
-		addUnequippable(314, WEAPON); // Feather
-		addUnequippable(413, SHIELD); // Oyster pearls
-		addUnequippable(421, AMULET); // Lathas' amulet
-		addUnequippable(583, WEAPON); // Bailing bucket (icon empty, appears empty)
-		addUnequippable(1925, WEAPON); // Bucket
-		addUnequippable(590, WEAPON); // Tinderbox
-		addUnequippable(675, WEAPON); // Rock pick
-		addUnequippable(677, WEAPON); // Panning tray
-		addUnequippable(717, SHIELD); // Scrawled note
-		addUnequippable(718, SHIELD); // A scribbled note
-		addUnequippable(719, SHIELD); // Scrumpled note
-//		addUnequippable(727, WEAPON); // Hollow reed (dupe of 1785)
-//		addUnequippable(728, WEAPON); // Hollow reed (dupe of 1785)
-		addUnequippable(796, WEAPON, "Exploding vial"); // null
-		addUnequippable(797, SHIELD, "Mortar (Pestle and mortar)"); // null
-		addUnequippable(798, WEAPON, "Pestle (Pestle and mortar)"); // null (item icon is invisible)
-		addUnequippable(818, WEAPON); // Poisoned dart(p)
-		addUnequippable(945, WEAPON); // Throwing rope
-		addUnequippable(946, WEAPON); // Knife
-		addUnequippable(952, WEAPON); // Spade
-		addUnequippable(954, WEAPON); // Rope
-		addUnequippable(970, SHIELD); // Papyrus
-		addUnequippable(973, WEAPON); // Charcoal
-		addUnequippable(1235, WEAPON); // Poisoned dagger(p)
-		addUnequippable(1511, SHIELD); // Logs
-		addUnequippable(1601, WEAPON); // Diamond
-		addUnequippable(1603, WEAPON); // Ruby
-		addUnequippable(1605, WEAPON); // Emerald
-		addUnequippable(1607, WEAPON); // Sapphire
-		addUnequippable(1609, WEAPON); // Opal
-		addUnequippable(1611, WEAPON); // Jade
-		addUnequippable(1613, WEAPON); // Red topaz
-		addUnequippable(1615, WEAPON); // Dragonstone
-		addUnequippable(1733, WEAPON); // Needle
-		addUnequippable(1735, WEAPON); // Shears
-		addUnequippable(1741, SHIELD); // Leather
-		addUnequippable(1761, SHIELD); // Soft clay
-		addUnequippable(1785, WEAPON); // Glassblowing pipe
-		addUnequippable(1917, WEAPON); // Beer
-		addUnequippable(1919, WEAPON); // Beer glass. This one is the same model as one the wiki considers
-		// equippable, but this one has the better icon so I choose to include this one.
-		addUnequippable(1931, WEAPON); // Pot
-		addUnequippable(1963, WEAPON); // banana (right-handed)
-		addUnequippable(1973, SHIELD); // Chocolate bar
-		addUnequippable(2347, WEAPON); // Hammer
-		addUnequippable(2395, WEAPON); // Magic ogre potion
-		addUnequippable(2520, WEAPON); // Brown toy horsey
-		addUnequippable(2522, WEAPON); // White toy horsey
-		addUnequippable(2524, WEAPON); // Black toy horsey
-		addUnequippable(2526, WEAPON); // Grey toy horsey
-		addUnequippable(2888, WEAPON); // A stone bowl
-		addUnequippable(2946, WEAPON); // Golden tinderbox
-		addUnequippable(2949, WEAPON); // Golden hammer
-		addUnequippable(2968, SHIELD); // Druidic spell
-		addUnequippable(3080, WEAPON, "Infernal pickaxe (yellow)"); // null
-		addUnequippable(3157, WEAPON); // Karambwan vessel
-		addUnequippable(3164, SHIELD); // Karamjan rum
-		addUnequippable(3177, SHIELD); // Left-handed banana
-		addUnequippable(3711, WEAPON); // Keg of beer
-		addUnequippable(3803, WEAPON); // Beer tankard
-		addUnequippable(3850, WEAPON, "Open book (green)"); // null
-		addUnequippable(3893, WEAPON); // Stool
-		addUnequippable(3935, WEAPON, "Bench"); // null
-		addUnequippable(3937, WEAPON, "Bench"); // null
-		addUnequippable(3939, WEAPON, "Bench"); // null
-		addUnequippable(3941, WEAPON, "Bench"); // null
-		addUnequippable(3943, WEAPON, "Bench"); // null
-		addUnequippable(3945, WEAPON, "Bench"); // null
-		addUnequippable(3947, WEAPON, "Bench"); // null
-		addUnequippable(3949, WEAPON, "Bench"); // null
-//		addUnequippable(3953, WEAPON); // null (lyre but held in a weird way)
-//		addUnequippable(3969, WEAPON); // null (dragon harpoon but floating)
-//		addUnequippable(3971, WEAPON); // null (infernal harpoon but floating)
-		addUnequippable(4032, WEAPON, "Mod ash's mug"); // null
-		addUnequippable(4080, WEAPON, "Yoyo"); // null
-		addUnequippable(4085, SHIELD); // Wax
-		addUnequippable(4155, WEAPON); // Enchanted gem
-		addUnequippable(4161, WEAPON); // Bag of salt
-		addUnequippable(4162, WEAPON); // Rock hammer
-		addUnequippable(4193, WEAPON); // Extended brush
-		addUnequippable(4251, WEAPON); // Ectophial
-		addUnequippable(4435, SHIELD); // Weather report
-		addUnequippable(4498, WEAPON); // Rope
-		addUnequippable(4500, WEAPON); // Pole
-		addUnequippable(4605, WEAPON); // Snake charm
-		addUnequippable(4613, WEAPON); // Spinning plate
-		addUnequippable(4614, WEAPON); // Broken plate
-		addUnequippable(4692, SHIELD); // Gold leaf
-		addUnequippable(4704, WEAPON); // Stone bowl
-		addUnequippable(4705, WEAPON, "Open book (red/yellow)"); // null
-		addUnequippable(4809, SHIELD); // Torn page
-		addUnequippable(4814, SHIELD); // Sithik portrait
-		addUnequippable(4817, SHIELD); // Book of portraiture
-		addUnequippable(4829, SHIELD); // Book of 'h.a.m'
-		addUnequippable(4837, SHIELD); // Necromancy book
-		addUnequippable(5060, WEAPON); // Dwarven battleaxe
-		addUnequippable(5061, WEAPON); // Dwarven battleaxe
-		addUnequippable(5081, WEAPON, "Dragon pickaxe (yellow)"); // null
-		addUnequippable(5083, WEAPON, "Dragon pickaxe (or) (yellow)"); // null
-		addUnequippable(5325, WEAPON); // Gardening trowel
-		addUnequippable(5329, WEAPON); // Secateurs
-		addUnequippable(5331, WEAPON); // Watering can
-		addUnequippable(5341, WEAPON); // Rake
-		addUnequippable(5343, WEAPON); // Seed dibber
-		addUnequippable(5350, WEAPON); // Empty plant pot
-		addUnequippable(5560, WEAPON); // Stethoscope
-		addUnequippable(5614, WEAPON); // Magic carpet
-		addUnequippable(5732, WEAPON); // Stool
-		addUnequippable(5769, SHIELD); // Calquat keg
-		addUnequippable(5982, SHIELD); // Watermelon
-		addUnequippable(6036, WEAPON); // Plant cure
-		addUnequippable(6281, SHIELD); // Thatch spar light
-		addUnequippable(6448, WEAPON); // Spadeful of coke
-		addUnequippable(6449, WEAPON); // null
-		addUnequippable(6451, WEAPON); // null
-		addUnequippable(6468, WEAPON); // Plant cure
-		addUnequippable(6470, WEAPON); // Compost potion(4)
-		addUnequippable(6565, WEAPON, "Bob the cat", ItemID.PET_CAT_1564); // null (item icon is invisible)
-		addUnequippable(6573, WEAPON); // Onyx
-		addUnequippable(6635, WEAPON); // Commorb
-		addUnequippable(6657, TORSO); // Camo top (sleeveless)
-		addUnequippable(6658, LEGS); // Camo bottoms (with shoes)
-//		addUnequippable(6659, WEAPON); // Camo helmet (looks identical to the regular one)
-		addUnequippable(6670, WEAPON); // Fishbowl
-		addUnequippable(6671, WEAPON); // Fishbowl
-		addUnequippable(6672, WEAPON); // Fishbowl
-		addUnequippable(6673, WEAPON); // Fishbowl and net
-		addUnequippable(6713, WEAPON); // Wrench
-		addUnequippable(6714, WEAPON); // Holy wrench
-		addUnequippable(6721, WEAPON); // Rusty scimitar
-		addUnequippable(6722, WEAPON); // Zombie head
-		addUnequippable(6748, WEAPON); // Demonic sigil
-		addUnequippable(6772, SHIELD); // Smouldering pot
-		addUnequippable(6788, SHIELD); // Torn robe
-		addUnequippable(6789, SHIELD); // Torn robe
-		addUnequippable(6817, WEAPON); // Slender blade
-		addUnequippable(6818, WEAPON); // Bow-sword
-		addUnequippable(6864, WEAPON); // Marionette handle
-		addUnequippable(7004, WEAPON, "Chisel"); // null
-		addUnequippable(7118, SHIELD); // Canister
-		addUnequippable(7119, SHIELD); // Cannon ball
-		addUnequippable(7120, SHIELD); // Ramrod
-		addUnequippable(7121, SHIELD); // Repair plank
-		addUnequippable(7410, WEAPON); // Queen's secateurs
-		addUnequippable(7412, WEAPON, "Bench"); // null
-		addUnequippable(7421, WEAPON); // Fungicide spray 10
-		addUnequippable(7475, WEAPON); // Brulee
-		addUnequippable(7509, WEAPON); // Dwarven rock cake
-		addUnequippable(7572, SHIELD); // Red banana
-		addUnequippable(7637, WEAPON); // Silvthrill rod
-		addUnequippable(7682, WEAPON); // Hoop
-		addUnequippable(7684, WEAPON); // Dart
-		addUnequippable(7686, WEAPON); // Bow and arrow
-		addUnequippable(7688, WEAPON); // Kettle
-		addUnequippable(7728, WEAPON); // Empty cup
-		addUnequippable(7732, WEAPON); // Porcelain cup
-		addUnequippable(7735, WEAPON); // Porcelain cup
-		addUnequippable(7744, WEAPON); // Asgarnian ale
-		addUnequippable(7746, WEAPON); // Greenman's ale
-		addUnequippable(7748, WEAPON); // Dragon bitter
-		addUnequippable(7750, WEAPON); // Moonlight mead
-		addUnequippable(7752, WEAPON); // Cider
-		addUnequippable(7754, WEAPON); // Chef's delight
-		addUnequippable(7756, WEAPON); // Paintbrush
-		addUnequippable(7758, WEAPON, "Rusty sword (looks weird)"); // null
-		addUnequippable(7773, WEAPON); // Branch
-		addUnequippable(7778, WEAPON); // Short vine
-		addUnequippable(7804, WEAPON); // Ancient mjolnir
-		addUnequippable(8794, WEAPON); // Saw
-		addUnequippable(8798, WEAPON, "Chair/bench"); // null
-		addUnequippable(8799, WEAPON, "Chair/bench"); // null
-		addUnequippable(8800, WEAPON, "Chair/bench"); // null
-		addUnequippable(8801, WEAPON, "Chair/bench"); // null
-		addUnequippable(8802, WEAPON, "Chair/bench"); // null
-		addUnequippable(8803, WEAPON, "Chair/bench"); // null
-		addUnequippable(8804, WEAPON, "Chair/bench"); // null
-		addUnequippable(8805, WEAPON, "Chair/bench"); // null
-		addUnequippable(8806, WEAPON, "Chair/bench"); // null
-		addUnequippable(8807, WEAPON, "Chair/bench"); // null
-		addUnequippable(8808, WEAPON, "Chair/bench"); // null
-		addUnequippable(8809, WEAPON, "Chair/bench"); // null
-		addUnequippable(8810, WEAPON, "Chair/bench"); // null
-		addUnequippable(8811, WEAPON, "Chair/bench"); // null
-		addUnequippable(8812, WEAPON, "Chair/bench"); // null
-		addUnequippable(8813, WEAPON, "Chair/bench"); // null
-		addUnequippable(8814, WEAPON, "Chair/bench"); // null
-		addUnequippable(8815, WEAPON, "Chair/bench"); // null
-		addUnequippable(8816, WEAPON, "Chair/bench"); // null
-		addUnequippable(8817, WEAPON, "Chair/bench"); // null
-		addUnequippable(8818, WEAPON, "Chair/bench"); // null
-		addUnequippable(8819, WEAPON, "Chair/bench"); // null
-		addUnequippable(8820, WEAPON, "Chair/bench"); // null
-		addUnequippable(8821, WEAPON, "Chair/bench"); // null
-		addUnequippable(8822, WEAPON, "Chair/bench"); // null
-		addUnequippable(8823, WEAPON, "Chair/bench"); // null
-		addUnequippable(8824, WEAPON, "Chair/bench"); // null
-		addUnequippable(8825, WEAPON, "Chair/bench"); // null
-		addUnequippable(8826, WEAPON, "Chair/bench"); // null
-		addUnequippable(8827, WEAPON, "Chair/bench"); // null
-		addUnequippable(8829, WEAPON, "Chair/bench"); // null
-		addUnequippable(8830, WEAPON, "Chair/bench"); // null
-		addUnequippable(8831, WEAPON, "Chair/bench"); // null
-		addUnequippable(8832, WEAPON, "Chair/bench"); // null
-		addUnequippable(8833, WEAPON, "Chair/bench"); // null
-		addUnequippable(8834, WEAPON, "Chair/bench"); // null
-		addUnequippable(8835, WEAPON, "Chair/bench"); // null
-		addUnequippable(8857, WEAPON); // Shot
-		addUnequippable(8940, SHIELD); // Rum
-		addUnequippable(8941, SHIELD); // Rum
-		addUnequippable(8986, WEAPON); // Bucket
-		addUnequippable(8987, WEAPON); // Torch
-		addUnequippable(9060, SHIELD, "Red bottle (offhand)"); // null
-		addUnequippable(9061, SHIELD, "Blue bottle (offhand)"); // null
-		addUnequippable(9062, WEAPON, "Blue bottle"); // null
-		addUnequippable(9063, WEAPON, "Yellow bottle"); // null
-		addUnequippable(9065, SHIELD); // Emerald lantern
-		addUnequippable(9085, SHIELD); // Empty vial
-		addUnequippable(9087, SHIELD); // Waking sleep vial
-		addUnequippable(9103, HEAD); // A special tiara
-		addUnequippable(9106, HEAD); // Astral tiara
-		addUnequippable(9138, SHIELD, "Logs"); // null (logs)
-		addUnequippable(9420, SHIELD); // Bronze limbs
-		addUnequippable(9422, SHIELD); // Blurite limbs
-		addUnequippable(9423, SHIELD); // Iron limbs
-		addUnequippable(9425, SHIELD); // Steel limbs
-		addUnequippable(9427, SHIELD); // Mithril limbs
-		addUnequippable(9429, SHIELD); // Adamantite limbs
-		addUnequippable(9431, SHIELD); // Runite limbs
-		addUnequippable(9440, WEAPON); // Wooden stock
-		addUnequippable(9442, WEAPON); // Oak stock
-		addUnequippable(9444, WEAPON); // Willow stock
-		addUnequippable(9446, WEAPON); // Teak stock
-		addUnequippable(9448, WEAPON); // Maple stock
-		addUnequippable(9450, WEAPON); // Mahogany stock
-		addUnequippable(9452, WEAPON); // Yew stock
-		addUnequippable(9454, WEAPON); // Bronze crossbow (u)
-		addUnequippable(9456, WEAPON); // Blurite crossbow (u)
-		addUnequippable(9457, WEAPON); // Iron crossbow (u)
-		addUnequippable(9459, WEAPON); // Steel crossbow (u)
-		addUnequippable(9461, WEAPON); // Mithril crossbow (u)
-		addUnequippable(9463, WEAPON); // Adamant crossbow (u)
-		addUnequippable(9465, WEAPON); // Runite crossbow (u)
-		addUnequippable(9590, WEAPON); // Dossier
-		addUnequippable(9631, SHIELD, "Bucket"); // null
-		addUnequippable(9660, WEAPON); // Bucket
-		addUnequippable(9665, WEAPON); // Torch
-		addUnequippable(9893, WEAPON, "Mortar (Pestle and mortar)"); // null
-		addUnequippable(9894, WEAPON, "Hammer"); // null
-		addUnequippable(9895, SHIELD, "Chisel (offhand)"); // null
-		addUnequippable(9896, WEAPON, "Frying pan"); // null
-		addUnequippable(9897, WEAPON, "Axe"); // null
-		addUnequippable(9898, SHIELD, "Red shield"); // null
-		addUnequippable(9899, WEAPON, "Small red shield"); // null
-		addUnequippable(9905, WEAPON, "Barrel"); // null
-		addUnequippable(9906, WEAPON); // Ghost buster 500
-		addUnequippable(9907, WEAPON); // Ghost buster 500
-		addUnequippable(9908, WEAPON); // Ghost buster 500
-		addUnequippable(9909, WEAPON); // Ghost buster 500
-		addUnequippable(9910, WEAPON); // Ghost buster 500
-		addUnequippable(9911, WEAPON); // Ghost buster 500
-		addUnequippable(9912, WEAPON); // Ghost buster 500
-		addUnequippable(9913, SHIELD); // White destabiliser
-		addUnequippable(9914, SHIELD); // Red destabiliser
-		addUnequippable(9915, SHIELD); // Blue destabiliser
-		addUnequippable(9916, SHIELD); // Green destabiliser
-		addUnequippable(9917, SHIELD); // Yellow destabiliser
-		addUnequippable(9918, SHIELD); // Black destabiliser
-		addUnequippable(9943, WEAPON); // Sandbag
-		addUnequippable(10022, SHIELD); // null
-		addUnequippable(10029, WEAPON); // Teasing stick
-		addUnequippable(10131, WEAPON, "Barb-tail harpoon (held backwards)"); // null
-		addUnequippable(10152, WEAPON, "Brown barb-tail kebbit in noose"); // null
-		addUnequippable(10153, WEAPON, "White barb-tail kebbit in noose"); // null
-		addUnequippable(10154, WEAPON, "Beige barb-tail kebbit in noose"); // null
-		addUnequippable(10155, WEAPON, "Dark brown barb-tail kebbit in noose"); // null
-		addUnequippable(10484, WEAPON, "Brown spiky kebbit in noose"); // null
-		addUnequippable(10485, WEAPON); // Scroll
-		addUnequippable(10488, SHIELD); // Selected iron
-		addUnequippable(10544, WEAPON); // Healing vial(2)
-		addUnequippable(10566, CAPE, "Fire cape (untextured)"); // Fire cape
-		addUnequippable(10568, WEAPON, "3rd age pickaxe (light)"); // null
-		addUnequippable(10810, SHIELD); // Arctic pine logs
-		addUnequippable(10841, WEAPON); // Apricot cream pie
-		addUnequippable(10842, WEAPON); // Decapitated head
-		addUnequippable(10857, WEAPON); // Severed leg
-		addUnequippable(10860, WEAPON, "Tea flask"); // null
-		addUnequippable(10861, SHIELD, "Tiny tea cup"); // null
-		addUnequippable(10886, WEAPON); // Prayer book
-		addUnequippable(10952, WEAPON); // Slayer bell
-		addUnequippable(11012, WEAPON); // Wand
-		addUnequippable(11013, WEAPON); // Infused wand
-		addUnequippable(11027, WEAPON); // Easter egg
-		addUnequippable(11028, WEAPON); // Easter egg
-		addUnequippable(11029, WEAPON); // Easter egg
-		addUnequippable(11030, WEAPON); // Easter egg
-		addUnequippable(11046, WEAPON); // Rope
-		addUnequippable(11063, WEAPON, "Paintbrush (I think)"); // null
-		addUnequippable(11132, HANDS); // Onyx bracelet
-		addUnequippable(11154, WEAPON); // Dream potion
-		addUnequippable(11167, WEAPON); // Phoenix crossbow
-		addUnequippable(11204, WEAPON); // Shrink-me-quick
-		addUnequippable(11279, WEAPON); // Elvarg's head
-		addUnequippable(11288, SHIELD, "Yellow vial (offhand)"); // null
-		addUnequippable(11289, WEAPON, "Yellow vial"); // null
-		addUnequippable(11290, WEAPON, "Cyan vial"); // null
-		addUnequippable(11291, WEAPON, "Red vial"); // null
-		addUnequippable(11292, WEAPON, "Lime green vial"); // null
-		addUnequippable(11293, WEAPON, "Light turquoise vial"); // null
-		addUnequippable(11294, WEAPON, "Blue vial"); // null
-		addUnequippable(11295, WEAPON, "Dark gray vial"); // null
-		addUnequippable(11296, WEAPON, "White vial"); // null
-		addUnequippable(11297, WEAPON, "Orange vial"); // null
-		addUnequippable(11298, WEAPON, "Light lime green vial"); // null
-		addUnequippable(11299, WEAPON, "Pink vial"); // null
-		addUnequippable(11300, WEAPON, "Light blue vial"); // null
-		addUnequippable(11301, WEAPON, "Light green vial"); // null
-		addUnequippable(11302, WEAPON, "Purple vial"); // null
-		addUnequippable(11303, WEAPON, "Light orange vial"); // null
-		addUnequippable(11304, WEAPON, "Turquoise vial"); // null
-		addUnequippable(11305, WEAPON, "Black vial"); // null
-		addUnequippable(11306, WEAPON, "Training bow (held incorrectly)"); // null
-		addUnequippable(11307, WEAPON, "Shortbow (held incorrectly)"); // null
-		addUnequippable(11308, WEAPON, "Oak Shortbow (held incorrectly)"); // null
-		addUnequippable(11309, WEAPON, "Willow Shortbow (held incorrectly)"); // null
-		addUnequippable(11310, WEAPON, "Maple Shortbow (held incorrectly)"); // null
-		addUnequippable(11311, WEAPON, "Yew Shortbow (held incorrectly)"); // null
-		addUnequippable(11312, WEAPON, "Magic Shortbow (held incorrectly)"); // null
-		addUnequippable(11313, WEAPON, "Longbow (held incorrectly)"); // null
-		addUnequippable(11314, WEAPON, "Oak Longbow (held incorrectly)"); // null
-		addUnequippable(11315, WEAPON, "Willow Longbow (held incorrectly)"); // null
-		addUnequippable(11316, WEAPON, "Maple Longbow (held incorrectly)"); // null
-		addUnequippable(11317, WEAPON, "Yew Longbow (held incorrectly)"); // null
-		addUnequippable(11318, WEAPON, "Magic Longbow (held incorrectly)"); // null
-		addUnequippable(11319, WEAPON, "Seercull (held incorrectly)"); // null
-		addUnequippable(11320, WEAPON, "Shark"); // null
-		addUnequippable(11321, WEAPON, "Swordfish"); // null
-		addUnequippable(11322, WEAPON, "Tuna"); // null
-		addUnequippable(11323, WEAPON); // Barbarian rod
-		addUnequippable(11542, WEAPON, "Stool"); // null
-		addUnequippable(11543, WEAPON, "Bench"); // null
-		addUnequippable(12401, WEAPON, "Map (buggy graphic)"); // null
-		// 12660 through 12690 are just jaw slot items? They are called "Clan wars cape" but idk what they do.
-		addUnequippable(13215, WEAPON); // Tiger toy
-		addUnequippable(13216, WEAPON); // Lion toy
-		addUnequippable(13217, WEAPON); // Snow leopard toy
-		addUnequippable(13218, WEAPON); // Amur leopard toy
-		addUnequippable(13233, SHIELD); // Smouldering stone
-		addUnequippable(13353, WEAPON); // Gricoller's can
-		addUnequippable(13446, WEAPON); // Dark essence block
-		addUnequippable(13570, WEAPON); // Juniper charcoal
-		addUnequippable(13682, WEAPON, "Cabbage"); // null
-		addUnequippable(13683, WEAPON, "Cabbage"); // null
-		addUnequippable(13685, WEAPON, "Red cabbage"); // null
-		addUnequippable(19492, HANDS); // Zenyte bracelet
-		addUnequippable(19493, WEAPON); // Zenyte
-		addUnequippable(20275, WEAPON); // Gnomish firelighter
-		addUnequippable(20397, WEAPON); // Spear
-		addUnequippable(21186, CAPE, "Fire max cape (untextured)"); // Fire max cape
-		addUnequippable(21253, HEAD); // Farmer's strawhat
-		addUnequippable(21284, CAPE, "Infernal max cape (untextured)"); // Infernal max cape
-		addUnequippable(21297, CAPE, "Infernal cape (untextured)"); // Infernal cape
-		addUnequippable(21347, WEAPON); // Amethyst
-		addUnequippable(21655, WEAPON); // Pufferfish
-		addUnequippable(21918, SHIELD); // Dragon limbs
-		addUnequippable(21921, WEAPON); // Dragon crossbow (u)
-		addUnequippable(22997, WEAPON); // Bottomless compost bucket
-		addUnequippable(23679, WEAPON, "Dragon pickaxe (zalcano) (yellow)"); // null
-		addUnequippable(23684, WEAPON, "Crystal pickaxe (glowing)"); // null
-//		addUnequippable(23766, WEAPON); // null // TODO this looks identical to the crystal harpoon.
-		addUnequippable(23767, WEAPON, "Crystal harpoon (corrupted)"); // null
-		addUnequippable(23819, WEAPON, "Orb of light"); // null
-		addUnequippable(24077, SHIELD, "Bolt tip"); // null
-		addUnequippable(24080, SHIELD, "Bolt tip"); // null
-		addUnequippable(24081, SHIELD, "Bolt tip"); // null
-		addUnequippable(24082, SHIELD, "Bolt tip"); // null
-		addUnequippable(24083, SHIELD, "Bolt tip"); // null
-		addUnequippable(24084, SHIELD, "Bolt tip"); // null
-		addUnequippable(24085, SHIELD, "Bolt tip"); // null
-		addUnequippable(24086, SHIELD, "Bolt tip"); // null
-		addUnequippable(24087, SHIELD, "Bolt tip"); // null
-		addUnequippable(24088, SHIELD, "Bolt tip"); // null
-		addUnequippable(24089, WEAPON, "Bolt"); // null
-		addUnequippable(24090, WEAPON, "Bolt"); // null
-		addUnequippable(24091, WEAPON, "Bolt"); // null
-		addUnequippable(24093, WEAPON, "Bolt"); // null
-		addUnequippable(24094, WEAPON, "Bolt"); // null
-		addUnequippable(24095, WEAPON, "Bolt"); // null
-		addUnequippable(24096, WEAPON, "Bolt"); // null
-		addUnequippable(24097, WEAPON, "Bolt"); // null
-		addUnequippable(24098, WEAPON, "Bolt"); // null
-		addUnequippable(24099, WEAPON, "Bolt"); // null
-		addUnequippable(24100, WEAPON, "Bolt"); // null
-		addUnequippable(24101, WEAPON, "Bolt"); // null
-		addUnequippable(24102, WEAPON, "Bolt"); // null
-		addUnequippable(24103, WEAPON, "Bolt"); // null
-		addUnequippable(24104, WEAPON, "Bolt"); // null
-		addUnequippable(24105, WEAPON, "Bolt"); // null
-		addUnequippable(24106, WEAPON, "Headless arrow"); // null
-		addUnequippable(24107, WEAPON, "Arrow shaft"); // null
-		addUnequippable(24108, WEAPON, "Arrowhead"); // null
-		addUnequippable(24109, WEAPON, "Arrowhead"); // null
-		addUnequippable(24110, WEAPON, "Arrowhead"); // null
-		addUnequippable(24111, WEAPON, "Arrowhead"); // null
-		addUnequippable(24112, WEAPON, "Arrowhead"); // null
-		addUnequippable(24113, WEAPON, "Arrowhead"); // null
-		addUnequippable(24114, WEAPON, "Arrowhead"); // null
-		addUnequippable(24115, WEAPON, "Arrowhead"); // null
-		addUnequippable(24116, WEAPON, "Dart tip"); // null
-		addUnequippable(24117, WEAPON, "Dart tip"); // null
-		addUnequippable(24118, WEAPON, "Dart tip"); // null
-		addUnequippable(24119, WEAPON, "Dart tip"); // null
-		addUnequippable(24120, WEAPON, "Dart tip"); // null
-		addUnequippable(24121, WEAPON, "Dart tip"); // null
-		addUnequippable(24122, WEAPON, "Dart tip"); // null
-		addUnequippable(24273, WEAPON, "Basilisk stone prison"); // null
-		addUnequippable(24274, WEAPON, "Basilisk stone prison"); // null
-		addUnequippable(24275, WEAPON, "Basilisk stone prison"); // null
-		addUnequippable(24386, WEAPON, "Green and brown stick"); // null
-		addUnequippable(24435, WEAPON); // Festive pot
-		addUnequippable(24437, SHIELD); // Gingerbread shield
-		addUnequippable(24460, WEAPON); // Twisted teleport scroll
-		addUnequippable(24487, SHIELD, "Sextant"); // null
-		addUnequippable(24998, SHIELD, "Black crystal"); // null (item icon is invisible)
-		addUnequippable(24999, SHIELD, "Stick"); // null (item icon is invisible)
-		addUnequippable(25000, WEAPON, "Paper"); // null (item icon is invisible)
-		addUnequippable(25087, WEAPON); // Trailblazer teleport scroll
-		addUnequippable(25102, SHIELD); // Fairy mushroom
-		addUnequippable(25106, CAPE); // Extradimensional bag
-		addUnequippable(25484, WEAPON); // Webweaver bow (u)
-		addUnequippable(25485, WEAPON); // Webweaver bow
-		addUnequippable(25486, WEAPON); // Ursine chainmace (u)
-		addUnequippable(25487, WEAPON); // Ursine chainmace
-		addUnequippable(25488, WEAPON); // Accursed sceptre (u)
-		addUnequippable(25489, WEAPON); // Accursed sceptre
-		addUnequippable(25490, WEAPON); // Voidwaker
-		addUnequippable(25491, WEAPON); // Accursed sceptre (au)
-		addUnequippable(25492, WEAPON); // Accursed sceptre (a)
-		addUnequippable(25710, WEAPON); // Stool
-		addUnequippable(25848, WEAPON, "Amethyst dart tip"); // null
-		addUnequippable(25938, WEAPON, "Ghommal's hilt 1 (mainhand)", 25926); // Anim offhand
-		addUnequippable(25941, WEAPON, "Ghommal's hilt 2 (mainhand)", 25928); // Anim offhand
-		addUnequippable(25944, WEAPON, "Ghommal's hilt 3 (mainhand)", 25930); // Anim offhand
-		addUnequippable(25947, WEAPON, "Ghommal's hilt 4 (mainhand)", 25932); // Anim offhand
-		addUnequippable(25950, WEAPON, "Ghommal's hilt 5 (mainhand)", 25934); // Anim offhand
-		addUnequippable(25953, WEAPON, "Ghommal's hilt 6 (mainhand)", 25936); // Anim offhand
-		addUnequippable(26549, AMULET); // Portable waystone
-		addUnequippable(26551, SHIELD); // Arcane grimoire
-		addUnequippable(26581, SHIELD); // Goblin potion(4)
-		addUnequippable(26880, WEAPON); // Catalytic guardian stone
-		addUnequippable(27416, WEAPON); // Speedy teleport scroll
-		addUnequippable(27546, WEAPON, "Ghommal's avernic defender 5 (mainhand)", 27550); // Anim offhand
-		addUnequippable(27548, WEAPON, "Ghommal's avernic defender 6 (mainhand)", 27552); // Anim offhand
-		addUnequippable(27873, WEAPON); // Eastfloor spade
-		addUnequippable(7414, WEAPON); // Paddle
-		addUnequippable(6123, WEAPON); // Beer glass
-		addUnequippable(9702, WEAPON); // Stick
-		addUnequippable(10840, WEAPON); // A jester stick
-		int[] shouldNotBeEquippable = {22664, 22665, 22666, 22812, 22814, 26686, 26686, 26687, 26687, 26688, 26688, 26698, 26698, 26699, 26699, 26700, 26700, 26701, 26701, 26702, 26702, 26703, 26703, 4284, 4285};
-		for (int i : shouldNotBeEquippable)
+		// There are 2 tasks: pick which id we will mark equippable when there are lookalikes. Priority goes to wiki over cache.
+		// Second, decide the equip slot. For this we will prefer cache.
+		Set<Integer> modelIds = new HashSet<>();
+		for (Map.Entry<Integer, Integer> integerIntegerEntry : OVERRIDE_EQUIPPABILITY_OR_SLOT.entrySet())
 		{
-			OVERRIDE_EQUIPPABILITY_OR_SLOT.put(i, -1);
+			ItemDef itemDef = itemDefs.get(integerIntegerEntry.getKey());
+			modelIds.add(itemDef.getModelHash());
 		}
+		for (int i = 0; i < client.getItemCount(); i++)
+		{
+			ItemStats itemStats = itemManager.getItemStats(i, false);
+			if (itemStats != null && itemStats.getEquipment() != null) {
+				ItemDef itemDef = itemDefs.get(i);
+				if (itemDef != null) {
+					modelIds.add(itemDef.getModelHash());
+					break;
+				}
+			}
+		}
+		int count = 0;
+		for (ItemDef itemDef : itemDefs) {
+			if (itemDef == null) break;
+			int id = itemDef.id;
 
-		Set<Integer> jawSlotItems = ImmutableSet.of(10556, 10557, 10558, 10559, 10567, 20802, 22308, 22309, 22310, 22311, 22312, 22313, 22314, 22315, 22337, 22338, 22339, 22340, 22341, 22342, 22343, 22344, 22345, 22346, 22347, 22348, 22349, 22721, 22722, 22723, 22724, 22725, 22726, 22727, 22728, 22729, 22730, 23460, 23461, 23462, 23463, 23464, 23465, 23466, 23467, 23468, 23469, 23470, 23471, 23472, 23473, 23474, 23475, 23476, 23477, 23478, 23479, 23480, 23481, 23482, 23483, 23484, 23485, 23486, 25228, 25229, 25230, 25231, 25232, 25233, 25234, 25235, 25236, 25237, 25238, 25239, 25240, 25241, 25242, 25243, 25212, 25213, 25214, 25215, 25216, 25217, 25218, 25219, 25220, 25221, 25222, 25223, 25224, 25225, 25226, 25227);
-		for (Integer itemId : jawSlotItems)
-		{
-			OVERRIDE_EQUIPPABILITY_OR_SLOT.put(itemId, Constants.JAW_SLOT);
+			int wikiSlot = -1;
+			ItemStats itemStats = itemManager.getItemStats(id, false);
+			if (itemStats != null && itemStats.getEquipment() != null) {
+				wikiSlot = itemStats.getEquipment().getSlot();
+			}
+
+			Integer cacheSlot = itemDef.getEquipSlot();
+			Integer cacheModelSlot = itemDef.getModelEquipSlot();
+			if (id == 8856) {
+
+				System.out.println(8856);
+				System.out.println(cacheSlot);
+				System.out.println(cacheModelSlot);
+				System.out.println(wikiSlot);
+			}
+			Integer myOverrideSlot = OVERRIDE_EQUIPPABILITY_OR_SLOT.get(id);
+			if (myOverrideSlot == null) {
+				if (wikiSlot != -1) {
+					if (wikiSlot != cacheModelSlot) {
+						OVERRIDE_EQUIPPABILITY_OR_SLOT.put(id, cacheModelSlot);
+					}
+				} else {
+					if (cacheModelSlot != -1 && !modelIds.contains(itemDef.getModelHash())) {
+						OVERRIDE_EQUIPPABILITY_OR_SLOT.put(id, cacheModelSlot);
+//						modelIds.add(itemDef.getModelHash());
+					}
+				}
+			}
+//			if ((myOverrideSlot == null && wikiSlot == -1) && cacheModelSlot != -1 && !modelIds.contains(itemDef.getModelHash())) {
+//				modelIds.add(itemDef.getModelHash());
+//				OVERRIDE_EQUIPPABILITY_OR_SLOT.put(id, cacheModelSlot);
+//			}
+			if (cacheModelSlot != -1) {
+				count++;
+				if (myOverrideSlot == cacheModelSlot && itemDef.name != null) {
+					System.out.println("not needed " + itemDef.name + " " + itemDef.id);
+				}
+				if (plugin.getSlotForNonNegativeModelId(id) == null && !modelIds.contains(itemDef.getModelHash())) {
+					modelIds.add(itemDef.getModelHash());
+					System.out.println("wiki mismatch " + itemDef.name + " " + itemDef.id + " " + wikiSlot + " " + cacheModelSlot);
+				}
+//					if (wikiSlot != -1 && wikiSlot != cacheModelSlot) {
+//						System.out.println("wiki mismatch " + itemDef.name + " " + itemDef.id + " " + wikiSlot + " " + cacheModelSlot);
+//					}
+//					if (myOverrideSlot != null && myOverrideSlot != cacheModelSlot) {
+//						System.out.println("cache model " + itemDef.name + " " + itemDef.id + " " + KitType.values()[myOverrideSlot] + " " + KitType.values()[cacheModelSlot]);
+//					}
+			} else {
+				if (myOverrideSlot != null) {
+
+					System.out.println("extra item with no model? " + itemDef.name + " " + itemDef.id);
+				}
+			}
+			// check for null name.
 		}
+		System.out.println("count " + count);
 
 		Map<Integer, List<Integer>> kitIndexToItemIds = new HashMap<>();
 		for (Integer itemId : OVERRIDE_EQUIPPABILITY_OR_SLOT.keySet())
 		{
-			List<Integer> itemIds = kitIndexToItemIds.getOrDefault(OVERRIDE_EQUIPPABILITY_OR_SLOT.get(itemId), new ArrayList<>());
+			Integer slot = OVERRIDE_EQUIPPABILITY_OR_SLOT.get(itemId);
+			if (slot == -1) continue;
+			List<Integer> itemIds = kitIndexToItemIds.getOrDefault(slot, new ArrayList<>());
 			itemIds.add(itemId);
-			kitIndexToItemIds.put(OVERRIDE_EQUIPPABILITY_OR_SLOT.get(itemId), itemIds);
+			kitIndexToItemIds.put(slot, itemIds);
 		}
+		return kitIndexToItemIds;
+	}
 
-//		Set<Integer> showsArms = addShowsArms(this.showsArms); // nothing to add.
-		tempHidesHair = new HashSet<>(this.hidesHair);
-		tempHidesJaw = new HashSet<>(this.hidesJaw);
-		tempShowsHair = new HashSet<>(this.showsHair);
-		tempShowsJaw = new HashSet<>(this.showsJaw);
-		addHidesHairAndJaw();
-		data.showArms = showsArms;
-		data.hideHair = tempHidesHair;
-		data.hideJaw = tempHidesJaw;
-
-//		Map<Integer, Set<List<Integer>>> poseanims = new HashMap<>(this.poseanims);
-//		addSlotData(showsArms, hidesHair, hidesJaw, poseanims);
-		data.slotOverrides = kitIndexToItemIds;
-		data.nameIconOverrides = EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT_NAMES;
-
+	private Map<Integer, AnimationSet> getWeaponToAnimationSet()
+	{
 		Map<Integer, AnimationSet> itemIdToAnimationSet = new HashMap<>();
 		String mace = "Dragon mace";
 		String warhammer = "Dragon warhammer";
@@ -1924,7 +989,8 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		putWeapon(itemIdToAnimationSet, 35, shortsword); // Excalibur [Ancient mace, Arclight, Bow, Claws, Dart, Dragon axe, Dragon battleaxe, Dragon dagger, Dragon knife, Dragon knife (poisoned), Dragon mace, Dragon scimitar, Dragon sword, Dragon warhammer, Inquisitor's mace, Knife (non-dragon), Leaf-bladed battleaxe, Snowball, Thrownaxe, Torag's hammers, Unarmed] [808, 823, 819, 820, 821, 822, 824, 823]
 		putWeapon(itemIdToAnimationSet, 278, dagger); // Cattleprod [Ancient mace, Arclight, Bow, Claws, Dart, Dragon axe, Dragon battleaxe, Dragon dagger, Dragon knife, Dragon knife (poisoned), Dragon mace, Dragon scimitar, Dragon sword, Dragon warhammer, Inquisitor's mace, Knife (non-dragon), Leaf-bladed battleaxe, Snowball, Thrownaxe, Torag's hammers, Unarmed] [808, 823, 819, 820, 821, 822, 824, 823]
 		putWeapon(itemIdToAnimationSet, 667, longsword); // Blurite sword [Dragon longsword/Saeldor, Ghrazi rapier, Osmumten's Fang] [809, 823, 819, 820, 821, 822, 824, 823]
-		/* TODO test */putWeapon(itemIdToAnimationSet, 732, "Dart"); // Holy water [Ancient mace, Arclight, Bow, Claws, Dart, Dragon axe, Dragon battleaxe, Dragon dagger, Dragon knife, Dragon knife (poisoned), Dragon mace, Dragon scimitar, Dragon sword, Dragon warhammer, Inquisitor's mace, Knife (non-dragon), Leaf-bladed battleaxe, Snowball, Thrownaxe, Torag's hammers, Unarmed] [808, 823, 819, 820, 821, 822, 824, 823]
+		/* TODO test */
+		putWeapon(itemIdToAnimationSet, 732, "Dart"); // Holy water [Ancient mace, Arclight, Bow, Claws, Dart, Dragon axe, Dragon battleaxe, Dragon dagger, Dragon knife, Dragon knife (poisoned), Dragon mace, Dragon scimitar, Dragon sword, Dragon warhammer, Inquisitor's mace, Knife (non-dragon), Leaf-bladed battleaxe, Snowball, Thrownaxe, Torag's hammers, Unarmed] [808, 823, 819, 820, 821, 822, 824, 823]
 		putWeapon(itemIdToAnimationSet, 746, dagger); // Dark dagger [Ancient mace, Arclight, Bow, Claws, Dart, Dragon axe, Dragon battleaxe, Dragon dagger, Dragon knife, Dragon knife (poisoned), Dragon mace, Dragon scimitar, Dragon sword, Dragon warhammer, Inquisitor's mace, Knife (non-dragon), Leaf-bladed battleaxe, Snowball, Thrownaxe, Torag's hammers, Unarmed] [808, 823, 819, 820, 821, 822, 824, 823]
 		putWeapon(itemIdToAnimationSet, 747, dagger); // Glowing dagger [Ancient mace, Arclight, Bow, Claws, Dart, Dragon axe, Dragon battleaxe, Dragon dagger, Dragon knife, Dragon knife (poisoned), Dragon mace, Dragon scimitar, Dragon sword, Dragon warhammer, Inquisitor's mace, Knife (non-dragon), Leaf-bladed battleaxe, Snowball, Thrownaxe, Torag's hammers, Unarmed] [808, 823, 819, 820, 821, 822, 824, 823]
 		putWeapon(itemIdToAnimationSet, 751, "Unarmed"); // Gnomeball [Ancient mace, Arclight, Bow, Claws, Dart, Dragon axe, Dragon battleaxe, Dragon dagger, Dragon knife, Dragon knife (poisoned), Dragon mace, Dragon scimitar, Dragon sword, Dragon warhammer, Inquisitor's mace, Knife (non-dragon), Leaf-bladed battleaxe, Snowball, Thrownaxe, Torag's hammers, Unarmed] [808, 823, 819, 820, 821, 822, 824, 823] follow Unarmed
@@ -2407,7 +1473,625 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		putWeapon(itemIdToAnimationSet, 28585 /* ItemID.WARPED_SCEPTRE */, "Warped sceptre");
 		putWeapon(itemIdToAnimationSet, 28688 /* ItemID.BLAZING_BLOWPIPE */, "Toxic blowpipe");
 		putWeapon(itemIdToAnimationSet, 28682 /* ItemID.DINHS_BLAZING_BULWARK */, "Dinh's bulwhark");
+		return itemIdToAnimationSet;
+	}
 
+	private List<ItemDef> getItemDefs()
+	{
+		List<ItemDef> itemDefs = new ArrayList<>();
+		Path path = Paths.get("C:\\Users\\samue\\Downloads\\dump\\item_defs");
+		for (int i = 0; i < client.getItemCount(); i++) {
+			try {
+				ItemDef itemDef = plugin.runeliteGson.fromJson(Files.readString(path.resolve(i + ".json")), ItemDef.class);
+				itemDefs.add(itemDef);
+			} catch (IOException e) {
+				System.out.println("null item def " + i + ". Try updating cache?");
+				itemDefs.add(null);
+				e.printStackTrace();
+			}
+		}
+		return itemDefs;
+	}
+
+	private void addHidesArmsHairAndJaw(Constants.Data data, List<ItemDef> itemDefs)
+	{
+		HashSet<Integer> showsArmsFromCache = new HashSet<>();
+		HashSet<Integer> hidesHairFromCache = new HashSet<>();
+		HashSet<Integer> hidesJawFromCache = new HashSet<>();
+		for (ItemDef itemDef : itemDefs) {
+			if (itemDef == null) break;
+			if (itemDef.wearPos1 == EquipmentInventorySlot.HEAD.getSlotIdx()) {
+				if (itemDef.wearPos2 == KitType.HAIR.getIndex() || itemDef.wearPos3 == KitType.HAIR.getIndex()) {
+					hidesHairFromCache.add(itemDef.id);
+				}
+				if (itemDef.wearPos2 == KitType.JAW.getIndex() || itemDef.wearPos3 == KitType.JAW.getIndex()) {
+					hidesJawFromCache.add(itemDef.id);
+				}
+			} else if (itemDef.wearPos1 == EquipmentInventorySlot.BODY.getSlotIdx()) {
+				if (!(itemDef.wearPos2 == KitType.ARMS.getIndex() || itemDef.wearPos3 == KitType.ARMS.getIndex())) {
+					showsArmsFromCache.add(itemDef.id);
+				}
+			}
+		}
+
+		data.showArms = showsArmsFromCache;
+		data.hideHair = hidesHairFromCache;
+		data.hideJaw = hidesJawFromCache;
+	}
+
+	private void AddCustomSlotAndNames()
+	{
+		addUnequippable(48, WEAPON); // Longbow (u)
+		addUnequippable(50, WEAPON); // Shortbow (u)
+		addUnequippable(54, WEAPON); // Oak shortbow (u)
+		addUnequippable(56, WEAPON); // Oak longbow (u)
+		addUnequippable(58, WEAPON); // Willow longbow (u)
+		addUnequippable(60, WEAPON); // Willow shortbow (u)
+		addUnequippable(62, WEAPON); // Maple longbow (u)
+		addUnequippable(64, WEAPON); // Maple shortbow (u)
+		addUnequippable(66, WEAPON); // Yew longbow (u)
+		addUnequippable(68, WEAPON); // Yew shortbow (u)
+		addUnequippable(70, WEAPON); // Magic longbow (u)
+		addUnequippable(72, WEAPON); // Magic shortbow (u)
+		addUnequippable(229, WEAPON); // Vial
+		addUnequippable(6664, WEAPON); // Fishing explosive
+		addUnequippable(301, WEAPON); // Lobster pot
+		addUnequippable(303, WEAPON); // Small fishing net
+		addUnequippable(305, WEAPON); // Big fishing net
+		addUnequippable(21652, WEAPON); // Drift net
+		addUnequippable(307, WEAPON); // Fishing rod
+		addUnequippable(309, WEAPON); // Fly fishing rod
+		addUnequippable(311, WEAPON); // Harpoon
+		addUnequippable(314, WEAPON); // Feather
+		addUnequippable(583, WEAPON); // Bailing bucket (icon empty, appears empty)
+		addUnequippable(1925, WEAPON); // Bucket
+		addUnequippable(590, WEAPON); // Tinderbox
+		addUnequippable(677, WEAPON); // Panning tray
+		addUnequippable(717, SHIELD); // Scrawled note
+		addUnequippable(718, SHIELD); // A scribbled note
+		addUnequippable(719, SHIELD); // Scrumpled note
+//		addUnequippable(727, WEAPON); // Hollow reed (dupe of 1785)
+//		addUnequippable(728, WEAPON); // Hollow reed (dupe of 1785)
+		addUnequippable(796, WEAPON, "Exploding vial"); // null
+		addUnequippable(797, SHIELD, "Mortar (Pestle and mortar)"); // null
+		addUnequippable(798, WEAPON, "Pestle (Pestle and mortar)"); // null (item icon is invisible)
+		addUnequippable(946, WEAPON); // Knife
+		addUnequippable(952, WEAPON); // Spade
+		addUnequippable(954, WEAPON); // Rope
+		addUnequippable(970, SHIELD); // Papyrus
+		addUnequippable(973, WEAPON); // Charcoal
+		addUnequippable(1511, SHIELD); // Logs
+		addUnequippable(1601, WEAPON); // Diamond
+		addUnequippable(1603, WEAPON); // Ruby
+		addUnequippable(1605, WEAPON); // Emerald
+		addUnequippable(1607, WEAPON); // Sapphire
+		addUnequippable(1609, WEAPON); // Opal
+		addUnequippable(1611, WEAPON); // Jade
+		addUnequippable(1613, WEAPON); // Red topaz
+		addUnequippable(1615, WEAPON); // Dragonstone
+		addUnequippable(1733, WEAPON); // Needle
+		addUnequippable(1735, WEAPON); // Shears
+		addUnequippable(1741, SHIELD); // Leather
+		addUnequippable(1761, SHIELD); // Soft clay
+		addUnequippable(1785, WEAPON); // Glassblowing pipe
+		addUnequippable(1919, WEAPON); // Beer glass. This one is the same model as one the wiki considers
+		// equippable, but this one has the better icon so I choose to include this one.
+		addUnequippable(1931, WEAPON); // Pot
+		addUnequippable(1963, WEAPON); // banana (right-handed)
+		addUnequippable(1973, SHIELD); // Chocolate bar
+		addUnequippable(2347, WEAPON); // Hammer
+		addUnequippable(2520, WEAPON); // Brown toy horsey
+		addUnequippable(2522, WEAPON); // White toy horsey
+		addUnequippable(2524, WEAPON); // Black toy horsey
+		addUnequippable(2526, WEAPON); // Grey toy horsey
+		addUnequippable(2946, WEAPON); // Golden tinderbox
+		addUnequippable(2949, WEAPON); // Golden hammer
+		addUnequippable(2968, SHIELD); // Druidic spell
+		addUnequippable(3080, WEAPON, "Infernal pickaxe (yellow)"); // null
+		addUnequippable(3164, SHIELD); // Karamjan rum
+		addUnequippable(3711, WEAPON); // Keg of beer
+		addUnequippable(3803, WEAPON); // Beer tankard
+		addUnequippable(3850, WEAPON, "Open book (green)"); // null
+		addUnequippable(3935, WEAPON, "Bench"); // null
+		addUnequippable(3937, WEAPON, "Bench"); // null
+		addUnequippable(3939, WEAPON, "Bench"); // null
+		addUnequippable(3941, WEAPON, "Bench"); // null
+		addUnequippable(3943, WEAPON, "Bench"); // null
+		addUnequippable(3945, WEAPON, "Bench"); // null
+		addUnequippable(3947, WEAPON, "Bench"); // null
+		addUnequippable(3949, WEAPON, "Bench"); // null
+//		addUnequippable(3953, WEAPON); // null (lyre but held in a weird way)
+//		addUnequippable(3969, WEAPON); // null (dragon harpoon but floating)
+//		addUnequippable(3971, WEAPON); // null (infernal harpoon but floating)
+		addUnequippable(4032, WEAPON, "Mod ash's mug"); // null
+		addUnequippable(4080, WEAPON, "Yoyo"); // null
+		addUnequippable(4155, WEAPON); // Enchanted gem
+		addUnequippable(4161, WEAPON); // Bag of salt
+		addUnequippable(4251, WEAPON); // Ectophial
+		addUnequippable(4435, SHIELD); // Weather report
+		addUnequippable(4498, WEAPON); // Rope
+		addUnequippable(4500, WEAPON); // Pole
+		addUnequippable(4605, WEAPON); // Snake charm
+		addUnequippable(4613, WEAPON); // Spinning plate
+		addUnequippable(4614, WEAPON); // Broken plate
+		addUnequippable(4692, SHIELD); // Gold leaf
+		addUnequippable(4704, WEAPON); // Stone bowl
+		addUnequippable(4705, WEAPON, "Open book (red/yellow)"); // null
+		addUnequippable(4809, SHIELD); // Torn page
+		addUnequippable(4814, SHIELD); // Sithik portrait
+		addUnequippable(4817, SHIELD); // Book of portraiture
+		addUnequippable(4829, SHIELD); // Book of 'h.a.m'
+		addUnequippable(4837, SHIELD); // Necromancy book
+		addUnequippable(5060, WEAPON); // Dwarven battleaxe
+		addUnequippable(5061, WEAPON); // Dwarven battleaxe
+		addUnequippable(5081, WEAPON, "Dragon pickaxe (yellow)"); // null
+		addUnequippable(5083, WEAPON, "Dragon pickaxe (or) (yellow)"); // null
+		addUnequippable(5325, WEAPON); // Gardening trowel
+		addUnequippable(5329, WEAPON); // Secateurs
+		addUnequippable(5331, WEAPON); // Watering can
+		addUnequippable(5341, WEAPON); // Rake
+		addUnequippable(5343, WEAPON); // Seed dibber
+		addUnequippable(5350, WEAPON); // Empty plant pot
+		addUnequippable(5560, WEAPON); // Stethoscope
+		addUnequippable(5614, WEAPON); // Magic carpet
+		addUnequippable(5732, WEAPON); // Stool
+		addUnequippable(5769, SHIELD); // Calquat keg
+		addUnequippable(5982, SHIELD); // Watermelon
+		addUnequippable(6036, WEAPON); // Plant cure
+		addUnequippable(6281, SHIELD); // Thatch spar light
+		addUnequippable(6448, WEAPON); // Spadeful of coke
+		addUnequippable(6449, WEAPON); // null
+		addUnequippable(6451, WEAPON); // null
+		addUnequippable(6468, WEAPON); // Plant cure
+		addUnequippable(6470, WEAPON); // Compost potion(4)
+		addUnequippable(6565, WEAPON, "Bob the cat", ItemID.PET_CAT_1564); // null (item icon is invisible)
+		addUnequippable(6573, WEAPON); // Onyx
+		addUnequippable(6635, WEAPON); // Commorb
+		addUnequippable(6657, TORSO); // Camo top (sleeveless)
+		addUnequippable(6658, LEGS); // Camo bottoms (with shoes)
+//		addUnequippable(6659, WEAPON); // Camo helmet (looks identical to the regular one)
+		addUnequippable(6670, WEAPON); // Fishbowl
+		addUnequippable(6671, WEAPON); // Fishbowl
+		addUnequippable(6672, WEAPON); // Fishbowl
+		addUnequippable(6673, WEAPON); // Fishbowl and net
+		addUnequippable(6713, WEAPON); // Wrench
+		addUnequippable(6714, WEAPON); // Holy wrench
+		addUnequippable(6721, WEAPON); // Rusty scimitar
+		addUnequippable(6722, WEAPON); // Zombie head
+		addUnequippable(6748, WEAPON); // Demonic sigil
+		addUnequippable(6772, SHIELD); // Smouldering pot
+		addUnequippable(6788, SHIELD); // Torn robe
+		addUnequippable(6789, SHIELD); // Torn robe
+		addUnequippable(6817, WEAPON); // Slender blade
+		addUnequippable(6818, WEAPON); // Bow-sword
+		addUnequippable(6864, WEAPON); // Marionette handle
+		addUnequippable(7004, WEAPON, "Chisel"); // null
+		addUnequippable(7118, SHIELD); // Canister
+		addUnequippable(7119, SHIELD); // Cannon ball
+		addUnequippable(7120, SHIELD); // Ramrod
+		addUnequippable(7121, SHIELD); // Repair plank
+		addUnequippable(7410, WEAPON); // Queen's secateurs
+		addUnequippable(7412, WEAPON, "Bench"); // null
+		addUnequippable(7421, WEAPON); // Fungicide spray 10
+		addUnequippable(7475, WEAPON); // Brulee
+		addUnequippable(7509, WEAPON); // Dwarven rock cake
+		addUnequippable(7572, SHIELD); // Red banana
+		addUnequippable(7637, WEAPON); // Silvthrill rod
+		addUnequippable(7682, WEAPON); // Hoop
+		addUnequippable(7684, WEAPON); // Dart
+		addUnequippable(7686, WEAPON); // Bow and arrow
+		addUnequippable(7688, WEAPON); // Kettle
+		addUnequippable(7728, WEAPON); // Empty cup
+		addUnequippable(7732, WEAPON); // Porcelain cup
+		addUnequippable(7735, WEAPON); // Porcelain cup
+		addUnequippable(7744, WEAPON); // Asgarnian ale
+		addUnequippable(7746, WEAPON); // Greenman's ale
+		addUnequippable(7748, WEAPON); // Dragon bitter
+		addUnequippable(7750, WEAPON); // Moonlight mead
+		addUnequippable(7752, WEAPON); // Cider
+		addUnequippable(7754, WEAPON); // Chef's delight
+		addUnequippable(7756, WEAPON); // Paintbrush
+		addUnequippable(7758, WEAPON, "Rusty sword (looks weird)"); // null
+		addUnequippable(7773, WEAPON); // Branch
+		addUnequippable(7778, WEAPON); // Short vine
+		addUnequippable(7804, WEAPON); // Ancient mjolnir
+		addUnequippable(8794, WEAPON); // Saw
+		addUnequippable(8798, WEAPON, "Chair/bench"); // null
+		addUnequippable(8799, WEAPON, "Chair/bench"); // null
+		addUnequippable(8800, WEAPON, "Chair/bench"); // null
+		addUnequippable(8801, WEAPON, "Chair/bench"); // null
+		addUnequippable(8802, WEAPON, "Chair/bench"); // null
+		addUnequippable(8803, WEAPON, "Chair/bench"); // null
+		addUnequippable(8804, WEAPON, "Chair/bench"); // null
+		addUnequippable(8805, WEAPON, "Chair/bench"); // null
+		addUnequippable(8806, WEAPON, "Chair/bench"); // null
+		addUnequippable(8807, WEAPON, "Chair/bench"); // null
+		addUnequippable(8808, WEAPON, "Chair/bench"); // null
+		addUnequippable(8809, WEAPON, "Chair/bench"); // null
+		addUnequippable(8810, WEAPON, "Chair/bench"); // null
+		addUnequippable(8811, WEAPON, "Chair/bench"); // null
+		addUnequippable(8812, WEAPON, "Chair/bench"); // null
+		addUnequippable(8813, WEAPON, "Chair/bench"); // null
+		addUnequippable(8814, WEAPON, "Chair/bench"); // null
+		addUnequippable(8815, WEAPON, "Chair/bench"); // null
+		addUnequippable(8816, WEAPON, "Chair/bench"); // null
+		addUnequippable(8817, WEAPON, "Chair/bench"); // null
+		addUnequippable(8818, WEAPON, "Chair/bench"); // null
+		addUnequippable(8819, WEAPON, "Chair/bench"); // null
+		addUnequippable(8820, WEAPON, "Chair/bench"); // null
+		addUnequippable(8821, WEAPON, "Chair/bench"); // null
+		addUnequippable(8822, WEAPON, "Chair/bench"); // null
+		addUnequippable(8823, WEAPON, "Chair/bench"); // null
+		addUnequippable(8824, WEAPON, "Chair/bench"); // null
+		addUnequippable(8825, WEAPON, "Chair/bench"); // null
+		addUnequippable(8826, WEAPON, "Chair/bench"); // null
+		addUnequippable(8827, WEAPON, "Chair/bench"); // null
+		addUnequippable(8829, WEAPON, "Chair/bench"); // null
+		addUnequippable(8830, WEAPON, "Chair/bench"); // null
+		addUnequippable(8831, WEAPON, "Chair/bench"); // null
+		addUnequippable(8832, WEAPON, "Chair/bench"); // null
+		addUnequippable(8833, WEAPON, "Chair/bench"); // null
+		addUnequippable(8834, WEAPON, "Chair/bench"); // null
+		addUnequippable(8835, WEAPON, "Chair/bench"); // null
+		addUnequippable(8857, WEAPON); // Shot
+		addUnequippable(8940, SHIELD); // Rum
+		addUnequippable(8941, SHIELD); // Rum
+		addUnequippable(8986, WEAPON); // Bucket
+		addUnequippable(8987, WEAPON); // Torch
+		addUnequippable(9060, SHIELD, "Red bottle (offhand)"); // null
+		addUnequippable(9061, SHIELD, "Blue bottle (offhand)"); // null
+		addUnequippable(9062, WEAPON, "Blue bottle"); // null
+		addUnequippable(9063, WEAPON, "Yellow bottle"); // null
+		addUnequippable(9065, SHIELD); // Emerald lantern
+		addUnequippable(9085, SHIELD); // Empty vial
+		addUnequippable(9087, SHIELD); // Waking sleep vial
+		addUnequippable(9103, HEAD); // A special tiara
+		addUnequippable(9106, HEAD); // Astral tiara
+		addUnequippable(9138, SHIELD, "Logs"); // null (logs)
+		addUnequippable(9420, SHIELD); // Bronze limbs
+		addUnequippable(9422, SHIELD); // Blurite limbs
+		addUnequippable(9423, SHIELD); // Iron limbs
+		addUnequippable(9425, SHIELD); // Steel limbs
+		addUnequippable(9427, SHIELD); // Mithril limbs
+		addUnequippable(9429, SHIELD); // Adamantite limbs
+		addUnequippable(9431, SHIELD); // Runite limbs
+		addUnequippable(9440, WEAPON); // Wooden stock
+		addUnequippable(9442, WEAPON); // Oak stock
+		addUnequippable(9444, WEAPON); // Willow stock
+		addUnequippable(9446, WEAPON); // Teak stock
+		addUnequippable(9448, WEAPON); // Maple stock
+		addUnequippable(9450, WEAPON); // Mahogany stock
+		addUnequippable(9452, WEAPON); // Yew stock
+		addUnequippable(9454, WEAPON); // Bronze crossbow (u)
+		addUnequippable(9456, WEAPON); // Blurite crossbow (u)
+		addUnequippable(9457, WEAPON); // Iron crossbow (u)
+		addUnequippable(9459, WEAPON); // Steel crossbow (u)
+		addUnequippable(9461, WEAPON); // Mithril crossbow (u)
+		addUnequippable(9463, WEAPON); // Adamant crossbow (u)
+		addUnequippable(9465, WEAPON); // Runite crossbow (u)
+		addUnequippable(9590, WEAPON); // Dossier
+		addUnequippable(9631, SHIELD, "Bucket"); // null
+		addUnequippable(9660, WEAPON); // Bucket
+		addUnequippable(9665, WEAPON); // Torch
+		addUnequippable(9893, WEAPON, "Mortar (Pestle and mortar)"); // null
+		addUnequippable(9894, WEAPON, "Hammer"); // null
+		addUnequippable(9895, SHIELD, "Chisel (offhand)"); // null
+		addUnequippable(9896, WEAPON, "Frying pan"); // null
+		addUnequippable(9897, WEAPON, "Axe"); // null
+		addUnequippable(9898, SHIELD, "Red shield"); // null
+		addUnequippable(9899, WEAPON, "Small red shield"); // null
+		addUnequippable(9905, WEAPON, "Barrel"); // null
+		addUnequippable(9906, WEAPON); // Ghost buster 500
+		addUnequippable(9907, WEAPON); // Ghost buster 500
+		addUnequippable(9908, WEAPON); // Ghost buster 500
+		addUnequippable(9909, WEAPON); // Ghost buster 500
+		addUnequippable(9910, WEAPON); // Ghost buster 500
+		addUnequippable(9911, WEAPON); // Ghost buster 500
+		addUnequippable(9912, WEAPON); // Ghost buster 500
+		addUnequippable(9913, SHIELD); // White destabiliser
+		addUnequippable(9914, SHIELD); // Red destabiliser
+		addUnequippable(9915, SHIELD); // Blue destabiliser
+		addUnequippable(9916, SHIELD); // Green destabiliser
+		addUnequippable(9917, SHIELD); // Yellow destabiliser
+		addUnequippable(9918, SHIELD); // Black destabiliser
+		addUnequippable(9943, WEAPON); // Sandbag
+		addUnequippable(10022, SHIELD); // null
+		addUnequippable(10029, WEAPON); // Teasing stick
+		addUnequippable(10131, WEAPON, "Barb-tail harpoon (held backwards)"); // null
+		addUnequippable(10152, WEAPON, "Brown barb-tail kebbit in noose"); // null
+		addUnequippable(10153, WEAPON, "White barb-tail kebbit in noose"); // null
+		addUnequippable(10154, WEAPON, "Beige barb-tail kebbit in noose"); // null
+		addUnequippable(10155, WEAPON, "Dark brown barb-tail kebbit in noose"); // null
+		addUnequippable(10484, WEAPON, "Brown spiky kebbit in noose"); // null
+		addUnequippable(10485, WEAPON); // Scroll
+		addUnequippable(10488, SHIELD); // Selected iron
+		addUnequippable(10544, WEAPON); // Healing vial(2)
+		addUnequippable(10566, CAPE, "Fire cape (untextured)"); // Fire cape
+		addUnequippable(10568, WEAPON, "3rd age pickaxe (light)"); // null
+		addUnequippable(10810, SHIELD); // Arctic pine logs
+		addUnequippable(10841, WEAPON); // Apricot cream pie
+		addUnequippable(10842, WEAPON); // Decapitated head
+		addUnequippable(10857, WEAPON); // Severed leg
+		addUnequippable(10860, WEAPON, "Tea flask"); // null
+		addUnequippable(10861, SHIELD, "Tiny tea cup"); // null
+		addUnequippable(10886, WEAPON); // Prayer book
+		addUnequippable(10952, WEAPON); // Slayer bell
+		addUnequippable(11012, WEAPON); // Wand
+		addUnequippable(11013, WEAPON); // Infused wand
+		addUnequippable(11027, WEAPON); // Easter egg
+		addUnequippable(11028, WEAPON); // Easter egg
+		addUnequippable(11029, WEAPON); // Easter egg
+		addUnequippable(11030, WEAPON); // Easter egg
+		addUnequippable(11046, WEAPON); // Rope
+		addUnequippable(11063, WEAPON, "Paintbrush (I think)"); // null
+		addUnequippable(11132, HANDS); // Onyx bracelet
+		addUnequippable(11154, WEAPON); // Dream potion
+		addUnequippable(11167, WEAPON); // Phoenix crossbow
+		addUnequippable(11204, WEAPON); // Shrink-me-quick
+		addUnequippable(11279, WEAPON); // Elvarg's head
+		addUnequippable(11288, SHIELD, "Yellow vial (offhand)"); // null
+		addUnequippable(11289, WEAPON, "Yellow vial"); // null
+		addUnequippable(11290, WEAPON, "Cyan vial"); // null
+		addUnequippable(11291, WEAPON, "Red vial"); // null
+		addUnequippable(11292, WEAPON, "Lime green vial"); // null
+		addUnequippable(11293, WEAPON, "Light turquoise vial"); // null
+		addUnequippable(11294, WEAPON, "Blue vial"); // null
+		addUnequippable(11295, WEAPON, "Dark gray vial"); // null
+		addUnequippable(11296, WEAPON, "White vial"); // null
+		addUnequippable(11297, WEAPON, "Orange vial"); // null
+		addUnequippable(11298, WEAPON, "Light lime green vial"); // null
+		addUnequippable(11299, WEAPON, "Pink vial"); // null
+		addUnequippable(11300, WEAPON, "Light blue vial"); // null
+		addUnequippable(11301, WEAPON, "Light green vial"); // null
+		addUnequippable(11302, WEAPON, "Purple vial"); // null
+		addUnequippable(11303, WEAPON, "Light orange vial"); // null
+		addUnequippable(11304, WEAPON, "Turquoise vial"); // null
+		addUnequippable(11305, WEAPON, "Black vial"); // null
+		addUnequippable(11306, WEAPON, "Training bow (held incorrectly)"); // null
+		addUnequippable(11307, WEAPON, "Shortbow (held incorrectly)"); // null
+		addUnequippable(11308, WEAPON, "Oak Shortbow (held incorrectly)"); // null
+		addUnequippable(11309, WEAPON, "Willow Shortbow (held incorrectly)"); // null
+		addUnequippable(11310, WEAPON, "Maple Shortbow (held incorrectly)"); // null
+		addUnequippable(11311, WEAPON, "Yew Shortbow (held incorrectly)"); // null
+		addUnequippable(11312, WEAPON, "Magic Shortbow (held incorrectly)"); // null
+		addUnequippable(11313, WEAPON, "Longbow (held incorrectly)"); // null
+		addUnequippable(11314, WEAPON, "Oak Longbow (held incorrectly)"); // null
+		addUnequippable(11315, WEAPON, "Willow Longbow (held incorrectly)"); // null
+		addUnequippable(11316, WEAPON, "Maple Longbow (held incorrectly)"); // null
+		addUnequippable(11317, WEAPON, "Yew Longbow (held incorrectly)"); // null
+		addUnequippable(11318, WEAPON, "Magic Longbow (held incorrectly)"); // null
+		addUnequippable(11319, WEAPON, "Seercull (held incorrectly)"); // null
+		addUnequippable(11320, WEAPON, "Shark"); // null
+		addUnequippable(11321, WEAPON, "Swordfish"); // null
+		addUnequippable(11322, WEAPON, "Tuna"); // null
+		addUnequippable(11323, WEAPON); // Barbarian rod
+		addUnequippable(11542, WEAPON, "Stool"); // null
+		addUnequippable(11543, WEAPON, "Bench"); // null
+		addUnequippable(12401, WEAPON, "Map (buggy graphic)"); // null
+		// 12660 through 12690 are just jaw slot items? They are called "Clan wars cape" but idk what they do.
+		addUnequippable(13215, WEAPON); // Tiger toy
+		addUnequippable(13216, WEAPON); // Lion toy
+		addUnequippable(13217, WEAPON); // Snow leopard toy
+		addUnequippable(13218, WEAPON); // Amur leopard toy
+		addUnequippable(13233, SHIELD); // Smouldering stone
+		addUnequippable(13353, WEAPON); // Gricoller's can
+		addUnequippable(13446, WEAPON); // Dark essence block
+		addUnequippable(13570, WEAPON); // Juniper charcoal
+		addUnequippable(13682, WEAPON, "Cabbage"); // null
+		addUnequippable(13683, WEAPON, "Cabbage"); // null
+		addUnequippable(13685, WEAPON, "Red cabbage"); // null
+		addUnequippable(19492, HANDS); // Zenyte bracelet
+		addUnequippable(19493, WEAPON); // Zenyte
+		addUnequippable(20275, WEAPON); // Gnomish firelighter
+		addUnequippable(20397, WEAPON); // Spear
+		addUnequippable(21186, CAPE, "Fire max cape (untextured)"); // Fire max cape
+		addUnequippable(21253, HEAD); // Farmer's strawhat
+		addUnequippable(21284, CAPE, "Infernal max cape (untextured)"); // Infernal max cape
+		addUnequippable(21297, CAPE, "Infernal cape (untextured)"); // Infernal cape
+		addUnequippable(21347, WEAPON); // Amethyst
+		addUnequippable(21655, WEAPON); // Pufferfish
+		addUnequippable(21918, SHIELD); // Dragon limbs
+		addUnequippable(21921, WEAPON); // Dragon crossbow (u)
+		addUnequippable(22997, WEAPON); // Bottomless compost bucket
+		addUnequippable(23679, WEAPON, "Dragon pickaxe (zalcano) (yellow)"); // null
+		addUnequippable(23684, WEAPON, "Crystal pickaxe (glowing)"); // null
+//		addUnequippable(23766, WEAPON); // null // TODO this looks identical to the crystal harpoon.
+		addUnequippable(23767, WEAPON, "Crystal harpoon (corrupted)"); // null
+		addUnequippable(23819, WEAPON, "Orb of light"); // null
+		addUnequippable(24077, SHIELD, "Bolt tip"); // null
+		addUnequippable(24080, SHIELD, "Bolt tip"); // null
+		addUnequippable(24081, SHIELD, "Bolt tip"); // null
+		addUnequippable(24082, SHIELD, "Bolt tip"); // null
+		addUnequippable(24083, SHIELD, "Bolt tip"); // null
+		addUnequippable(24084, SHIELD, "Bolt tip"); // null
+		addUnequippable(24085, SHIELD, "Bolt tip"); // null
+		addUnequippable(24086, SHIELD, "Bolt tip"); // null
+		addUnequippable(24087, SHIELD, "Bolt tip"); // null
+		addUnequippable(24088, SHIELD, "Bolt tip"); // null
+		addUnequippable(24089, WEAPON, "Bolt"); // null
+		addUnequippable(24090, WEAPON, "Bolt"); // null
+		addUnequippable(24091, WEAPON, "Bolt"); // null
+		addUnequippable(24093, WEAPON, "Bolt"); // null
+		addUnequippable(24094, WEAPON, "Bolt"); // null
+		addUnequippable(24095, WEAPON, "Bolt"); // null
+		addUnequippable(24096, WEAPON, "Bolt"); // null
+		addUnequippable(24097, WEAPON, "Bolt"); // null
+		addUnequippable(24098, WEAPON, "Bolt"); // null
+		addUnequippable(24099, WEAPON, "Bolt"); // null
+		addUnequippable(24100, WEAPON, "Bolt"); // null
+		addUnequippable(24101, WEAPON, "Bolt"); // null
+		addUnequippable(24102, WEAPON, "Bolt"); // null
+		addUnequippable(24103, WEAPON, "Bolt"); // null
+		addUnequippable(24104, WEAPON, "Bolt"); // null
+		addUnequippable(24105, WEAPON, "Bolt"); // null
+		addUnequippable(24106, WEAPON, "Headless arrow"); // null
+		addUnequippable(24107, WEAPON, "Arrow shaft"); // null
+		addUnequippable(24108, WEAPON, "Arrowhead"); // null
+		addUnequippable(24109, WEAPON, "Arrowhead"); // null
+		addUnequippable(24110, WEAPON, "Arrowhead"); // null
+		addUnequippable(24111, WEAPON, "Arrowhead"); // null
+		addUnequippable(24112, WEAPON, "Arrowhead"); // null
+		addUnequippable(24113, WEAPON, "Arrowhead"); // null
+		addUnequippable(24114, WEAPON, "Arrowhead"); // null
+		addUnequippable(24115, WEAPON, "Arrowhead"); // null
+		addUnequippable(24116, WEAPON, "Dart tip"); // null
+		addUnequippable(24117, WEAPON, "Dart tip"); // null
+		addUnequippable(24118, WEAPON, "Dart tip"); // null
+		addUnequippable(24119, WEAPON, "Dart tip"); // null
+		addUnequippable(24120, WEAPON, "Dart tip"); // null
+		addUnequippable(24121, WEAPON, "Dart tip"); // null
+		addUnequippable(24122, WEAPON, "Dart tip"); // null
+		addUnequippable(24273, WEAPON, "Basilisk stone prison"); // null
+		addUnequippable(24274, WEAPON, "Basilisk stone prison"); // null
+		addUnequippable(24275, WEAPON, "Basilisk stone prison"); // null
+		addUnequippable(24386, WEAPON, "Green and brown stick"); // null
+		addUnequippable(24435, WEAPON); // Festive pot
+		addUnequippable(24437, SHIELD); // Gingerbread shield
+		addUnequippable(24460, WEAPON); // Twisted teleport scroll
+		addUnequippable(24487, SHIELD, "Sextant"); // null
+		addUnequippable(24998, SHIELD, "Black crystal"); // null (item icon is invisible)
+		addUnequippable(24999, SHIELD, "Stick"); // null (item icon is invisible)
+		addUnequippable(25000, WEAPON, "Paper"); // null (item icon is invisible)
+		addUnequippable(25087, WEAPON); // Trailblazer teleport scroll
+		addUnequippable(25102, SHIELD); // Fairy mushroom
+		addUnequippable(25106, CAPE); // Extradimensional bag
+		addUnequippable(25484, WEAPON); // Webweaver bow (u)
+		addUnequippable(25485, WEAPON); // Webweaver bow
+		addUnequippable(25486, WEAPON); // Ursine chainmace (u)
+		addUnequippable(25487, WEAPON); // Ursine chainmace
+		addUnequippable(25488, WEAPON); // Accursed sceptre (u)
+		addUnequippable(25489, WEAPON); // Accursed sceptre
+		addUnequippable(25490, WEAPON); // Voidwaker
+		addUnequippable(25491, WEAPON); // Accursed sceptre (au)
+		addUnequippable(25492, WEAPON); // Accursed sceptre (a)
+		addUnequippable(25710, WEAPON); // Stool
+		addUnequippable(25848, WEAPON, "Amethyst dart tip"); // null
+		addUnequippable(25938, WEAPON, "Ghommal's hilt 1 (mainhand)", 25926); // Anim offhand
+		addUnequippable(25941, WEAPON, "Ghommal's hilt 2 (mainhand)", 25928); // Anim offhand
+		addUnequippable(25944, WEAPON, "Ghommal's hilt 3 (mainhand)", 25930); // Anim offhand
+		addUnequippable(25947, WEAPON, "Ghommal's hilt 4 (mainhand)", 25932); // Anim offhand
+		addUnequippable(25950, WEAPON, "Ghommal's hilt 5 (mainhand)", 25934); // Anim offhand
+		addUnequippable(25953, WEAPON, "Ghommal's hilt 6 (mainhand)", 25936); // Anim offhand
+		addUnequippable(26549, AMULET); // Portable waystone
+		addUnequippable(26551, SHIELD); // Arcane grimoire
+		addUnequippable(26581, SHIELD); // Goblin potion(4)
+		addUnequippable(26880, WEAPON); // Catalytic guardian stone
+		addUnequippable(27416, WEAPON); // Speedy teleport scroll
+		addUnequippable(27546, WEAPON, "Ghommal's avernic defender 5 (mainhand)", 27550); // Anim offhand
+		addUnequippable(27548, WEAPON, "Ghommal's avernic defender 6 (mainhand)", 27552); // Anim offhand
+		addUnequippable(27873, WEAPON); // Eastfloor spade
+		addUnequippable(7414, WEAPON); // Paddle
+		addUnequippable(6123, WEAPON); // Beer glass
+		addUnequippable(9702, WEAPON); // Stick
+		addUnequippable(10840, WEAPON); // A jester stick
+		int[] shouldNotBeEquippable = {22664, 22665, 22666, 22812, 22814, 26686, 26686, 26687, 26687, 26688, 26688, 26698, 26698, 26699, 26699, 26700, 26700, 26701, 26701, 26702, 26702, 26703, 26703, 4284, 4285};
+		for (int i : shouldNotBeEquippable)
+		{
+			OVERRIDE_EQUIPPABILITY_OR_SLOT.put(i, -1);
+		}
+
+		Set<Integer> jawSlotItems = ImmutableSet.of(10556, 10557, 10558, 10559, 10567, 20802, 22308, 22309, 22310, 22311, 22312, 22313, 22314, 22315, 22337, 22338, 22339, 22340, 22341, 22342, 22343, 22344, 22345, 22346, 22347, 22348, 22349, 22721, 22722, 22723, 22724, 22725, 22726, 22727, 22728, 22729, 22730, 23460, 23461, 23462, 23463, 23464, 23465, 23466, 23467, 23468, 23469, 23470, 23471, 23472, 23473, 23474, 23475, 23476, 23477, 23478, 23479, 23480, 23481, 23482, 23483, 23484, 23485, 23486, 25228, 25229, 25230, 25231, 25232, 25233, 25234, 25235, 25236, 25237, 25238, 25239, 25240, 25241, 25242, 25243, 25212, 25213, 25214, 25215, 25216, 25217, 25218, 25219, 25220, 25221, 25222, 25223, 25224, 25225, 25226, 25227);
+		for (Integer itemId : jawSlotItems)
+		{
+			OVERRIDE_EQUIPPABILITY_OR_SLOT.put(itemId, Constants.JAW_SLOT);
+		}
+	}
+
+	private List<AnimationSet> findMatchingAnimationSets(int itemId)
+	{
+		Set<List<Integer>> list = this.poseanims.get(itemId);
+		int variationId = itemId;
+		if (list == null)
+		{
+			Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(itemId));
+			for (Integer variation : variations)
+			{
+				if (this.poseanims.containsKey(variation))
+				{
+					list = poseanims.get(variation);
+					variationId = variation;
+					break;
+				}
+			}
+		}
+
+		boolean hasPoseAnims = list != null;
+		List<AnimationSet> matchingSets = new ArrayList<>();
+		boolean uhoh = false;
+		List<Integer> poseanims = null;
+		if (hasPoseAnims)
+		{
+			uhoh = list.size() > 1;
+			if (uhoh) System.out.println("more than 1 set of pose animations: " + itemId + " " + variationId);
+			poseanims = list.iterator().next();
+			for (AnimationSet animationSet : Constants.animationSets)
+			{
+				if (
+					Objects.equals(animationSet.getAnimation(Swap.AnimationType.STAND), poseanims.get(0))
+						&& Objects.equals(animationSet.getAnimation(Swap.AnimationType.ROTATE), poseanims.get(1))
+						&& Objects.equals(animationSet.getAnimation(Swap.AnimationType.WALK), poseanims.get(2))
+						&& Objects.equals(animationSet.getAnimation(Swap.AnimationType.WALK_BACKWARD), poseanims.get(3))
+						&& Objects.equals(animationSet.getAnimation(Swap.AnimationType.SHUFFLE_LEFT), poseanims.get(4))
+						&& Objects.equals(animationSet.getAnimation(Swap.AnimationType.SHUFFLE_RIGHT), poseanims.get(5))
+						&& Objects.equals(animationSet.getAnimation(Swap.AnimationType.RUN), poseanims.get(6))
+				)
+				{
+					matchingSets.add(animationSet);
+				}
+			}
+		}
+		return matchingSets;
+	}
+
+	private void putWeapon(Map<Integer, AnimationSet> itemIdToAnimationSet, int itemId, String animationSetName)
+	{
+		int baseId = ItemVariationMapping.map(itemId);
+		AnimationSet animationSet;
+		if ("".equals(animationSetName)) {
+			List<AnimationSet> matchingAnimationSets = findMatchingAnimationSets(baseId);
+			if (matchingAnimationSets.size() > 1) {
+				System.out.println("multiple matching sets for item " + itemId + " " + matchingAnimationSets);
+				return;
+			} else if (matchingAnimationSets.isEmpty()) {
+				System.out.println("no matching sets for item " + itemId + " " + matchingAnimationSets);
+				return;
+			}
+			animationSet = matchingAnimationSets.iterator().next();
+		} else {
+			animationSet = AnimationSet.getAnimationSet(animationSetName);
+		}
+
+		if (animationSet == null) {
+			System.out.println("null animationset " + animationSetName);
+			return;
+		}
+
+		itemIdToAnimationSet.put(baseId, animationSet);
+	}
+
+	private void json(boolean skipItemDefs)
+	{
+		Constants.Data data = new Constants.Data();
+		data.version = 8;
+
+		Constants.Data bundledData = Constants.getBundledData(plugin.runeliteGson);
+		if (!skipItemDefs) {
+			List<ItemDef> itemDefs = getItemDefs();
+
+			Map<Integer, List<Integer>> kitIndexToItemIds = getSlotAndNameData(itemDefs);
+			data.slotOverrides = kitIndexToItemIds;
+			data.nameIconOverrides = EQUIPPABLE_ITEMS_NOT_MARKED_AS_EQUIPMENT_NAMES;
+
+			addHidesArmsHairAndJaw(data, itemDefs);
+		} else {
+			data.slotOverrides = bundledData.slotOverrides;
+			data.nameIconOverrides = bundledData.nameIconOverrides;
+			data.showArms = bundledData.showArms;
+			data.hideHair = bundledData.hideHair;
+			data.hideJaw = bundledData.hideJaw;
+		}
+
+		Map<Integer, AnimationSet> itemIdToAnimationSet = getWeaponToAnimationSet();
 		Map<String, List<Integer>> poseanims = new HashMap<>();
 		for (Map.Entry<Integer, AnimationSet> entry : itemIdToAnimationSet.entrySet())
 		{
@@ -2427,10 +2111,99 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 
 		String s = plugin.runeliteGson.toJson(data);
 		System.out.println("your uhohlist is " + uhohList);
-		System.out.println("json is \n" + s);
 
+		System.out.println("     ##### Json diffs: #####");
+		System.out.println(bundledData.version + " " + data.version);
+		showDiffs(bundledData.showArms, data.showArms, "show arms");
+		showDiffs(bundledData.hideHair, data.hideHair, "hide hair");
+		showDiffs(bundledData.hideJaw, data.hideJaw, "hide jaw");
+		for (KitType value : KitType.values())
+		{
+			List<Integer> ids1 = bundledData.slotOverrides.get(value.ordinal());
+			List<Integer> ids2 = data.slotOverrides.get(value.ordinal());
+			ids1 = ids1 == null ? new ArrayList<>() : ids1;
+			ids2 = ids2 == null ? new ArrayList<>() : ids2;
+			showDiffs(ids1, ids2, "kittype " + value);
+		}
+		System.out.println("poseanims: " + bundledData.poseanims.equals(data.poseanims) + " " + bundledData.poseanims.size() + " " + data.poseanims.size());
+		System.out.println("animationsets: " + bundledData.animationSets.equals(data.animationSets) + " " + bundledData.animationSets.size() + " " + data.animationSets.size());
+		System.out.println("descriptions: " + bundledData.descriptions.equals(data.descriptions));
+		System.out.println("nameiconoverrides: " + bundledData.nameIconOverrides.equals(data.nameIconOverrides));
+		System.out.println("projectiles: " + bundledData.projectiles.equals(data.projectiles));
+//		showDiffs(bundledData.slotOverrides, data.slotOverrides, "slot overrides");
+
+		System.out.println("json is \n" + s);
 		Constants.loadData(plugin.runeliteGson.fromJson(s, Constants.Data.class));
 		if (plugin.pluginPanel != null) plugin.pluginPanel.rebuild();
+	}
+
+	@Subscribe
+	public void onClientTick(ClientTick clientTick) {
+//		for (int i = 0; i < Math.min(100, client.getLocalPlayer().getModel().getFaceColors1().length); i++)
+//		for (int i = 0; i < client.getLocalPlayer().getModel().getFaceColors1().length; i++)
+//		{
+//			client.getLocalPlayer().getModel().getFaceColors1()[i] = 0;
+//		}
+		if (demoanim != -1) {
+//			client.getLocalPlayer().setAnimation(demoanim);
+//			client.getLocalPlayer().setAnimationFrame(0);
+		}
+		if (demogfx != -1 && client.getLocalPlayer().getGraphic() != demogfx) {
+			client.getLocalPlayer().setGraphic(demogfx);
+			client.getLocalPlayer().setSpotAnimFrame(0);
+		}
+	}
+
+	@Subscribe
+	public void onMenuOptionClicked(MenuOptionClicked menuOptionClicked)
+	{
+		if (menuOptionClicked.getMenuOption().equals("Use") && menuOptionClicked.getItemId() == 563) {
+			if (demoanim != -1) {
+				demoanim--;
+				for (Constants.ActorAnimation value : values())
+				{
+					value.setAnimation(client.getLocalPlayer(), demoanim);
+				}
+				System.out.println("demo anim " + demoanim);
+				client.playSoundEffect(demoanim);
+			}
+			if (demogfx != -1) {
+				demogfx--;
+				client.getLocalPlayer().setGraphic(demogfx);
+				client.getLocalPlayer().setSpotAnimFrame(0);
+				client.getLocalPlayer().setGraphicHeight(0);
+				System.out.println("demo gfx " + demogfx);
+			}
+		} else if (menuOptionClicked.getMenuOption().equals("Use") && menuOptionClicked.getItemId() == 995){
+			if (demoanim != -1) {
+				demoanim++;
+				client.playSoundEffect(demoanim);
+				for (Constants.ActorAnimation value : values())
+				{
+					value.setAnimation(client.getLocalPlayer(), demoanim);
+				}
+				System.out.println("demo anim " + demoanim);
+			}
+			if (demogfx != -1) {
+				demogfx++;
+				System.out.println("demo gfx " + demogfx);
+			}
+		}
+//		System.out.println(menuOptionClicked.getMenuOption() + " " + Text.removeTags(menuOptionClicked.getMenuTarget()));
+	}
+
+	private void showDiffs(Collection<Integer> before, Collection<Integer> after, String name)
+	{
+		Set<Integer> extraFromCache = new HashSet<>();
+		extraFromCache.addAll(before);
+		extraFromCache.removeAll(after);
+		Set<Integer> extraFromManual = new HashSet<>();
+		extraFromManual.addAll(after);
+		extraFromManual.removeAll(before);
+		if (!extraFromCache.isEmpty() || !extraFromManual.isEmpty()) {
+			System.out.print(name + " removed " + extraFromCache);
+			System.out.println(" added " + extraFromManual);
+		}
 	}
 
 	private List<ProjectileCast> getProjectileCasts()
@@ -2451,112 +2224,114 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		// TODO any arrow, any spell.
 
 		List<ProjectileCast> projectiles = new ArrayList<>();
-		projectiles.add(p().id(0).name("Wind Strike").sprite(SpriteID.SPELL_WIND_STRIKE).cast(1162, 90).projectile(91, 51, 64, -172, 124, 16).hitGfx(92, 124).build());
-		projectiles.add(p().id(1).name("Confuse").sprite(SpriteID.SPELL_CONFUSE).cast(1163, 102).projectile(103, 61, 64, -172, 124, 16).hitGfx(104, 124).build());
-		projectiles.add(p().id(2).name("Water Strike").sprite(SpriteID.SPELL_WATER_STRIKE).cast(1162, 93).projectile(94, 51, 64, -172, 124, 16).hitGfx(95, 124).build());
-		projectiles.add(p().id(3).name("Earth Strike").sprite(SpriteID.SPELL_EARTH_STRIKE).cast(1162, 96).projectile(97, 51, 64, -172, 124, 16).hitGfx(98, 124).build());
-		projectiles.add(p().id(4).name("Weaken").sprite(SpriteID.SPELL_WEAKEN).cast(1164, 105).projectile(106, 44, 64, -172, 124, 16).hitGfx(107, 124).build());
-		projectiles.add(p().id(5).name("Fire Strike").sprite(SpriteID.SPELL_FIRE_STRIKE).cast(1162, 99).projectile(100, 51, 64, -172, 124, 16).hitGfx(101, 124).build());
-		projectiles.add(p().id(6).name("Wind Bolt").sprite(SpriteID.SPELL_WIND_BOLT).cast(1162, 117).projectile(118, 51, 64, -172, 124, 16).hitGfx(119, 124).build());
-		projectiles.add(p().id(7).name("Curse").sprite(SpriteID.SPELL_CURSE).cast(1165, 108).projectile(109, 51, 64, -172, 124, 16).hitGfx(110, 124).build());
-		projectiles.add(p().id(8).name("Bind").sprite(SpriteID.SPELL_BIND).cast(1161, 177).projectile(178, 75, 64, -172, 0, 16).hitGfx(181, 0).hitGfx(181, 124).build());
-		projectiles.add(p().id(9).name("Water Bolt").sprite(SpriteID.SPELL_WATER_BOLT).cast(1162, 120).projectile(121, 51, 64, -172, 124, 16).hitGfx(122, 124).build());
-		projectiles.add(p().id(10).name("Earth Bolt").sprite(SpriteID.SPELL_EARTH_BOLT).cast(1162, 123).projectile(124, 51, 64, -172, 124, 16).hitGfx(125, 124).build());
-		projectiles.add(p().id(11).name("Telegrab").sprite(SpriteID.SPELL_TELEKINETIC_GRAB).cast(723, 142).projectile(143, 48, 64, -172, 0, 16).hitGfx(144, 0).build());
-		projectiles.add(p().id(12).name("Fire Bolt").sprite(SpriteID.SPELL_FIRE_BOLT).cast(1162, 126).projectile(127, 51, 64, -172, 124, 16).hitGfx(128, 124).build());
-		projectiles.add(p().id(13).name("Crumble Undead").sprite(SpriteID.SPELL_CRUMBLE_UNDEAD).cast(1166, 145).projectile(146, 46, 64, -172, 124, 16).hitGfx(147, 124).build());
-		projectiles.add(p().id(14).name("Wind Blast").sprite(SpriteID.SPELL_WIND_BLAST).cast(1162, 132).projectile(133, 51, 64, -172, 124, 16).hitGfx(134, 124).build());
-		projectiles.add(p().id(15).name("Water Blast").sprite(SpriteID.SPELL_WATER_BLAST).cast(1162, 135).projectile(136, 51, 64, -172, 124, 16).hitGfx(137, 124).build());
-		projectiles.add(p().id(16).name("Iban Blast").sprite(SpriteID.SPELL_IBAN_BLAST).cast(708, 87).projectile(88, 60, 64, -172, 124, 16).hitGfx(89, 124).build());
-		projectiles.add(p().id(17).name("Snare").sprite(SpriteID.SPELL_SNARE).cast(1161, 177).projectile(178, 75, 64, -172, 0, 16).hitGfx(180, 0).hitGfx(180, 124).build());
-		projectiles.add(p().id(18).name("Magic Dart").sprite(SpriteID.SPELL_MAGIC_DART).cast(1576, -1).projectile(328, 51, 64, -172, 124, 16).hitGfx(329, 124).build());
-		projectiles.add(p().id(19).name("Earth Blast").sprite(SpriteID.SPELL_EARTH_BLAST).cast(1162, 138).projectile(139, 51, 64, -172, 124, 16).hitGfx(140, 124).build());
-		projectiles.add(p().id(20).name("Fire Blast").sprite(SpriteID.SPELL_FIRE_BLAST).cast(1162, 129).projectile(130, 51, 64, -172, 124, 16).hitGfx(131, 124).build());
-		projectiles.add(p().id(21).name("Saradomin Strike").sprite(SpriteID.SPELL_SARADOMIN_STRIKE).ids(811, -1, 76).build());
-		projectiles.add(p().id(22).name("Claws of Guthix").sprite(SpriteID.SPELL_CLAWS_OF_GUTHIX).ids(811, -1, 77).build());
-		projectiles.add(p().id(23).name("Flames of Zamorak").sprite(SpriteID.SPELL_FLAMES_OF_ZAMORAK).ids(811, -1, 78).build());
-		projectiles.add(p().id(24).name("Wind Wave").sprite(SpriteID.SPELL_WIND_WAVE).cast(1167, 158).projectile(159, 51, 64, -172, 124, 16).hitGfx(160, 124).build());
-		projectiles.add(p().id(25).name("Water Wave").sprite(SpriteID.SPELL_WATER_WAVE).cast(1167, 161).projectile(162, 51, 64, -172, 124, 16).hitGfx(163, 124).build());
-		projectiles.add(p().id(26).name("Vulnerability").sprite(SpriteID.SPELL_VULNERABILITY).cast(1165, 167).projectile(168, 34, 64, -172, 124, 16).hitGfx(169, 124).build());
-		projectiles.add(p().id(27).name("Earth Wave").sprite(SpriteID.SPELL_EARTH_WAVE).cast(1167, 164).projectile(165, 51, 64, -172, 124, 16).hitGfx(166, 124).build());
-		projectiles.add(p().id(28).name("Enfeeble").sprite(SpriteID.SPELL_ENFEEBLE).cast(1168, 170).projectile(171, 48, 64, -172, 124, 16).hitGfx(172, 124).build());
-		projectiles.add(p().id(29).name("Fire Wave").sprite(SpriteID.SPELL_FIRE_WAVE).cast(1167, 155).projectile(156, 51, 64, -172, 124, 16).hitGfx(157, 124).build());
-		projectiles.add(p().id(30).name("Entangle").sprite(SpriteID.SPELL_ENTANGLE).cast(1161, 177).projectile(178, 75, 64, -172, 0, 16).hitGfx(179, 0).hitGfx(179, 124).build());
-		projectiles.add(p().id(31).name("Stun").sprite(SpriteID.SPELL_STUN).cast(1169, 173).projectile(174, 52, 64, -172, 124, 16).hitGfx(80, 124).build());
-		projectiles.add(p().id(32).name("Wind Surge").sprite(SpriteID.SPELL_WIND_SURGE).cast(7855, 1455).projectile(1456, 51, 64, -172, 124, 16).hitGfx(1457, 124).build());
-		projectiles.add(p().id(33).name("Water Surge").sprite(SpriteID.SPELL_WATER_SURGE).cast(7855, 1458).projectile(1459, 51, 64, -172, 124, 16).hitGfx(1460, 124).build());
-		projectiles.add(p().id(34).name("Earth Surge").sprite(SpriteID.SPELL_EARTH_SURGE).cast(7855, 1461).projectile(1462, 51, 64, -172, 124, 16).hitGfx(1463, 124).build());
-		projectiles.add(p().id(35).name("Fire Surge").sprite(SpriteID.SPELL_FIRE_SURGE).cast(7855, 1464).projectile(1465, 51, 64, -172, 124, 16).hitGfx(1466, 124).build());
+		projectiles.add(p().id(0).name("Wind Strike").sprite(SpriteID.SPELL_WIND_STRIKE).cast(1162, 90, 92).projectile(91, 51, 64, 172, 124, 16).hit(92, 124).build());
+		projectiles.add(p().id(1).name("Confuse").sprite(SpriteID.SPELL_CONFUSE).cast(1163, 102, 92).projectile(103, 61, 64, 172, 124, 16).hit(104, 124).build());
+		projectiles.add(p().id(2).name("Water Strike").sprite(SpriteID.SPELL_WATER_STRIKE).cast(1162, 93, 92).projectile(94, 51, 64, 172, 124, 16).hit(95, 124).build());
+		projectiles.add(p().id(3).name("Earth Strike").sprite(SpriteID.SPELL_EARTH_STRIKE).cast(1162, 96, 92).projectile(97, 51, 64, 172, 124, 16).hit(98, 124).build());
+		projectiles.add(p().id(4).name("Weaken").sprite(SpriteID.SPELL_WEAKEN).cast(1164, 105, 92).projectile(106, 44, 64, 172, 124, 16).hit(107, 124).build());
+		projectiles.add(p().id(5).name("Fire Strike").sprite(SpriteID.SPELL_FIRE_STRIKE).cast(1162, 99, 92).projectile(100, 51, 64, 172, 124, 16).hit(101, 124).build());
+		projectiles.add(p().id(6).name("Wind Bolt").sprite(SpriteID.SPELL_WIND_BOLT).cast(1162, 117, 92).projectile(118, 51, 64, 172, 124, 16).hit(119, 124).build());
+		projectiles.add(p().id(7).name("Curse").sprite(SpriteID.SPELL_CURSE).cast(1165, 108, 92).projectile(109, 51, 64, 172, 124, 16).hit(110, 124).build());
+		projectiles.add(p().id(8).name("Bind").sprite(SpriteID.SPELL_BIND).cast(1161, 177, 92).projectile(178, 75, 64, 172, 0, 16).hit(181, 0).hit(181, 124).build());
+		projectiles.add(p().id(9).name("Water Bolt").sprite(SpriteID.SPELL_WATER_BOLT).cast(1162, 120, 92).projectile(121, 51, 64, 172, 124, 16).hit(122, 124).build());
+		projectiles.add(p().id(10).name("Earth Bolt").sprite(SpriteID.SPELL_EARTH_BOLT).cast(1162, 123, 92).projectile(124, 51, 64, 172, 124, 16).hit(125, 124).build());
+		projectiles.add(p().id(11).name("Telegrab").sprite(SpriteID.SPELL_TELEKINETIC_GRAB).cast(723, 142, 92).projectile(143, 48, 64, 172, 0, 16).hit(144, 0).build());
+		projectiles.add(p().id(12).name("Fire Bolt").sprite(SpriteID.SPELL_FIRE_BOLT).cast(1162, 126, 92).projectile(127, 51, 64, 172, 124, 16).hit(128, 124).build());
+		projectiles.add(p().id(13).name("Crumble Undead").sprite(SpriteID.SPELL_CRUMBLE_UNDEAD).cast(1166, 145, 92).projectile(146, 46, 64, 172, 124, 16).hit(147, 124).build());
+		projectiles.add(p().id(14).name("Wind Blast").sprite(SpriteID.SPELL_WIND_BLAST).cast(1162, 132, 92).projectile(133, 51, 64, 172, 124, 16).hit(134, 124).build());
+		projectiles.add(p().id(15).name("Water Blast").sprite(SpriteID.SPELL_WATER_BLAST).cast(1162, 135, 92).projectile(136, 51, 64, 172, 124, 16).hit(137, 124).build());
+		projectiles.add(p().id(16).name("Iban Blast").sprite(SpriteID.SPELL_IBAN_BLAST).cast(708, 87, 92).projectile(88, 60, 64, 172, 124, 16).hit(89, 124).build());
+		projectiles.add(p().id(17).name("Snare").sprite(SpriteID.SPELL_SNARE).cast(1161, 177, 92).projectile(178, 75, 64, 172, 0, 16).hit(180, 0).hit(180, 124).build());
+		projectiles.add(p().id(18).name("Magic Dart").sprite(SpriteID.SPELL_MAGIC_DART).cast(1576, -1, 92).projectile(328, 51, 64, 172, 124, 16).hit(329, 124).build());
+		projectiles.add(p().id(19).name("Earth Blast").sprite(SpriteID.SPELL_EARTH_BLAST).cast(1162, 138, 92).projectile(139, 51, 64, 172, 124, 16).hit(140, 124).build());
+		projectiles.add(p().id(20).name("Fire Blast").sprite(SpriteID.SPELL_FIRE_BLAST).cast(1162, 129, 92).projectile(130, 51, 64, 172, 124, 16).hit(131, 124).build());
+		projectiles.add(p().id(21).name("Saradomin Strike").sprite(SpriteID.SPELL_SARADOMIN_STRIKE).simpleSpell(811, 76).build());
+		projectiles.add(p().id(22).name("Claws of Guthix").sprite(SpriteID.SPELL_CLAWS_OF_GUTHIX).simpleSpell(811, 77).build());
+		projectiles.add(p().id(23).name("Flames of Zamorak").sprite(SpriteID.SPELL_FLAMES_OF_ZAMORAK).simpleSpell(811, 78).build());
+		projectiles.add(p().id(24).name("Wind Wave").sprite(SpriteID.SPELL_WIND_WAVE).cast(1167, 158, 92).projectile(159, 51, 64, 172, 124, 16).hit(160, 124).build());
+		projectiles.add(p().id(25).name("Water Wave").sprite(SpriteID.SPELL_WATER_WAVE).cast(1167, 161, 92).projectile(162, 51, 64, 172, 124, 16).hit(163, 124).build());
+		projectiles.add(p().id(26).name("Vulnerability").sprite(SpriteID.SPELL_VULNERABILITY).cast(1165, 167, 92).projectile(168, 34, 64, 172, 124, 16).hit(169, 124).build());
+		projectiles.add(p().id(27).name("Earth Wave").sprite(SpriteID.SPELL_EARTH_WAVE).cast(1167, 164, 92).projectile(165, 51, 64, 172, 124, 16).hit(166, 124).build());
+		projectiles.add(p().id(28).name("Enfeeble").sprite(SpriteID.SPELL_ENFEEBLE).cast(1168, 170, 92).projectile(171, 48, 64, 172, 124, 16).hit(172, 124).build());
+		projectiles.add(p().id(29).name("Fire Wave").sprite(SpriteID.SPELL_FIRE_WAVE).cast(1167, 155, 92).projectile(156, 51, 64, 172, 124, 16).hit(157, 124).build());
+		projectiles.add(p().id(30).name("Entangle").sprite(SpriteID.SPELL_ENTANGLE).cast(1161, 177, 92).projectile(178, 75, 64, 172, 0, 16).hit(179, 0).hit(179, 124).build());
+		projectiles.add(p().id(31).name("Stun").sprite(SpriteID.SPELL_STUN).cast(1169, 173, 92).projectile(174, 52, 64, 172, 124, 16).hit(80, 124).build());
+		projectiles.add(p().id(32).name("Wind Surge").sprite(SpriteID.SPELL_WIND_SURGE).cast(7855, 1455, 92).projectile(1456, 51, 64, 172, 124, 16).hit(1457, 124).build());
+		projectiles.add(p().id(33).name("Water Surge").sprite(SpriteID.SPELL_WATER_SURGE).cast(7855, 1458, 92).projectile(1459, 51, 64, 172, 124, 16).hit(1460, 124).build());
+		projectiles.add(p().id(34).name("Earth Surge").sprite(SpriteID.SPELL_EARTH_SURGE).cast(7855, 1461, 92).projectile(1462, 51, 64, 172, 124, 16).hit(1463, 124).build());
+		projectiles.add(p().id(35).name("Fire Surge").sprite(SpriteID.SPELL_FIRE_SURGE).cast(7855, 1464, 92).projectile(1465, 51, 64, 172, 124, 16).hit(1466, 124).build());
 
 		// Ancient spellbook.
 		projectiles.add(p().id(36).name("Smoke Rush").sprite(SpriteID.SPELL_SMOKE_RUSH).ids(1978, -1, 384, 385, 51, 64, 124, 16).build());
 		projectiles.add(p().id(37).name("Shadow Rush").sprite(SpriteID.SPELL_SHADOW_RUSH).ids(1978, -1, 378, 379, 51, 64, 0, 16).build());
-		projectiles.add(p().id(38).name("Blood Rush").sprite(SpriteID.SPELL_BLOOD_RUSH).ids(1978, -1, 373).build());
+		projectiles.add(p().id(38).name("Blood Rush").sprite(SpriteID.SPELL_BLOOD_RUSH).simpleSpell(1978, 373).build());
 		projectiles.add(p().id(39).name("Ice Rush").sprite(SpriteID.SPELL_ICE_RUSH).ids(1978, -1, 360, 361, 51, 64, 0, 16).build());
-		projectiles.add(p().id(40).name("Smoke Burst").sprite(SpriteID.SPELL_SMOKE_BURST).ids(1979, -1, 389).build());
-		projectiles.add(p().id(41).name("Shadow Burst").sprite(SpriteID.SPELL_SHADOW_BURST).ids(1979, -1, 382).build());
-		projectiles.add(p().id(42).name("Blood Burst").sprite(SpriteID.SPELL_BLOOD_BURST).ids(1979, -1, 376).build());
-		projectiles.add(p().id(43).name("Ice Burst").sprite(SpriteID.SPELL_ICE_BURST).ids(1979, -1, 363).build());
+		projectiles.add(p().id(40).name("Smoke Burst").sprite(SpriteID.SPELL_SMOKE_BURST).simpleSpell(1979, 389).build());
+		projectiles.add(p().id(41).name("Shadow Burst").sprite(SpriteID.SPELL_SHADOW_BURST).simpleSpell(1979, 382).build());
+		projectiles.add(p().id(42).name("Blood Burst").sprite(SpriteID.SPELL_BLOOD_BURST).simpleSpell(1979, 376).build());
+		projectiles.add(p().id(43).name("Ice Burst").sprite(SpriteID.SPELL_ICE_BURST).simpleSpell(1979, 363).build());
 		projectiles.add(p().id(44).name("Smoke Blitz").sprite(SpriteID.SPELL_SMOKE_BLITZ).ids(1978, -1, 386, 387, 51, 64, 124, 16).build());
 		projectiles.add(p().id(45).name("Shadow Blitz").sprite(SpriteID.SPELL_SHADOW_BLITZ).ids(1978, -1, 380, 381, 51, 64, 0, 16).build());
 		projectiles.add(p().id(46).name("Blood Blitz").sprite(SpriteID.SPELL_BLOOD_BLITZ).ids(1978, -1, 374, 375, 51, 64, 0, 16).build());
-		projectiles.add(p().id(47).name("Ice Blitz").sprite(SpriteID.SPELL_ICE_BLITZ).ids(1978, 366, 367).build());
-		projectiles.add(p().id(48).name("Smoke Barrage").sprite(SpriteID.SPELL_SMOKE_BARRAGE).ids(1979, -1, 391).build());
-		projectiles.add(p().id(49).name("Shadow Barrage").sprite(SpriteID.SPELL_SHADOW_BARRAGE).ids(1979, -1, 383).build());
-		projectiles.add(p().id(50).name("Blood Barrage").sprite(SpriteID.SPELL_BLOOD_BARRAGE).ids(1979, -1, 377).build());
-		projectiles.add(p().id(51).name("Ice Barrage").sprite(SpriteID.SPELL_ICE_BARRAGE).ids(1979, -1, 369).build());
+		projectiles.add(p().id(47).name("Ice Blitz").sprite(SpriteID.SPELL_ICE_BLITZ).cast(1978, 366, 124).hit(367, 0).build());
+		projectiles.add(p().id(48).name("Smoke Barrage").sprite(SpriteID.SPELL_SMOKE_BARRAGE).simpleSpell(1979, 391).build());
+		projectiles.add(p().id(49).name("Shadow Barrage").sprite(SpriteID.SPELL_SHADOW_BARRAGE).simpleSpell(1979, 383).build());
+		projectiles.add(p().id(50).name("Blood Barrage").sprite(SpriteID.SPELL_BLOOD_BARRAGE).simpleSpell(1979, 377).build());
+		projectiles.add(p().id(51).name("Ice Barrage").sprite(SpriteID.SPELL_ICE_BARRAGE).simpleSpell(1979, 369).build());
 
 		// Arceuus spellbook.
-		projectiles.add(p().id(52).name("Ghostly Grasp").sprite(SpriteID.SPELL_GHOSTLY_GRASP).ids(8972, 1856, 1858).build());
-		projectiles.add(p().id(53).name("Skeletal Grasp").sprite(SpriteID.SPELL_SKELETAL_GRASP).ids(8972, 1859, 1861).build());
-		projectiles.add(p().id(54).name("Undead Grasp").sprite(SpriteID.SPELL_UNDEAD_GRASP).ids(8972, 1862, 1863).build());
-		projectiles.add(p().id(55).name("Inferior Demonbane").sprite(SpriteID.SPELL_INFERIOR_DEMONBANE).ids(8977, 1865, 1866).build());
-		projectiles.add(p().id(56).name("Superior Demonbane").sprite(SpriteID.SPELL_SUPERIOR_DEMONBANE).ids(8977, 1867, 1868).build());
-		projectiles.add(p().id(57).name("Dark Demonbane").sprite(SpriteID.SPELL_DARK_DEMONBANE).ids(8977, 1869, 1870).build());
-		projectiles.add(p().id(58).name("Dark Lure").sprite(SpriteID.SPELL_DARK_LURE).ids(8974, 1882, 1884).build());
+		projectiles.add(p().id(52).name("Ghostly Grasp").sprite(SpriteID.SPELL_GHOSTLY_GRASP).cast(8972, 1856, 0).hit(1858, 0).build());
+		projectiles.add(p().id(53).name("Skeletal Grasp").sprite(SpriteID.SPELL_SKELETAL_GRASP).cast(8972, 1859, 0).hit(1861, 0).build());
+		projectiles.add(p().id(54).name("Undead Grasp").sprite(SpriteID.SPELL_UNDEAD_GRASP).cast(8972, 1862, 0).hit(1863, 0).build());
+		projectiles.add(p().id(55).name("Inferior Demonbane").sprite(SpriteID.SPELL_INFERIOR_DEMONBANE).cast(8977, 1865, 0).hit(1866, 0).build());
+		projectiles.add(p().id(56).name("Superior Demonbane").sprite(SpriteID.SPELL_SUPERIOR_DEMONBANE).cast(8977, 1867, 0).hit(1868, 0).build());
+		projectiles.add(p().id(57).name("Dark Demonbane").sprite(SpriteID.SPELL_DARK_DEMONBANE).cast(8977, 1869, 0).hit(1870, 0).build());
+		projectiles.add(p().id(58).name("Dark Lure").sprite(SpriteID.SPELL_DARK_LURE).cast(8974, 1882, 1884).build());
 
 		// Powered staves.
 		// TODO black trident. I forget the ID.
-		projectiles.add(p().id(59).itemId(ItemID.TRIDENT_OF_THE_SEAS).ids(1167, 1251, 1252, 1253, 51, 64, 60, 16).build());
-		projectiles.add(p().id(60).itemId(ItemID.TRIDENT_OF_THE_SWAMP).ids(1167, 665, 1040, 1042, 51, 64, 60, 16).build());
-		projectiles.add(p().id(61).name("trident (purple and gold)").itemId(ItemID.GOLDEN_SCARAB).ids(1167, 1543, 1544, 1545, 51, 64, 60, 16).artificial().build());
-		projectiles.add(p().id(62).name("trident (purple and silver)").itemId(ItemID.STONE_SCARAB).ids(1167, 1546, 1547, 1548, 51, 64, 60, 16).artificial().build());
-		projectiles.add(p().id(63).name("Sanguinesti staff (regular)").itemId(ItemID.SANGUINESTI_STAFF).ids(1167, 1540, 1539, 1541, 51, 64, 60, 16).build());
-		projectiles.add(p().id(64).name("Sanguinesti staff (health restore)").itemId(ItemID.SANGUINESTI_STAFF).ids(1167, 1540, 1539, 1542, 51, 64, 60, 16).build());
-		projectiles.add(p().id(65).name("Holy sanguinesti staff (regular)").itemId(ItemID.HOLY_SANGUINESTI_STAFF).ids(1167, 1900, 1899, 1901, 51, 64, 60, 16).build());
-		projectiles.add(p().id(66).name("Holy sanguinesti staff (health restore)").itemId(ItemID.HOLY_SANGUINESTI_STAFF).ids(1167, 1900, 1899, 1902, 51, 64, 60, 16).build());
-		projectiles.add(p().id(157).itemId(ItemID.TUMEKENS_SHADOW).cast(9493, 2125).projectile(2126, 56, 40, -400, 124, 32).hitGfx(2127, 124).build());
+		projectiles.add(p().id(59).itemId(ItemID.TRIDENT_OF_THE_SEAS).ids(1167, 1251, 92, 1252, 1253, 51, 64, 92, 60, 16).build());
+		projectiles.add(p().id(60).itemId(ItemID.TRIDENT_OF_THE_SWAMP).ids(1167, 665, 92, 1040, 1042, 51, 64, 92, 60, 16).build());
+		projectiles.add(p().id(61).name("trident (purple and gold)").itemId(ItemID.GOLDEN_SCARAB).ids(1167, 1543, 92, 1544, 1545, 51, 64, 92, 60, 16).artificial().build());
+		projectiles.add(p().id(62).name("trident (purple and silver)").itemId(ItemID.STONE_SCARAB).ids(1167, 1546, 92, 1547, 1548, 51, 64, 92, 60, 16).artificial().build());
+		projectiles.add(p().id(63).name("Sanguinesti staff (regular, 92)").itemId(ItemID.SANGUINESTI_STAFF).ids(1167, 1540, 92, 1539, 1541, 51, 64, 92, 60, 16).build());
+		projectiles.add(p().id(64).name("Sanguinesti staff (health restore)").itemId(ItemID.SANGUINESTI_STAFF).ids(1167, 1540, 92, 1539, 1542, 51, 64, 92, 60, 16).build());
+		projectiles.add(p().id(65).name("Holy sanguinesti staff (regular)").itemId(ItemID.HOLY_SANGUINESTI_STAFF).ids(1167, 1900, 92, 1899, 1901, 51, 64, 92, 60, 16).build());
+		projectiles.add(p().id(66).name("Holy sanguinesti staff (health restore)").itemId(ItemID.HOLY_SANGUINESTI_STAFF).ids(1167, 1900, 92, 1899, 1902, 51, 64, 92, 60, 16).build());
+		projectiles.add(p().id(157).itemId(ItemID.TUMEKENS_SHADOW).cast(9493, 2125, 92 /*TODO*/).projectile(2126, 56, 40, 400, 124, 32).hit(2127, 124).build());
 
 		// Arrows. Many values guessed based off of iron arrow, so stuff like height/slope could be off for some arrows.
-		projectiles.add(p().id(67).itemId(ItemID.BRONZE_ARROW).ids(426, 19, 10, -1, 41, 11, 144, 15).build());
-		projectiles.add(p().id(68).itemId(ItemID.IRON_ARROW).ids(426, 18, 9, -1, 41, 11, 144, 15).build());
-		projectiles.add(p().id(69).itemId(ItemID.STEEL_ARROW).ids(426, 20, 11, -1, 41, 11, 144, 15).build());
-		projectiles.add(p().id(70).name("Black arrow").itemId(ItemID.HEADLESS_ARROW).ids(426, 23, 14, -1, 41, 11, 144, 15).build());
-		projectiles.add(p().id(71).itemId(ItemID.MITHRIL_ARROW).ids(426, 21, 12, -1, 41, 11, 144, 15).build());
-		projectiles.add(p().id(72).itemId(ItemID.ADAMANT_ARROW).ids(426, 22, 13, -1, 41, 11, 144, 15).build());
-		projectiles.add(p().id(73).itemId(ItemID.RUNE_ARROW).ids(426, 24, 15, -1, 41, 11, 144, 15).build());
-		projectiles.add(p().id(74).itemId(ItemID.AMETHYST_ARROW).ids(426, 1385, 1384, -1, 41, 11, 144, 15).build());
-		projectiles.add(p().id(75).itemId(ItemID.DRAGON_ARROW).ids(426, 1116, 1120, -1, 41, 11, 144, 15).build());
-		projectiles.add(p().id(76).itemId(ItemID.ICE_ARROWS).ids(426, 25, 16, -1, 41, 11, 144, 15).build());
-		projectiles.add(p().id(77).name("Fire arrow").itemId(ItemID.BRONZE_FIRE_ARROW_LIT).ids(426, 26, 17, -1, 41, 11, 144, 15).build());
-		projectiles.add(p().id(78).itemId(ItemID.TRAINING_ARROWS).ids(426, 806, 805, -1, 41, 11, 144, 15).build());
-		projectiles.add(p().id(79).itemId(ItemID.CRYSTAL_BOW).ids(426, 250, 249, -1, 41, 11, 144, 15).build());
-		projectiles.add(p().id(80).itemId(ItemID.OGRE_ARROW).ids(426, 243, 242, -1, 41, 11, 144, 15).build());
+		ProjectileCast bronzeArrow = p().id(67).itemId(ItemID.BRONZE_ARROW).cast(426, 19, 96).projectile(10, 41, 11, 163, 146, 15).build();
+		projectiles.add(bronzeArrow);
+		projectiles.add(bronzeArrow.toBuilder().id(68).itemId(ItemID.IRON_ARROW).castGfx(18).projectileId(9).build());
+		projectiles.add(bronzeArrow.toBuilder().id(69).itemId(ItemID.STEEL_ARROW).castGfx(20).projectileId(11).build());
+		projectiles.add(bronzeArrow.toBuilder().id(70).name("Black arrow").itemId(ItemID.HEADLESS_ARROW).castGfx(23).projectileId(14).build());
+		projectiles.add(bronzeArrow.toBuilder().id(71).itemId(ItemID.MITHRIL_ARROW).castGfx(21).projectileId(12).build());
+		projectiles.add(bronzeArrow.toBuilder().id(72).itemId(ItemID.ADAMANT_ARROW).castGfx(22).projectileId(13).build());
+		projectiles.add(bronzeArrow.toBuilder().id(73).itemId(ItemID.RUNE_ARROW).castGfx(24).projectileId(15).build());
+		projectiles.add(bronzeArrow.toBuilder().id(74).itemId(ItemID.AMETHYST_ARROW).castGfx(1385).projectileId(1384).build());
+		projectiles.add(bronzeArrow.toBuilder().id(75).itemId(ItemID.DRAGON_ARROW).castGfx(1116).projectileId(1120).build());
+		projectiles.add(bronzeArrow.toBuilder().id(76).itemId(ItemID.ICE_ARROWS).castGfx(25).projectileId(16).build());
+		projectiles.add(bronzeArrow.toBuilder().id(77).name("Fire arrow").itemId(ItemID.BRONZE_FIRE_ARROW_LIT).castGfx(26).projectileId(17).build());
+		projectiles.add(bronzeArrow.toBuilder().id(78).itemId(ItemID.TRAINING_ARROWS).castGfx(806).projectileId(805).build());
+		projectiles.add(bronzeArrow.toBuilder().id(79).itemId(ItemID.CRYSTAL_BOW).castGfx(250).projectileId(249).build());
+		projectiles.add(bronzeArrow.toBuilder().id(80).itemId(ItemID.OGRE_ARROW).castGfx(243).projectileId(242).build());
 		projectiles.add(p().id(142).name("Dark bow spec (non-dragon arrows)").itemId(ItemID.DARK_BOW).ids(426, 1105, 1101, 1103, 41, 11, 144, 5).build());
 		projectiles.add(p().id(143).name("Dark bow spec (dragon arrows)").itemId(ItemID.DARK_BOW).ids(426, 1111, 1099, 1100, 41, 11, 144, 5).build());
-		projectiles.add(p().id(144).name("Seercull").itemId(ItemID.SEERCULL).ids(426, 472, 473, 474, 41, 11, 144, 15).hitGfx(474, 0).build());
+		projectiles.add(p().id(144).name("Seercull").itemId(ItemID.SEERCULL).ids(426, 472, 473, 474, 41, 11, 144, 15).hit(474, 0).build());
 		// TODO ba arrows, brutal arrow, broad arrow.
 		// TODO specs (seercull, msb, magic longbow), dark bow.
 
 		// bow of faerdhinen bofa
-		projectiles.add(p().id(81).itemId(ItemID.BOW_OF_FAERDHINEN).ids(426, 1889, 1888, -1, 41, 11, 144, 15).build());
-		projectiles.add(p().id(82).name("Bow of faerdhinen (red)").itemId(ItemID.BOW_OF_FAERDHINEN_C_25884).ids(426, 1923, 1922, -1, 41, 11, 144, 15).build());
-		projectiles.add(p().id(83).name("Bow of faerdhinen (white)").itemId(ItemID.BOW_OF_FAERDHINEN_C_25886).ids(426, 1925, 1924, -1, 41, 11, 144, 15).build());
-		projectiles.add(p().id(84).name("Bow of faerdhinen (black)").itemId(ItemID.BOW_OF_FAERDHINEN_C_25888).ids(426, 1927, 1926, -1, 41, 11, 144, 15).build());
-		projectiles.add(p().id(85).name("Bow of faerdhinen (purple)").itemId(ItemID.BOW_OF_FAERDHINEN_C_25890).ids(426, 1929, 1928, -1, 41, 11, 144, 15).build());
-		projectiles.add(p().id(86).name("Bow of faerdhinen (green)").itemId(ItemID.BOW_OF_FAERDHINEN_C_25892).ids(426, 1931, 1930, -1, 41, 11, 144, 15).build());
-		projectiles.add(p().id(87).name("Bow of faerdhinen (yellow)").itemId(ItemID.BOW_OF_FAERDHINEN_C_25894).ids(426, 1933, 1932, -1, 41, 11, 144, 15).build());
-		projectiles.add(p().id(88).name("Bow of faerdhinen (blue)").itemId(ItemID.BOW_OF_FAERDHINEN_C_25896).ids(426, 1935, 1934, -1, 41, 11, 144, 15).build());
+		ProjectileCast bofa = p().id(81).itemId(ItemID.BOW_OF_FAERDHINEN).ids(426, 1888, 1887, -1, 41, 11, 144, 15).build();
+		projectiles.add(bofa);
+		projectiles.add(bofa.toBuilder().id(82).name("Bow of faerdhinen (red)").itemId(ItemID.BOW_OF_FAERDHINEN_C_25884).castGfx(1923).projectileId(1922).build());
+		projectiles.add(bofa.toBuilder().id(83).name("Bow of faerdhinen (white)").itemId(ItemID.BOW_OF_FAERDHINEN_C_25886).castGfx(1925).projectileId(1924).build());
+		projectiles.add(bofa.toBuilder().id(84).name("Bow of faerdhinen (black)").itemId(ItemID.BOW_OF_FAERDHINEN_C_25888).castGfx(1927).projectileId(1926).build());
+		projectiles.add(bofa.toBuilder().id(85).name("Bow of faerdhinen (purple)").itemId(ItemID.BOW_OF_FAERDHINEN_C_25890).castGfx(1929).projectileId(1928).build());
+		projectiles.add(bofa.toBuilder().id(86).name("Bow of faerdhinen (green)").itemId(ItemID.BOW_OF_FAERDHINEN_C_25892).castGfx(1931).projectileId(1930).build());
+		projectiles.add(bofa.toBuilder().id(87).name("Bow of faerdhinen (yellow)").itemId(ItemID.BOW_OF_FAERDHINEN_C_25894).castGfx(1933).projectileId(1932).build());
+		projectiles.add(bofa.toBuilder().id(88).name("Bow of faerdhinen (blue)").itemId(ItemID.BOW_OF_FAERDHINEN_C_25896).castGfx(1935).projectileId(1934).build());
 
 		// Bolts.
 		projectiles.add(p().id(89).name("Bolts").itemId(ItemID.RUNITE_BOLTS).ids(7552, -1, 27, -1, 41, 11, 144, 5).build());
@@ -2570,14 +2345,16 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		// TODO it would be neat if different bolt types could have different projectiles.
 
 		// Knives.
-		projectiles.add(p().id(90).itemId(ItemID.BRONZE_KNIFE).ids(7617, 219, 212, -1, 32, 11, 144, 15).build());
-		projectiles.add(p().id(91).itemId(ItemID.IRON_KNIFE).ids(7617, 220, 213, -1, 32, 11, 144, 15).build());
-		projectiles.add(p().id(92).itemId(ItemID.STEEL_KNIFE).ids(7617, 221, 214, -1, 32, 11, 144, 15).build());
-		projectiles.add(p().id(93).itemId(ItemID.BLACK_KNIFE).ids(7617, 222, 215, -1, 32, 11, 144, 15).build());
-		projectiles.add(p().id(94).itemId(ItemID.MITHRIL_KNIFE).ids(7617, 223, 216, -1, 32, 11, 144, 15).build());
-		projectiles.add(p().id(95).itemId(ItemID.ADAMANT_KNIFE).ids(7617, 224, 217, -1, 32, 11, 144, 15).build());
-		projectiles.add(p().id(96).itemId(ItemID.RUNE_KNIFE).ids(7617, 225, 218, -1, 32, 11, 144, 15).build());
-		projectiles.add(p().id(97).itemId(ItemID.DRAGON_KNIFE).ids(8194, -1, 28, -1, 32, 11, 144, 15).build());
+		// TODO cast gfx height and start height.
+		ProjectileCast baseKnife = p().cast(7617, -1, 96).projectile(212, 32, 11, 172, 144, 15).build();
+		projectiles.add(baseKnife.toBuilder().id(90).itemId(ItemID.BRONZE_KNIFE).castGfx(219).projectileId(212).build());
+		projectiles.add(baseKnife.toBuilder().id(91).itemId(ItemID.IRON_KNIFE).castGfx(220).projectileId(213).build());
+		projectiles.add(baseKnife.toBuilder().id(92).itemId(ItemID.STEEL_KNIFE).castGfx(221).projectileId(214).build());
+		projectiles.add(baseKnife.toBuilder().id(93).itemId(ItemID.BLACK_KNIFE).castGfx(222).projectileId(215).build());
+		projectiles.add(baseKnife.toBuilder().id(94).itemId(ItemID.MITHRIL_KNIFE).castGfx(223).projectileId(216).build());
+		projectiles.add(baseKnife.toBuilder().id(95).itemId(ItemID.ADAMANT_KNIFE).castGfx(224).projectileId(217).build());
+		projectiles.add(baseKnife.toBuilder().id(96).itemId(ItemID.RUNE_KNIFE).castGfx(225).projectileId(218).build());
+		projectiles.add(baseKnife.toBuilder().id(97).itemId(ItemID.DRAGON_KNIFE).cast(8194, -1, -1).projectileId(28).build());
 		projectiles.add(p().id(98).name("Dragon knife (spec)").itemId(ItemID.DRAGON_KNIFE).ids(8291, -1, 699, -1, 25, 11, 144, 15).build());
 		projectiles.add(p().id(99).itemId(ItemID.DRAGON_KNIFEP_22808).ids(8195, -1, 697, -1, 32, 11, 144, 15).build());
 		projectiles.add(p().id(100).name("Dragon knife (p++) (spec)").itemId(ItemID.DRAGON_KNIFEP_22808).ids(8292, -1, 1629, -1, 25, 11, 144, 15).build());
@@ -2626,8 +2403,8 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		projectiles.add(p().id(135).itemId(ItemID.DRAGON_JAVELIN).ids(7555, -1, 1301, -1, 32, 11, 144, 15).build());
 
 		projectiles.add(p().id(136).itemId(ItemID.BLACK_CHINCHOMPA).ids(7618, -1, 1272, 157, 21, 11, 144, 15).build()); // only has hit gfx when in multicombat area.
-		projectiles.add(p().id(137).itemId(ItemID.RED_CHINCHOMPA).ids(7618, -1, 909, 157, 21, 11, 144, 15).hitGfx(157, 0).build()); // only has hit gfx when in multicombat area.
-		projectiles.add(p().id(138).itemId(ItemID.CHINCHOMPA).ids(7618, -1, 908, 157, 21, 11, 144, 15).hitGfx(157, 0).build()); // only has hit gfx when in multicombat area.
+		projectiles.add(p().id(137).itemId(ItemID.RED_CHINCHOMPA).ids(7618, -1, 909, 157, 21, 11, 144, 15).hit(157, 0).build()); // only has hit gfx when in multicombat area.
+		projectiles.add(p().id(138).itemId(ItemID.CHINCHOMPA).ids(7618, -1, 908, 157, 21, 11, 144, 15).hit(157, 0).build()); // only has hit gfx when in multicombat area.
 
 		projectiles.add(p().id(139).itemId(ItemID.TOKTZXILUL).ids(7558, -1, 442, -1, 32, 11, 144, 15).build());
 
@@ -2637,14 +2414,14 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		projectiles.add(p().id(150).itemId(ItemID.VIAL).ids(7617, 50, 49, -1, 32, 11, 144, 15).build());
 		projectiles.add(p().id(151).itemId(ItemID.ENCHANTED_VIAL).ids(7617, 52, 51, -1, 32, 11, 144, 15).build());
 		projectiles.add(p().id(152).itemId(ItemID.HOLY_WATER).ids(7617, 193, 192, -1, 32, 11, 144, 15).build());
-		projectiles.add(p().id(153).itemId(ItemID.NINJA_IMPLING_JAR).ids(7617, 210, 211, 209, 32, 11, 144, 15).hitGfx(209, 0).build());
+		projectiles.add(p().id(153).itemId(ItemID.NINJA_IMPLING_JAR).ids(7617, 210, 211, 209, 32, 11, 144, 15).hit(209, 0).build());
 
 		projectiles.add(p().id(145).name("Corp sperm 1").sprite(SpriteID.SPELL_WIND_STRIKE).ids(1162, 90, 314, 92, 51, 64, 124, 16).artificial().build());
 		projectiles.add(p().id(146).name("Corp sperm 2").sprite(SpriteID.SPELL_WIND_STRIKE).ids(1162, 90, 315, 92, 51, 64, 124, 16).artificial().build());
 		projectiles.add(p().id(147).name("Corp sperm 3").sprite(SpriteID.SPELL_WIND_STRIKE).ids(1162, 90, 316, 92, 51, 64, 124, 16).artificial().build());
 		projectiles.add(p().id(154).name("Dragon breath (large)").sprite(SpriteID.SPELL_FIRE_SURGE).ids(7855, 1464, 54, 1466, 51, 64, 124, 16).build());
 		projectiles.add(p().id(155).name("Dark Strike").sprite(SpriteID.SPELL_WIND_STRIKE_DISABLED).ids(1162, 194, 195, 196, 51, 64, 124, 16).build());
-		projectiles.add(p().id(156).name("Tempoross harpoonfish").itemId(ItemID.HARPOONFISH).ids(426, 18, 1837, 3, 41, 11, 144, 15).hitGfx(3, 0).build());
+		projectiles.add(p().id(156).name("Tempoross harpoonfish").itemId(ItemID.HARPOONFISH).ids(426, 18, 1837, 3, 41, 11, 144, 15).hit(3, 0).build());
 		int highestId = -1;
 		int duplicateProjectileId = -1;
 		Set<Integer> idDuplicateChecker = new HashSet<>();
@@ -2659,6 +2436,61 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		System.out.println("highest projectile id: " + highestId);
 		if (duplicateProjectileId != -1) throw new RuntimeException("Duplicate projectile id " + duplicateProjectileId);
 		return projectiles;
+	}
+
+//	private void showDiffs(Map<Integer, List<Integer>> slotOverrides, Map<Integer, List<Integer>> slotOverrides1, String slot_overrides)
+//	{
+//		Set<Integer> extraFromCache = new HashSet<>();
+//		extraFromCache.addAll(fromCache);
+//		extraFromCache.removeAll(fromInGame);
+//		System.out.println(name + " extra from cache " + extraFromCache);
+//		Set<Integer> extraFromManual = new HashSet<>();
+//		extraFromManual.addAll(fromInGame);
+//		extraFromManual.removeAll(fromCache);
+//		System.out.println(name + " extra from manual " + extraFromManual);
+//	}
+//
+	private final class ItemDef {
+		int id;
+		String name;
+		int wearPos1;
+		int wearPos2;
+		int wearPos3;
+
+		int maleModel0;
+		int maleModel1;
+		int maleModel2;
+		int maleHeadModel;
+		int maleHeadModel2;
+		int femaleModel0;
+		int femaleModel1;
+		int femaleModel2;
+		int femaleHeadModel;
+		int femaleHeadModel2;
+
+		List<String> interfaceOptions;
+
+		public boolean isEquippable() {
+			return isModelEquippable() && (interfaceOptions.contains("Wear") || interfaceOptions.contains("Equip"));
+		}
+
+		public boolean isModelEquippable() {
+			return maleModel0 != -1 || maleModel1 != -1 || maleModel2 != -1 || maleHeadModel != -1 || maleHeadModel2 != -1 || femaleModel0 != -1 || femaleModel1 != -1 || femaleModel2 != -1 || femaleHeadModel != -1 || femaleHeadModel2 != -1;
+		}
+
+		public int getEquipSlot() {
+			if (!isEquippable()) return -1;
+			return wearPos1;
+		}
+
+		public int getModelEquipSlot() {
+			if (!isModelEquippable()) return -1;
+			return wearPos1;
+		}
+
+		public int getModelHash() {
+			return Objects.hash(maleModel0, maleModel1, maleModel2, maleHeadModel, maleHeadModel2, femaleModel0, femaleModel1, femaleModel2, femaleHeadModel, femaleHeadModel2);
+		}
 	}
 
 	//	@Subscribe
@@ -2677,6 +2509,93 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 				}
 			}
 		}
+	}
+	/*
+	private void createScytheSwingOld()
+	{
+		WorldPoint point = client.getLocalPlayer().getWorldLocation();
+		Actor interacting = client.getLocalPlayer().getInteracting();
+
+		int x = 0, y = 0;
+		int id;
+
+		// I know this can happen if you're attacking a target dummy in varrock, probably also in the poh.
+		if (interacting == null || !(interacting instanceof NPC)) {
+			int orientation = client.getLocalPlayer().getOrientation();
+			// 70 is just a number I felt might work nice here.
+			if (orientation > 512 - 70 && orientation < 512 + 70) {
+				x = -1;
+				id = 4006;
+			} else if (orientation > 1536 - 70 && orientation < 1536 + 70) {
+				x = 1;
+				id = 4003;
+			} else if (orientation > 512 && orientation < 1536) {
+				y = 1;
+				id = 4004;
+			} else {
+				y = -1;
+				id = 4005;
+			}
+		}
+		else
+		{
+			WorldPoint targetPoint = interacting.getWorldLocation();
+			int targetSize = ((NPC) interacting).getTransformedComposition().getSize();
+
+			int halfTargetSizeRoundedDown = (targetSize - 1) / 2;
+			int playerx = point.getX(), playery = point.getY();
+			int npcw = targetPoint.getX(), npcn = targetPoint.getY() + targetSize - 1, npce = targetPoint.getX() + targetSize - 1, npcs = targetPoint.getY();
+			boolean directwest = playerx == npcw - 1 && playery == npcs + halfTargetSizeRoundedDown;
+			boolean directeast = playerx == npce + 1 && playery == npcs + halfTargetSizeRoundedDown;
+			if (directwest) {
+				x = 1;
+				id = 4003;
+			} else if (directeast) {
+				x = -1;
+				id = 4006;
+			} else if (playery >= npcs + halfTargetSizeRoundedDown) {
+				y = -1;
+				id = 4005;
+			} else {
+				y = 1;
+				id = 4004;
+			}
+		}
+
+		point = new WorldPoint(point.getX() + x, point.getY() + y, point.getPlane());
+
+		RuneLiteObject runeLiteObject = client.createRuneLiteObject();
+		Color scytheSwingColor = currentScytheGraphicEffect != null ? currentScytheGraphicEffect.color : null;
+		if (scytheSwingColor != null)
+		{
+			Model model = client.loadModelData(id)
+				.cloneVertices()
+				.cloneColors()
+				.recolor((short) 960, JagexColor.rgbToHSL(Color.RED.getRGB(), 1.0d))
+				.translate(0, -41, 0)
+				.light()
+				;
+			runeLiteObject.setModel(model);
+		} else {
+			runeLiteObject.setModel(client.loadModel(id));
+		}
+
+		runeLiteObject.setAnimation(client.loadAnimation(1204));
+		LocalPoint localPoint = LocalPoint.fromWorld(client, point);
+		runeLiteObject.setLocation(localPoint, client.getPlane());
+		runeLiteObject.getAnimationController().setOnFinished(ac -> runeLiteObject.setActive(false));
+		// TODO should I set these to inactive at some point?
+		runeLiteObject.setActive(true);
+	}
+
+	 */
+
+	private void printProjectile(Projectile p) {
+		System.out.println("projectile " + p.getId());
+		System.out.println("   source: " + p.getSourcePoint().getX() + " " + p.getSourcePoint().getY());
+		System.out.println("   height: " + p.getHeight() + " startHeight: " + p.getStartHeight() + " endHeight: " + p.getEndHeight());
+		System.out.println("   target: " + p.getTargetPoint().getX() + " " + p.getTargetPoint().getY());
+		System.out.println("   cycle: start " + p.getStartCycle() + " end " + p.getEndCycle());
 	}
 
 }

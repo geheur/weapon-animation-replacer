@@ -17,6 +17,7 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.CommandExecuted;
+import net.runelite.api.events.GameTick;
 import net.runelite.api.events.GraphicChanged;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.ProjectileMoved;
@@ -59,6 +60,8 @@ public class SpellDataCollector
 		this.plugin = plugin;
 	}
 
+	boolean checkSpell = false;
+
 	@Subscribe(priority=-2000)
 	public void onAnimationChanged(AnimationChanged e) {
 		Player player = client.getLocalPlayer();
@@ -67,31 +70,69 @@ public class SpellDataCollector
 		int animation = player.getAnimation();
 		System.out.println("animationchanged " + client.getTickCount() + " " + client.getGameCycle() + " " + e.getActor().getAnimation());
 
-		if (
-				animation == 811 || // god spells
-				animation == 1978 || // ancient spells.
-				animation == 1979 || // ancient spells.
-				animation == 8972 || // arceuus spells.
-				animation == 8974 || // arceuus spells.
-				animation == 8977 // arceuus spells.
-		) {
+//		if (
+//				animation == 811 || // god spells
+//				animation == 1978 || // ancient spells.
+//				animation == 1979 || // ancient spells.
+//				animation == 8972 || // arceuus spells.
+//				animation == 8974 || // arceuus spells.
+//				animation == 8977 // arceuus spells.
+//		) {
+		if (animation != -1) {
 			System.out.println(client.getGameCycle() + " !!! spell start (animation) !!!");
+			checkSpell = true;
+		}
+	}
+
+	@Subscribe
+	public void onGameTick(GameTick e) {
+		if (checkSpell) {
+			checkSpell = false;
 			spellStart(null, client.getLocalPlayer());
 		}
 	}
 
 	private void spellStart(Projectile projectile, Player player)
 	{
-		System.out.println(client.getGameCycle() + " !!! spell start (projectile) !!!");
+		System.out.println(client.getGameCycle() + " !!! spell start from animation !!!");
+
+		if (projectile == null) {
+			final WorldPoint playerPos = player.getWorldLocation();
+			if (playerPos == null) return;
+			final LocalPoint playerPosLocal = LocalPoint.fromWorld(client, playerPos);
+			if (playerPosLocal == null) return;
+			for (Projectile p : client.getProjectiles()) {
+				if (client.getGameCycle() > p.getStartCycle()) continue; // skip already seen projectiles.
+				if (p.getX1() != playerPosLocal.getX() || p.getY1() != playerPosLocal.getY()) continue;
+				projectile = p;
+			}
+		}
 
 		spellStart = client.getGameCycle();
 		currentSpellChebyshevDistance = player.getInteracting() != null ? plugin.chebyshevDistance(player, player.getInteracting(), false) : -1;
 
+		int castAnimation = player.getAnimation();
+		int castGfx = player.getGraphic();
+		int castGfxHeight = player.getGraphicHeight();
+		int hitGfx = player.getInteracting() != null ? player.getInteracting().getGraphic() : -1;
+		int hitGfxHeight = player.getInteracting() != null ? player.getInteracting().getGraphicHeight() : -1;
+
+		/*
+		int projectileId, int startMovement, int startPos, int startHeight, int endHeight, int slope) {
+		 */
+		int projectileId = projectile != null ? projectile.getId() : -1;
+		int startMovement = projectile != null ? (projectile.getStartCycle() - client.getGameCycle()) : -1;
+		int startPos = projectile != null ? projectile.getStartHeight() : -1; // api v1
+//		int startPos = projectile != null ? projectile.getStartPos() : -1; // api v2
+		int startHeight = projectile != null ? projectile.getStartHeight() : -1;
+		int endHeight = projectile != null ? projectile.getEndHeight() : -1;
+		int slope = projectile != null ? projectile.getSlope() : -1;
+
 		currentProjectile = new ProjectileData();
 		currentProjectile.name = lastSpellCastName;
 		lastSpellCastName = null;
-		currentProjectile.castAnimation = player.getAnimation();
-		currentProjectile.castGfx = player.getGraphic();
+		currentProjectile.castAnimation = castAnimation;
+		currentProjectile.castGfx = castGfx;
 		if (player.getSpotAnimFrame() != 1) {
 			System.out.println("!!!!!!!!!!!!!!!! graphic did not start at step 1, started at " + player.getSpotAnimFrame());
 		}
@@ -105,8 +146,22 @@ public class SpellDataCollector
 			currentProjectile.endHeight = projectile.getEndHeight();
 			currentProjectile.height = projectile.getHeight();
 		}
-		System.out.println("\tprojectile: " +
-			"castAnimation: " + player.getAnimation() + " " +
+		/*
+		projectiles.add(p().id(36).name("Smoke Rush").sprite(SpriteID.SPELL_SMOKE_RUSH).ids(1978, -1, 384, 385, 51, 64, 124, 16).build());
+		 */
+		System.out.println(
+			".name(\"" + lastSpellCastName + "\")" +
+			".cast(" + castAnimation + ", " + (castGfx != -1 ? (castGfx + ", " + castGfxHeight) : "-1, -1") + ")" +
+			(hitGfx != -1 ?
+			".hitGfx(" + hitGfx + ", " + hitGfxHeight + ")"
+			: "") +
+			(projectile != null ?
+			".projectile(" + projectileId + ", " + startMovement + ", " + startPos + ", " + startHeight + ", " + endHeight + ", " + slope + ")"
+			: "") +
+			""
+		);
+		if (projectile != null) System.out.println("\tprojectile: " +
+			"castAnimation: " + castAnimation + " " +
 			"id: " + projectile.getId() + " " +
 			"startCycle: " + (projectile.getStartCycle() - client.getGameCycle()) + "(" + projectile.getStartCycle() + ") " +
 			"endCycle: " + (projectile.getEndCycle() - client.getGameCycle()) + "(" + projectile.getEndCycle() + ") " +
@@ -119,7 +174,8 @@ public class SpellDataCollector
 
 		System.out.println("\tspelldata: " +
 			"chebyshev: " + plugin.chebyshevDistance(player, player.getInteracting(), false) + " (" + plugin.chebyshevDistance(player, player.getInteracting(), true) + ") " +
-			"cast gfx: " + player.getGraphic() + " (" + player.getGraphicHeight() + " " + player.getSpotAnimFrame() + ") " +
+			(castGfx == -1 ? "cast: (-----) " : ("cast: " + castGfx + " (h: " + castGfxHeight + " f: " + player.getSpotAnimFrame() + ") ")) +
+			(player.getInteracting().getGraphic() == -1 ? "hit (-----)" : ("hit: " + player.getInteracting().getGraphic() + " (h: " + player.getInteracting().getGraphicHeight() + " f: " + player.getInteracting().getSpotAnimFrame() + ") ")) +
 		"");
 	}
 

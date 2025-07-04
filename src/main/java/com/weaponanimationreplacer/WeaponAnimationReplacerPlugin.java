@@ -37,9 +37,11 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -57,7 +59,6 @@ import net.runelite.api.GameState;
 import net.runelite.api.JagexColor;
 import net.runelite.api.Model;
 import net.runelite.api.NPC;
-import net.runelite.api.Perspective;
 import net.runelite.api.Player;
 import static net.runelite.api.PlayerComposition.ITEM_OFFSET;
 import net.runelite.api.Projectile;
@@ -66,11 +67,14 @@ import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.ClientTick;
+import net.runelite.api.events.CommandExecuted;
 import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.events.GraphicsObjectCreated;
 import net.runelite.api.events.InteractingChanged;
 import net.runelite.api.events.PlayerChanged;
-import net.runelite.api.events.ProjectileMoved;
 import net.runelite.api.events.SoundEffectPlayed;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.api.kit.KitType;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
@@ -138,13 +142,10 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	private List<ProjectileSwap> projectileSwaps = Collections.emptyList();
 	private List<SoundSwap> soundSwaps = new ArrayList<>();
 	private GraphicEffect currentScytheGraphicEffect = null;
-	int scytheSwingCountdown = -1;
 	int delayedGfxToApply = -1;
 	int delayedGfxHeightToApply = -1;
 	Actor actorToApplyDelayedGfxTo = null;
 	int timeToApplyDelayedGfx = -1;
-	// For handling spells that have no projectiles which are harder to identify. This must be toggled off in onProjectileMoved the the spell is replaced there.
-	private boolean handlePossibleNoProjectileSpellInClientTick = false;
 
 	int previewItem = -1;
 	AnimationReplacements previewAnimationReplacements = null;
@@ -251,7 +252,6 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			currentScytheGraphicEffect = null;
 			scytheSwingCountdown = -1;
 			previewItem = -1;
-			norecurse = false;
 
 			if (client.getGameState().getState() >= GameState.LOGIN_SCREEN.getState())
 			{
@@ -300,7 +300,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
 		int localVersion = localData.version;
 		executor.submit(() -> {
-			try (Response res = okHttpClient.newCall(new Request.Builder().url("https://raw.githubusercontent.com/geheur/weapon-animation-replacer/data/dataversion.json").build()).execute()) {
+			try (Response res = okHttpClient.newCall(new Request.Builder().url("https://raw.githubusercontent.com/geheur/weapon-animation-replacer/master/src/main/resources/com/weaponanimationreplacer/dataversion.json").build()).execute()) {
 				if (res.code() != 200) {
 					log.error("Response code " + res.code());
 					return;
@@ -311,7 +311,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 				log.info("online version is " + onlineVersion + ", local version is " + localVersion);
 				if (onlineVersion <= localVersion) return;
 
-				try (Response res2 = okHttpClient.newCall(new Request.Builder().url("https://raw.githubusercontent.com/geheur/weapon-animation-replacer/data/data.json").build()).execute()) {
+				try (Response res2 = okHttpClient.newCall(new Request.Builder().url("https://raw.githubusercontent.com/geheur/weapon-animation-replacer/master/src/main/resources/com/weaponanimationreplacer/data.json").build()).execute()) {
 					String response = res2.body().string();
 					Constants.Data onlineData = runeliteGson.fromJson(response, Constants.Data.class);
 					if (onlineData.version != onlineVersion) {
@@ -572,7 +572,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		}
 
 		if (currentScytheGraphicEffect != null && AnimationType.ATTACK.appliesTo(type.get())) {
-			scytheSwingCountdown = 20;
+			doScytheSwing();
 		}
 	}
 
@@ -597,10 +597,6 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	@Subscribe
 	public void onClientTick(ClientTick event)
 	{
-		if (handlePossibleNoProjectileSpellInClientTick) {
-			replaceNoProjectileSpell();
-		}
-
 		if (client.getGameCycle() == timeToApplyDelayedGfx) {
 //			System.out.println("it is " + client.getGameCycle() + ", applying delayed gfx.");
 			actorToApplyDelayedGfxTo.setGraphic(delayedGfxToApply);
@@ -617,8 +613,6 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
 	private void replaceNoProjectileSpell()
 	{
-		handlePossibleNoProjectileSpellInClientTick = false;
-
 		Player player = client.getLocalPlayer();
 		final WorldPoint playerPos = player.getWorldLocation();
 		if (playerPos == null) return;
@@ -669,12 +663,9 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 					return; // shouldn't happen.
 			}
 			int endCycle = client.getGameCycle() + toReplaceWith.getStartMovement() + projectileTravelTime;
-			int targetX = player.getInteracting().getLocalLocation().getX();
-			int targetY = player.getInteracting().getLocalLocation().getY();
-			int startHeight = Perspective.getTileHeight(client, player.getLocalLocation(), player.getWorldLocation().getPlane()) + toReplaceWith.height;
 
-//			System.out.println("replacing projectile-less spell. " + client.getGameCycle() + " " + endCycle);
-			replaceSpell(projectileSwap, player, playerPos.getPlane(), playerPosLocal, startHeight, endCycle, player.getInteracting(), targetX, targetY);
+			replaceSpell(projectileSwap, player, playerPos, player.getInteracting(), player.getInteracting().getLocalLocation(), endCycle); // api v1
+//			replaceSpell(projectileSwap, player, playerPos, player.getInteracting(), player.getInteracting().getWorldLocation(), endCycle); // api v2
 			break;
 		}
 	}
@@ -711,25 +702,47 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		return Math.max(Math.abs(tx - px), Math.abs(ty - py));
 	}
 
-	/** `Client#createProjectile` calls onProjectileMoved; it is dangerous to allow this to happen because of stackoverflows. */
-    private boolean norecurse = false;
-	@Subscribe(priority = -1)
-	public void onProjectileMoved(ProjectileMoved projectileMoved) {
-		if (norecurse) return;
+	private Set<Projectile> lastTickProjectiles = new HashSet<>();
 
-		Projectile projectile = projectileMoved.getProjectile();
-		if (client.getGameCycle() >= projectile.getStartCycle()) return; // skip already seen projectiles.
+	@Subscribe
+	public void onGameTick(GameTick e) {
+		if (!projectileSwaps.isEmpty()) {
+			boolean replaced = false;
+
+			Set<Projectile> thisTickProjectiles = new HashSet<>();
+			for (Projectile p : client.getProjectiles()) {
+				if (!lastTickProjectiles.contains(p)) {
+					replaced = handleNewProjectile(p);
+				}
+				thisTickProjectiles.add(p);
+			}
+			lastTickProjectiles = thisTickProjectiles;
+
+			if (animationChangedThisTick && !replaced) {
+				replaceNoProjectileSpell();
+			}
+		}
+
+		if (animationChangedThisTick && frame != null) {
+			frame.spell();
+		}
+
+		animationChangedThisTick = false;
+	}
+
+	private boolean handleNewProjectile(Projectile projectile) {
+		if (client.getGameCycle() > projectile.getStartCycle()) return false; // skip already seen projectiles.
 
 		// This is the player's actual location which is what projectiles use as their start position. Player#getX, #getSceneX, etc., do not work here.
 		Player player = client.getLocalPlayer();
 		final WorldPoint playerPos = player.getWorldLocation();
-		if (playerPos == null) return;
+		if (playerPos == null) return false;
 		final LocalPoint playerPosLocal = LocalPoint.fromWorld(client, playerPos);
-		if (playerPosLocal == null) return;
+		if (playerPosLocal == null) return false;
 
-		if (projectile.getX1() != playerPosLocal.getX() || projectile.getY1() != playerPosLocal.getY()) return;
+		if (projectile.getX1() != playerPosLocal.getX() || projectile.getY1() != playerPosLocal.getY()) return false;
 
-		int correctedLastRealAnimation = // Some standard spellbook spells use a different animation depending on the equipped weapon (or lack thereof).
+		int castAnimation = // Some standard spellbook spells use a different animation depending on the equipped weapon (or lack thereof).
 			(lastRealAnimation < 710 || lastRealAnimation > 729) ? lastRealAnimation :
 			lastRealAnimation == 710 ? 1161 :
 			lastRealAnimation == 711 ? 1162 :
@@ -746,68 +759,62 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		{
 			ProjectileCast toReplace = projectileSwap.getToReplace();
 			if (
-				toReplace.getCastAnimation() == correctedLastRealAnimation && correctedLastRealAnimation != -1 &&
+				toReplace.getCastAnimation() == castAnimation && castAnimation != -1 &&
 				toReplace.getProjectileId() == projectile.getId() &&
 				(toReplace.getCastGfx() == -1 || toReplace.getCastGfx() == player.getGraphic())
 			) {
-				handlePossibleNoProjectileSpellInClientTick = false;
-//				System.out.println("matched " + toReplace.getName(itemManager) + " at " + client.getGameCycle());
-
 				int endCycle = projectile.getEndCycle();
 				Actor interacting = projectile.getInteracting();
-				int x = projectile.getTarget().getX();
-				int y = projectile.getTarget().getY();
-				int height = projectile.getHeight() - toReplace.height + projectileSwap.getToReplaceWith().height;
 
-				replaceSpell(projectileSwap, player, playerPos.getPlane(), playerPosLocal, height, endCycle, interacting, x, y);
+//				replaceSpell(projectileSwap, player, projectile.getSourcePoint(), interacting, projectile.getTargetPoint(), endCycle); // api v2
+				replaceSpell(projectileSwap, player, WorldPoint.fromLocal(client, projectile.getSourcePoint()), interacting, projectile.getTargetPoint(), endCycle); // api v1
 				projectile.setEndCycle(0);
 
-				break;
+				return true;
 			}
 		}
+		return false;
 	}
 
 	private void replaceSpell(
 		ProjectileSwap projectileSwap,
 		Player player,
-		int plane,
-		LocalPoint playerPosLocal,
-		int startHeight,
-		int endCycle,
+		WorldPoint source,
 		Actor interacting,
-		int targetX,
-		int targetY
+		LocalPoint target, // api v1
+//		WorldPoint target, // api v2
+		int endCycle
 	) {
-		if (interacting.getLocalLocation().getX() != targetX || interacting.getLocalLocation().getY() != targetY) { // TODO
-//			System.out.println("!!!!!!!!!!!!!!!!!!!!!!!! mismatch with projectile target and interacting target.");
-		}
-
 		ProjectileCast toReplace = projectileSwap.getToReplace();
 		ProjectileCast toReplaceWith = projectileSwap.getToReplaceWith();
-		player.setAnimation(toReplaceWith.getCastAnimation());
-		// TODO what is startheight?
+
 		if (toReplaceWith.getProjectileId() != -1)
 		{
 			int startCycle = client.getGameCycle() + toReplaceWith.getStartMovement();
-//			System.out.println("start height is " + startHeight + " " + startCycle + " " + endCycle + " " + (endCycle - startCycle));
-			norecurse = true;
+			//* api v1
+			LocalPoint playerPosLocal = LocalPoint.fromWorld(client.getTopLevelWorldView(), source);
 			Projectile p = client.createProjectile(toReplaceWith.getProjectileId(),
-//							projectile.getFloor(),
-//							projectile.getX1(), projectile.getY1(),
-				plane,
+				source.getPlane(),
 				playerPosLocal.getX(), playerPosLocal.getY(),
-				startHeight,
+				92,
 				startCycle, endCycle,
 				toReplaceWith.getSlope(),
 				toReplaceWith.getStartHeight(), toReplaceWith.getEndHeight(),
 				interacting,
-				targetX, targetY);
-			client.getProjectiles().addLast(p);
-			norecurse = false;
+				target.getX(), target.getY());
+			//*/
+//			Projectile p = client.createProjectile(toReplaceWith.getProjectileId(),
+//				source, toReplaceWith.getStartHeight(), null,
+//				target, toReplaceWith.getEndHeight(), interacting,
+//				startCycle, endCycle,
+//				toReplaceWith.getSlope(),
+//				toReplaceWith.getStartPos());
+			lastTickProjectiles.add(p); // avoid recursive replacement on the next tick.
 		}
 
+		player.setAnimation(toReplaceWith.getCastAnimation());
 		player.setGraphic(toReplaceWith.getCastGfx());
-		// TODO set height.
+		player.setGraphicHeight(toReplaceWith.getCastGfxHeight());
 		player.setSpotAnimFrame(0);
 
 		if (player.getInteracting() != null)
@@ -833,106 +840,143 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		}
 	}
 
-	private void createScytheSwing()
-	{
-		scytheSwingCountdown = -1;
+	private LocalPoint scytheGraphicPoint;
+	private int scytheModel;
+	private int scytheSwingCountdown = -1;
+	private int scytheGraphicTick = -1;
+	private int scytheGraphic;
 
+	private void doScytheSwing() {
+		scytheSwingCountdown = 20;
+		setScytheData();
+		scytheGraphicTick = client.getTickCount();
+		msg(client.getTickCount() + " " + client.getGameCycle() + " sc: " + scytheGraphic + " " + scytheGraphicPoint);
+	}
+
+	private void setScytheData() {
 		WorldPoint point = client.getLocalPlayer().getWorldLocation();
 		Actor interacting = client.getLocalPlayer().getInteracting();
 
-		int x = 0, y = 0;
-		int id;
+		int direction = getScytheDirection(point, interacting);
+		if (direction == 0) point = point.dy(1);
+		if (direction == 1) point = point.dx(1);
+		if (direction == 2) point = point.dy(-1);
+		if (direction == 3) point = point.dx(-1);
+		scytheGraphicPoint = LocalPoint.fromWorld(client.getTopLevelWorldView(), point);
 
-		// I know this can happen if you're attacking a target dummy in varrock, probably also in the poh.
-		if (interacting == null || !(interacting instanceof NPC)) {
+		scytheModel = new int[]{4004, 4003, 4005, 4006}[direction];
+
+//		chally: 1232 1233 1234 1235
+		Integer weaponId = equippedItemsFromKit.get(KitType.WEAPON.getIndex());
+		if (weaponId == ItemID.SCYTHE_OF_VITUR || weaponId == ItemID.SCYTHE_OF_VITUR_UNCHARGED) {
+			scytheGraphic = new int[]{478, 1231, 506, 1172}[direction];
+		} else if (weaponId == ItemID.SCYTHE_OF_VITUR_BL || weaponId == ItemID.SCYTHE_OF_VITUR_UNCHARGED_BL) {
+			scytheGraphic = new int[]{1891, 1894, 1892, 1893}[direction];
+		} else if (weaponId == ItemID.SCYTHE_OF_VITUR_OR || weaponId == ItemID.SCYTHE_OF_VITUR_UNCHARGED_OR) {
+			scytheGraphic = new int[]{1895, 1898, 1896, 1897}[direction];
+		} else {
+			scytheGraphic = -1;
+		}
+	}
+
+	/** 0 1 2 3 is n e s w
+	 east and west swings only apply on 2 tiles per enemy.
+	 for odd size enemies, this is the middle tile on the west/east
+	 for even, this is the lower of the 2 middle tiles.
+	 for all other positions, the game just uses a north or south swing.
+	 */
+	private int getScytheDirection(WorldPoint playerLocation, Actor target) {
+		if (target != null) {
+			int playerx = playerLocation.getX(), playery = playerLocation.getY();
+			int npcw = target.getWorldLocation().getX();
+			int npcs = target.getWorldLocation().getY();
+			int targetSize = target instanceof NPC ? ((NPC) target).getTransformedComposition().getSize() : 1;
+			int npcMiddle = npcs + (targetSize - 1) / 2;
+			if (playery == npcMiddle) {
+				return playerx == npcw - 1 ? 1 : 3;
+			}
+			return playery > npcMiddle ? 2 : 0;
+		} else {
+			// I know this can happen if you're attacking a target dummy in varrock, probably also in the poh.
 			int orientation = client.getLocalPlayer().getOrientation();
 			// 70 is just a number I felt might work nice here.
 			if (orientation > 512 - 70 && orientation < 512 + 70) {
-				x = -1;
-				id = 4006;
+				return 3;
 			} else if (orientation > 1536 - 70 && orientation < 1536 + 70) {
-				x = 1;
-				id = 4003;
+				return 1;
 			} else if (orientation > 512 && orientation < 1536) {
-				y = 1;
-				id = 4004;
+				return 0;
 			} else {
-				y = -1;
-				id = 4005;
+				return 2;
 			}
 		}
-		else
-		{
-			WorldPoint targetPoint = interacting.getWorldLocation();
-			int targetSize = ((NPC) interacting).getTransformedComposition().getSize();
+	}
 
-			int halfTargetSizeRoundedDown = (targetSize - 1) / 2;
-			int playerx = point.getX(), playery = point.getY();
-			int npcw = targetPoint.getX(), npcn = targetPoint.getY() + targetSize - 1, npce = targetPoint.getX() + targetSize - 1, npcs = targetPoint.getY();
-			boolean directwest = playerx == npcw - 1 && playery == npcs + halfTargetSizeRoundedDown;
-			boolean directeast = playerx == npce + 1 && playery == npcs + halfTargetSizeRoundedDown;
-			if (directwest) {
-				x = 1;
-				id = 4003;
-			} else if (directeast) {
-				x = -1;
-				id = 4006;
-			} else if (playery >= npcs + halfTargetSizeRoundedDown) {
-				y = -1;
-				id = 4005;
-			} else {
-				y = 1;
-				id = 4004;
-			}
-		}
-
-		point = new WorldPoint(point.getX() + x, point.getY() + y, point.getPlane());
+	private void createScytheSwing()
+	{
+		scytheSwingCountdown = -1;
 
 		RuneLiteObject runeLiteObject = client.createRuneLiteObject();
 		Color scytheSwingColor = currentScytheGraphicEffect != null ? currentScytheGraphicEffect.color : null;
 		if (scytheSwingColor != null)
 		{
-			Model model = client.loadModelData(id)
+			Model model = client.loadModelData(scytheModel)
 				.cloneVertices()
 				.cloneColors()
 				.recolor((short) 960, JagexColor.rgbToHSL(scytheSwingColor.getRGB(), 1.0d))
 				.translate(0, -85, 0)
 				.light()
-			;
+				;
 			runeLiteObject.setModel(model);
 		} else {
-			runeLiteObject.setModel(client.loadModel(id));
+			runeLiteObject.setModel(client.loadModel(scytheModel));
 		}
 
 		runeLiteObject.setAnimation(client.loadAnimation(1204));
-		LocalPoint localPoint = LocalPoint.fromWorld(client, point);
-		runeLiteObject.setLocation(localPoint, client.getPlane());
+		runeLiteObject.setLocation(scytheGraphicPoint, client.getPlane());
 		runeLiteObject.getAnimationController().setOnFinished(ac -> runeLiteObject.setActive(false));
-		// TODO should I set these to inactive at some point?
 		runeLiteObject.setActive(true);
+	}
+
+	@Subscribe
+	public void onGraphicsObjectCreated(GraphicsObjectCreated e) {
+		msg(client.getTickCount() + " " + client.getGameCycle() + " go: " + e.getGraphicsObject().getId() + ":" + scytheGraphic + " " + e.getGraphicsObject().getLocation() + ":" + scytheGraphicPoint);
+		if (
+			scytheGraphic != -1 &&
+				e.getGraphicsObject().getId() == scytheGraphic &&
+				client.getTickCount() == scytheGraphicTick &&
+				e.getGraphicsObject().getLocation().equals(scytheGraphicPoint)
+		) {
+			e.getGraphicsObject().setFinished(true);
+			scytheGraphic = -1;
+		}
 	}
 
 	public void demoCast(ProjectileCast pc)
 	{
-		Player p = client.getLocalPlayer();
-		if (p == null) return;
-		if (pc.projectileId != -1)
-		{
-			WorldPoint wl = p.getWorldLocation();
-			LocalPoint ll = p.getLocalLocation();
-			int targetx = ll.getX() + (int) (700 * Math.cos((-512 - p.getOrientation()) / 2048d * 2 * Math.PI));
-			int targety = ll.getY() + (int) (700 * Math.sin((-512 - p.getOrientation()) / 2048d * 2 * Math.PI));
-			int height = Perspective.getTileHeight(client, p.getLocalLocation(), p.getWorldLocation().getPlane()) + pc.height;
-			norecurse = true;
-			Projectile projectile = client.createProjectile(pc.projectileId, wl.getPlane(), ll.getX(), ll.getY(), height, client.getGameCycle() + pc.startMovement, client.getGameCycle() + 100, pc.slope, pc.startHeight, pc.endHeight, null, targetx, targety);
-			client.getProjectiles().addLast(projectile);
-			norecurse = false;
-		}
-		if (pc.castAnimation != -1) {
-			p.setAnimation(pc.castAnimation);
-			p.setAnimationFrame(0);
-		}
-		if (pc.castGfx != -1) p.createSpotAnim("demo".hashCode(), pc.castGfx, 92, 0);
+		clientThread.invoke(() -> {
+			Player p = client.getLocalPlayer();
+			if (p == null) return;
+			if (pc.projectileId != -1)
+			{
+				WorldPoint wl = p.getWorldLocation();
+				LocalPoint ll = p.getLocalLocation();
+				int targetx = ll.getX() + (int) (700 * Math.cos((-512 - p.getOrientation()) / 2048d * 2 * Math.PI));
+				int targety = ll.getY() + (int) (700 * Math.sin((-512 - p.getOrientation()) / 2048d * 2 * Math.PI));
+				client.createProjectile(pc.projectileId, wl.getPlane(), ll.getX(), ll.getY(), 92, client.getGameCycle() + pc.startMovement, client.getGameCycle() + 100, pc.slope, pc.startHeight, pc.endHeight, null, targetx, targety); // api v1
+//				client.createProjectile(pc.projectileId, wl, pc.startHeight, p, WorldPoint.fromLocal(client, targetx, targety, wl.getPlane()), pc.endHeight, null, client.getGameCycle() + pc.startMovement, client.getGameCycle() + pc.startMovement + 100, pc.slope, pc.startPos); // api v2
+			}
+			if (pc.castAnimation != -1) {
+				p.setAnimation(pc.castAnimation);
+				p.setAnimationFrame(0);
+			}
+			if (pc.castGfx != -1) {
+				p.createSpotAnim("demo".hashCode(), pc.castGfx, 92, 0);
+				p.setGraphic(pc.getCastGfx());
+				p.setGraphicHeight(pc.getCastGfxHeight());
+				p.setSpotAnimFrame(0);
+			}
+		});
 	}
 
 	private static final class AnimationReplacements {
@@ -1051,7 +1095,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
 	/** Keep note of the last animationchanged in case some plugin changes it (maybe even us). */
 	private int lastRealAnimation = -1;
-
+	private boolean animationChangedThisTick = false;
 	@Subscribe(priority = -1000.0f) // I want to run late, so that plugins that need animation changes don't see my changed animation ids, since mine are cosmetic and don't give information on what the player is actually doing.
 	public void onAnimationChanged(AnimationChanged e)
 	{
@@ -1061,7 +1105,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
 		lastRealAnimation = player.getAnimation();
 
-		checkForPossibleNoProjectileSpell(player);
+		if (lastRealAnimation != -1) animationChangedThisTick = true;
 
 		swapPlayerAnimation();
 	}
@@ -1071,25 +1115,6 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		if (e.getSource() != client.getLocalPlayer()) return;
 
 //		System.out.println("interactingchanged " + e.getTarget());
-	}
-
-	private void checkForPossibleNoProjectileSpell(Player player)
-	{
-		// Why don't I store this value in onProjectileMoved?
-		// These spell casts all lack projectiles to identify them (with the exception of ice blitz).
-		// Therefore, other means must be used to determine whether or with what the spell should be replaced.
-		// TODO doesn't charge use 811 also?
-		if (
-			lastRealAnimation == 811 || // god spells
-			lastRealAnimation == 1978 || // ancient spells.
-			lastRealAnimation == 1979 || // ancient spells.
-			lastRealAnimation == 8972 || // arceuus spells.
-			lastRealAnimation == 8974 || // arceuus spells.
-			lastRealAnimation == 8977 // arceuus spells.
-		) {
-			// Mark that this needs to be processed in client tick. The reason the projectile replacement can't happen here is because projectilemoved hasn't yet happened, and some spells that have these animations (the ancient spell ones specifically) have projectiles so I'd rather do those in projectilemoved since it's simpler and maybe more consistent.
-			handlePossibleNoProjectileSpellInClientTick = true;
-		}
 	}
 
 	@Subscribe(priority = 1) // I need kit data to determine what the player is wearing (equipment inventory does not update fast enough to avoid flickering), so I need this information before other plugins might change it.
@@ -1192,6 +1217,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			if (transmogSets != null) { // Can be null during plugin startup.
 				showSidePanel(!config.hideSidePanel());
 			}
+			lastTickProjectiles.clear(); // avoid potential memory leak.
         } else if (event.getGameState() == GameState.LOGGED_IN) {
         	// This is necessary for transmog to show up on teleports.
 			if (client.getLocalPlayer() == null) return; // happens during dcs?
@@ -1205,7 +1231,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		{
 			player.setAnimation(animation);
 			player.setAnimationFrame(0);
-			if (currentScytheGraphicEffect != null) scytheSwingCountdown = 20;
+			if (currentScytheGraphicEffect != null) doScytheSwing();
 		}
     }
 
@@ -1355,5 +1381,24 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 				pluginPanel = null;
 			}
 		});
+	}
+
+	@Subscribe
+	public void onCommandExecuted(CommandExecuted e) {
+		if (e.getCommand().equals("warpmsg")) {
+			msg = !msg;
+			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "weapon animation replacer messages " + (msg ? "on" : "off"), "");
+		}
+	}
+
+	boolean msg = false;
+	private void msg(String s) {
+		if (msg) client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", s, "");
+	}
+
+	private TransmogSetPanel.ProjectileIdsFrame frame;
+	public void registerProjectileIdsFrame(TransmogSetPanel.ProjectileIdsFrame projectileIdsFrame)
+	{
+		frame = projectileIdsFrame;
 	}
 }

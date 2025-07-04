@@ -138,6 +138,10 @@ public class AnimationSets
 			.put(ATTACK_CRUSH, 6278)
 			.put(DEFEND, 6279)
 			.build();
+		new AnimationSetBuilder("Crab")
+			.copy("Cursed banana")
+			.put(STAND, 10051)
+			.build();
 		new AnimationSetBuilder("Elder maul")
 			.poseAnims(7518, 823, 7520, 7520, 7520, 7520, 7519)
 			.put(ATTACK_CRUSH, 7516)
@@ -167,10 +171,14 @@ public class AnimationSets
 			.put(DEFEND, 1429)
 			.build();
 		new AnimationSetBuilder("Dharok's greataxe")
-			.poseAnims(2065, 823, 2064, 2064, 2064, 2064, 824)
+			.poseAnims(2065, 823, 2064, 2064, 2064, 2064, 11466)
 			.put(ATTACK_SLASH, 2067)
 			.put(ATTACK_CRUSH, 2066)
 			.put(DEFEND, 424)
+			.build();
+		new AnimationSetBuilder("Dharok's greataxe (old run)")
+			.copy("Dharok's greataxe")
+			.put(RUN, 824)
 			.build();
 		new AnimationSetBuilder("Hunting knife")
 			.poseAnims(2911, 823, 7327, 7327, 821, 822, 2322)
@@ -475,6 +483,11 @@ public class AnimationSets
 			.put(ATTACK_CRUSH, 2068)
 			.put(DEFEND, 424)
 			.build();
+		new AnimationSetBuilder("Dual Macauhuitl")
+			.copy("Torag's hammers")
+			.put(ATTACK_CRUSH, 10989)
+			.put(ATTACK_SPEC, 10990)
+			.build();
 		new AnimationSetBuilder("Zamorakian spear")
 			.poseAnims(1713, 1702, 1703, 1704, 1706, 1705, 1707)
 			.put(ATTACK_SLASH, 1712)
@@ -613,10 +626,22 @@ public class AnimationSets
 			.build();
 		new AnimationSetBuilder("Osmumten's Fang")
 			.poseAnims(809, 823, 819, 820, 821, 822, 824) // not sure
-			.put(ATTACK_STAB, 9471) // Seen in-game.
+			.put(ATTACK_STAB, 9471)
 			.put(ATTACK_SLASH, 390)
-			.put(ATTACK_SPEC, 6118) // Seen in-game. Used to be 9544 but for some reason jagex changed it. gfx 2124
-			.put(DEFEND, 4177) // Seen in-game.
+			.put(ATTACK_SPEC, 11222)
+			.put(DEFEND, 4177)
+			.build();
+		new AnimationSetBuilder("Osmumten's Fang (old spec)")
+			.copy("Osmumten's Fang")
+			.put(ATTACK_SPEC, 6118) // Used to be 9544 but for some reason jagex changed it. gfx 2124
+			.build();
+		new AnimationSetBuilder("Voidwaker")
+			.copy("Dragon sword")
+			.put(ATTACK_SPEC, 11275)
+			.build();
+		new AnimationSetBuilder("Voidwaker (old spec)")
+			.copy("Voidwaker")
+			.put(ATTACK_SPEC, 1378)
 			.build();
 		new AnimationSetBuilder("Venator Bow")
 			.poseAnims(9857, 9863, 9859, 9859, 9861, 9862, 9860) // unconfirmed

@@ -63,8 +63,10 @@ import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import javax.swing.BorderFactory;
@@ -84,6 +86,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JSpinner;
+import javax.swing.JTextField;
 import javax.swing.SpinnerModel;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
@@ -93,10 +96,14 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.event.ChangeListener;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.Actor;
+import net.runelite.api.Client;
 import net.runelite.api.ItemID;
+import net.runelite.api.Player;
 import net.runelite.api.Projectile;
+import net.runelite.api.coords.LocalPoint;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.ClientTick;
-import net.runelite.api.events.ProjectileMoved;
 import net.runelite.api.kit.KitType;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.ui.ColorScheme;
@@ -828,6 +835,12 @@ class TransmogSetPanel extends JPanel
 			plugin.saveTransmogSets();
 			plugin.demoCast(projectileSwap.getToReplaceWith());
 		}, defaultValue.castGfx, panel);
+		createProjectileEditPanelRow("cast gfx height", ce -> {
+			projectileSwap.createCustomIfNull();
+			projectileSwap.toReplaceWithCustom.setCastGfxHeight((int) ((JSpinner) ce.getSource()).getValue());
+			plugin.saveTransmogSets();
+			plugin.demoCast(projectileSwap.getToReplaceWith());
+		}, defaultValue.castGfxHeight, panel);
 		createProjectileEditPanelRow("hit gfx", ce -> {
 			projectileSwap.createCustomIfNull();
 			projectileSwap.toReplaceWithCustom.setHitGfx((int) ((JSpinner) ce.getSource()).getValue());
@@ -860,16 +873,16 @@ class TransmogSetPanel extends JPanel
 		}, defaultValue.startMovement, panel);
 		createProjectileEditPanelRow("start offset", ce -> {
 			projectileSwap.createCustomIfNull();
+			projectileSwap.toReplaceWithCustom.setStartPos((int) ((JSpinner) ce.getSource()).getValue());
+			plugin.saveTransmogSets();
+			plugin.demoCast(projectileSwap.getToReplaceWith());
+		}, defaultValue.startPos, panel);
+		createProjectileEditPanelRow("start height", ce -> {
+			projectileSwap.createCustomIfNull();
 			projectileSwap.toReplaceWithCustom.setStartHeight((int) ((JSpinner) ce.getSource()).getValue());
 			plugin.saveTransmogSets();
 			plugin.demoCast(projectileSwap.getToReplaceWith());
-		}, defaultValue.startHeight, panel);
-		createProjectileEditPanelRow("start height", ce -> {
-			projectileSwap.createCustomIfNull();
-			projectileSwap.toReplaceWithCustom.setHeight((int) ((JSpinner) ce.getSource()).getValue());
-			plugin.saveTransmogSets();
-			plugin.demoCast(projectileSwap.getToReplaceWith());
-		}, defaultValue.height, panel, Integer.MIN_VALUE, Integer.MAX_VALUE);
+		}, defaultValue.startHeight, panel, Integer.MIN_VALUE, Integer.MAX_VALUE);
 		createProjectileEditPanelRow("end height", ce -> {
 			projectileSwap.createCustomIfNull();
 			projectileSwap.toReplaceWithCustom.setEndHeight((int) ((JSpinner) ce.getSource()).getValue());
@@ -888,12 +901,16 @@ class TransmogSetPanel extends JPanel
 		return panel;
 	}
 
-	private class ProjectileIdsFrame extends JFrame {
+	class ProjectileIdsFrame extends JFrame {
 		private JPanel panel;
+
+		private Set<Projectile> lastTickProjectiles = new HashSet<>();
+
+		private boolean debug = false;
 
 		public ProjectileIdsFrame() {
 			super("Projectile ids, most recently seen last");
-			setSize(500, 500);
+			setSize(800, 500);
 			setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 			addWindowListener(new WindowAdapter()
 			{
@@ -906,7 +923,10 @@ class TransmogSetPanel extends JPanel
 			panel = new JPanel();
 			panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
 			plugin.eventBus.register(this);
-			add(panel);
+			plugin.registerProjectileIdsFrame(this);
+			JPanel squeezePanel = new JPanel(new BorderLayout());
+			squeezePanel.add(panel, BorderLayout.NORTH);
+			add(squeezePanel);
 		}
 
 		@Value
@@ -918,34 +938,56 @@ class TransmogSetPanel extends JPanel
 		private final List<PCwI> liveProjectiles = new ArrayList<>();
 		private final List<PCwI> finishedProjectiles = new ArrayList<>();
 
-		@Subscribe
-		public void onProjectileMoved(ProjectileMoved e) {
-			if (paused) return;
-			Projectile projectile = e.getProjectile();
-
-			// skip already seen projectiles.
-			if (plugin.client.getGameCycle() >= projectile.getStartCycle()) return;
-
-			liveProjectiles.add(new PCwI(new ProjectileCast(
-				-1,
-				"",
-				-1,
-				-1,
-				-1,
-				-1,
-				projectile.getId(),
-				projectile.getInteracting() != null ? projectile.getInteracting().getGraphic() : -1,
-				projectile.getInteracting() != null ? projectile.getInteracting().getGraphicHeight() : -1,
-				projectile.getStartCycle() - plugin.client.getGameCycle(),
-				projectile.getStartHeight(),
-				projectile.getHeight(), // TODO
-				projectile.getEndHeight(),
-				projectile.getSlope(),
-				true
-			), projectile.getEndCycle()));
-		}
-
 		private boolean paused = false;
+
+		public void spell()
+		{
+			if (paused) return;
+			Set<Projectile> thisTickProjectiles = new HashSet<>();
+			Projectile projectile = null;
+			Client client = plugin.client;
+			Player player = client.getLocalPlayer();
+			for (Projectile p : client.getProjectiles()) {
+				if (!lastTickProjectiles.contains(p)) {
+					if (client.getGameCycle() > p.getStartCycle()) continue; // skip already seen projectiles.
+
+					// This is the player's actual location which is what projectiles use as their start position. Player#getX, #getSceneX, etc., do not work here.
+					final WorldPoint playerPos = player.getWorldLocation();
+					if (playerPos == null) continue;
+					final LocalPoint playerPosLocal = LocalPoint.fromWorld(client, playerPos);
+					if (playerPosLocal == null) continue;
+
+					if (p.getX1() != playerPosLocal.getX() || p.getY1() != playerPosLocal.getY()) continue;
+					projectile = p;
+					break;
+				}
+				thisTickProjectiles.add(p);
+			}
+			lastTickProjectiles = thisTickProjectiles;
+
+			Actor interacting = player.getInteracting();
+			ProjectileCast.ProjectileCastBuilder builder = new ProjectileCast.ProjectileCastBuilder();
+			int castAnimation = player.getAnimation();
+			int castGfx = player.getGraphic();
+			int castGfxHeight = player.getGraphicHeight();
+			builder.cast(castAnimation, castGfx, castGfxHeight);
+			if (interacting != null) {
+				int hitGfx = interacting.getGraphic();
+				int hitGfxHeight = interacting.getGraphicHeight();
+				builder.hit(hitGfx, hitGfxHeight);
+			}
+			if (projectile != null) {
+				int startMovement = projectile.getStartCycle() - client.getGameCycle();
+				int startPos = projectile.getStartHeight(); // api v1
+//				int startPos = projectile.getStartPos(); // api v2
+				int startHeight = projectile.getStartHeight();
+				int endHeight = projectile.getEndHeight();
+				int slope = projectile.getSlope();
+				builder.projectile(projectile.getId(), startMovement, startPos, startHeight, endHeight, slope);
+			}
+			builder.artificial();
+			liveProjectiles.add(new PCwI(builder.build(), projectile != null ? projectile.getEndCycle() : client.getGameCycle() + 100));
+		}
 
 		@Subscribe
 		public void onClientTick(ClientTick e) {
@@ -973,48 +1015,89 @@ class TransmogSetPanel extends JPanel
 
 			if (redraw)
 			{
-				SwingUtilities.invokeLater(() -> {
-					panel.removeAll();
-					JCheckBox pause = new JCheckBox("pause", paused);
-					pause.addChangeListener(ce -> {
-						paused = ((JCheckBox) ce.getSource()).isSelected();
-					});
-					panel.add(pause);
-					for (PCwI projectile : finishedProjectiles)
-					{
-						JPanel panel1 = new JPanel();
-						panel1.setLayout(new BoxLayout(panel1, BoxLayout.X_AXIS));
-						JButton demo = new JButton("demo");
-						demo.addActionListener(al -> plugin.demoCast(projectile.pc));
-						panel1.add(demo);
-						JButton use = new JButton("use");
-						use.addActionListener(al -> {
-							if (pluginPanel.currentlyEditingThisSwap == null || pluginPanel.currentlyEditingThisProjectileSwapIndex == -1)
-							{
-								panel.add(new JLabel("not editing a projectile swap"));
-								panel.revalidate();
-								panel.repaint();
-								return;
-							}
-							ProjectileSwap projectileSwap = pluginPanel.currentlyEditingThisSwap.getProjectileSwaps().get(pluginPanel.currentlyEditingThisProjectileSwapIndex);
-							projectileSwap.createCustomIfNull();
-							projectileSwap.toReplaceWithCustom.projectileId = projectile.pc.projectileId;
-							if (projectile.pc.hitGfx != -1) projectileSwap.toReplaceWithCustom.hitGfx = projectile.pc.hitGfx;
-							projectileSwap.toReplaceWithCustom.startMovement = projectile.pc.startMovement;
-							projectileSwap.toReplaceWithCustom.startHeight = projectile.pc.startHeight;
-							projectileSwap.toReplaceWithCustom.endHeight = projectile.pc.endHeight;
-							projectileSwap.toReplaceWithCustom.slope = projectile.pc.slope;
-							pluginPanel.rebuild();
-						});
-						panel1.add(use);
-						panel1.add(new JLabel("id " + projectile.pc.projectileId + " hitGfx " + projectile.pc.hitGfx + " (seen " + projectile.i + " times)"));
-
-						panel.add(panel1);
-					}
-					panel.revalidate();
-					panel.repaint();
-				});
+				redraw();
 			}
+		}
+
+		private void redraw()
+		{
+			SwingUtilities.invokeLater(() -> {
+				panel.removeAll();
+
+				JPanel row = new JPanel();
+				row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
+				JCheckBox pause = new JCheckBox("pause", paused);
+				pause.addItemListener(ce -> {
+					paused = ((JCheckBox) ce.getSource()).isSelected();
+				});
+				row.add(pause);
+				JCheckBox debugCheckbox = new JCheckBox("author use", debug);
+				debugCheckbox.addItemListener(ce -> {
+					debug = ((JCheckBox) ce.getSource()).isSelected();
+					redraw();
+				});
+				row.add(debugCheckbox);
+				panel.add(row);
+
+				for (PCwI projectile : finishedProjectiles)
+				{
+					JPanel panel1 = new JPanel();
+					panel1.setLayout(new BoxLayout(panel1, BoxLayout.X_AXIS));
+					JButton demo = new JButton("demo");
+					ProjectileCast pc = projectile.pc;
+					demo.addActionListener(al -> plugin.demoCast(pc));
+					panel1.add(demo);
+					JButton use = new JButton("use");
+					use.addActionListener(al -> {
+						if (pluginPanel.currentlyEditingThisSwap == null || pluginPanel.currentlyEditingThisProjectileSwapIndex == -1)
+						{
+							panel.add(new JLabel("not editing a projectile swap"));
+							panel.revalidate();
+							panel.repaint();
+							return;
+						}
+						ProjectileSwap projectileSwap = pluginPanel.currentlyEditingThisSwap.getProjectileSwaps().get(pluginPanel.currentlyEditingThisProjectileSwapIndex);
+						projectileSwap.createCustomIfNull();
+						projectileSwap.toReplaceWithCustom.castAnimation = pc.castAnimation;
+						projectileSwap.toReplaceWithCustom.castGfx = pc.castGfx;
+						projectileSwap.toReplaceWithCustom.castGfxHeight = pc.castGfxHeight;
+						projectileSwap.toReplaceWithCustom.hitGfx = pc.hitGfx;
+						projectileSwap.toReplaceWithCustom.hitGfxHeight = pc.hitGfxHeight;
+						projectileSwap.toReplaceWithCustom.projectileId = pc.projectileId;
+						projectileSwap.toReplaceWithCustom.startMovement = pc.startMovement;
+						projectileSwap.toReplaceWithCustom.startPos = pc.startPos;
+						projectileSwap.toReplaceWithCustom.startHeight = pc.startHeight;
+						projectileSwap.toReplaceWithCustom.endHeight = pc.endHeight;
+						projectileSwap.toReplaceWithCustom.slope = pc.slope;
+						pluginPanel.rebuild();
+					});
+					panel1.add(use);
+					String s;
+					if (debug) {
+						s = //".name(\"" + lastSpellCastName + "\")" +
+								".cast(" + pc.castAnimation + ", " + (pc.castGfx != -1 ? (pc.castGfx + ", " + pc.castGfxHeight) : "-1, -1") + ")" +
+								(pc.hitGfx != -1 ?
+									".hitGfx(" + pc.hitGfx + ", " + pc.hitGfxHeight + ")"
+									: "") +
+								(pc.projectileId != -1 ?
+									".projectile(" + pc.projectileId + ", " + pc.startMovement + ", " + pc.startPos + ", " + pc.startHeight + ", " + pc.endHeight + ", " + pc.slope + ")"
+									: "") +
+								"";
+					} else {
+						s = "a" + pc.castAnimation + " cg" + pc.castGfx + " cgh" + pc.castGfxHeight +
+							" hg" + pc.hitGfx + " hgh" + pc.hitGfxHeight +
+							" pid" + pc.projectileId + " a" + pc.slope + " d" + pc.startMovement + " o" + pc.startPos + " sh" + pc.startHeight + " eh" + pc.endHeight
+						;
+					}
+					JTextField label = new JTextField(s + " (seen " + projectile.i + " times)");
+					label.setEditable(false);
+					panel1.add(label);
+
+					panel.add(panel1);
+				}
+				panel.revalidate();
+				panel.repaint();
+			});
 		}
 	}
 
