@@ -869,11 +869,11 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 //		chally: 1232 1233 1234 1235
 		Integer weaponId = equippedItemsFromKit.get(KitType.WEAPON.getIndex());
 		if (weaponId == ItemID.SCYTHE_OF_VITUR || weaponId == ItemID.SCYTHE_OF_VITUR_UNCHARGED) {
-			scytheGraphic = new int[]{478, 1231, 506, 1172}[direction];
+			scytheGraphic = new int[]{506, 1172, 478, 1231}[direction];
 		} else if (weaponId == ItemID.SCYTHE_OF_VITUR_BL || weaponId == ItemID.SCYTHE_OF_VITUR_UNCHARGED_BL) {
-			scytheGraphic = new int[]{1891, 1894, 1892, 1893}[direction];
+			scytheGraphic = new int[]{1892, 1893, 1891, 1894}[direction];
 		} else if (weaponId == ItemID.SCYTHE_OF_VITUR_OR || weaponId == ItemID.SCYTHE_OF_VITUR_UNCHARGED_OR) {
-			scytheGraphic = new int[]{1895, 1898, 1896, 1897}[direction];
+			scytheGraphic = new int[]{1896, 1897, 1895, 1898}[direction];
 		} else {
 			scytheGraphic = -1;
 		}
