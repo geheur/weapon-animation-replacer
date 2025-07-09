@@ -122,8 +122,7 @@ public class SpellDataCollector
 		 */
 		int projectileId = projectile != null ? projectile.getId() : -1;
 		int startMovement = projectile != null ? (projectile.getStartCycle() - client.getGameCycle()) : -1;
-		int startPos = projectile != null ? projectile.getStartHeight() : -1; // api v1
-//		int startPos = projectile != null ? projectile.getStartPos() : -1; // api v2
+		int startPos = projectile != null ? projectile.getStartPos() : -1;
 		int startHeight = projectile != null ? projectile.getStartHeight() : -1;
 		int endHeight = projectile != null ? projectile.getEndHeight() : -1;
 		int slope = projectile != null ? projectile.getSlope() : -1;

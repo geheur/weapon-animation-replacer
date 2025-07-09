@@ -978,8 +978,7 @@ class TransmogSetPanel extends JPanel
 			}
 			if (projectile != null) {
 				int startMovement = projectile.getStartCycle() - client.getGameCycle();
-				int startPos = projectile.getStartHeight(); // api v1
-//				int startPos = projectile.getStartPos(); // api v2
+				int startPos = projectile.getStartPos();
 				int startHeight = projectile.getStartHeight();
 				int endHeight = projectile.getEndHeight();
 				int slope = projectile.getSlope();

@@ -664,8 +664,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			}
 			int endCycle = client.getGameCycle() + toReplaceWith.getStartMovement() + projectileTravelTime;
 
-			replaceSpell(projectileSwap, player, playerPos, player.getInteracting(), player.getInteracting().getLocalLocation(), endCycle); // api v1
-//			replaceSpell(projectileSwap, player, playerPos, player.getInteracting(), player.getInteracting().getWorldLocation(), endCycle); // api v2
+			replaceSpell(projectileSwap, player, playerPos, player.getInteracting(), player.getInteracting().getWorldLocation(), endCycle);
 			break;
 		}
 	}
@@ -764,10 +763,8 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 				(toReplace.getCastGfx() == -1 || toReplace.getCastGfx() == player.getGraphic())
 			) {
 				int endCycle = projectile.getEndCycle();
-				Actor interacting = projectile.getInteracting();
 
-//				replaceSpell(projectileSwap, player, projectile.getSourcePoint(), interacting, projectile.getTargetPoint(), endCycle); // api v2
-				replaceSpell(projectileSwap, player, WorldPoint.fromLocal(client, projectile.getSourcePoint()), interacting, projectile.getTargetPoint(), endCycle); // api v1
+				replaceSpell(projectileSwap, player, projectile.getSourcePoint(), projectile.getTargetActor(), projectile.getTargetPoint(), endCycle);
 				projectile.setEndCycle(0);
 
 				return true;
@@ -781,8 +778,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		Player player,
 		WorldPoint source,
 		Actor interacting,
-		LocalPoint target, // api v1
-//		WorldPoint target, // api v2
+		WorldPoint target,
 		int endCycle
 	) {
 		ProjectileCast toReplace = projectileSwap.getToReplace();
@@ -791,24 +787,12 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		if (toReplaceWith.getProjectileId() != -1)
 		{
 			int startCycle = client.getGameCycle() + toReplaceWith.getStartMovement();
-			//* api v1
-			LocalPoint playerPosLocal = LocalPoint.fromWorld(client.getTopLevelWorldView(), source);
 			Projectile p = client.createProjectile(toReplaceWith.getProjectileId(),
-				source.getPlane(),
-				playerPosLocal.getX(), playerPosLocal.getY(),
-				92,
+				source, toReplaceWith.getStartHeight(), null,
+				target, toReplaceWith.getEndHeight(), interacting,
 				startCycle, endCycle,
 				toReplaceWith.getSlope(),
-				toReplaceWith.getStartHeight(), toReplaceWith.getEndHeight(),
-				interacting,
-				target.getX(), target.getY());
-			//*/
-//			Projectile p = client.createProjectile(toReplaceWith.getProjectileId(),
-//				source, toReplaceWith.getStartHeight(), null,
-//				target, toReplaceWith.getEndHeight(), interacting,
-//				startCycle, endCycle,
-//				toReplaceWith.getSlope(),
-//				toReplaceWith.getStartPos());
+				toReplaceWith.getStartPos());
 			lastTickProjectiles.add(p); // avoid recursive replacement on the next tick.
 		}
 
@@ -963,8 +947,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 				LocalPoint ll = p.getLocalLocation();
 				int targetx = ll.getX() + (int) (700 * Math.cos((-512 - p.getOrientation()) / 2048d * 2 * Math.PI));
 				int targety = ll.getY() + (int) (700 * Math.sin((-512 - p.getOrientation()) / 2048d * 2 * Math.PI));
-				client.createProjectile(pc.projectileId, wl.getPlane(), ll.getX(), ll.getY(), 92, client.getGameCycle() + pc.startMovement, client.getGameCycle() + 100, pc.slope, pc.startHeight, pc.endHeight, null, targetx, targety); // api v1
-//				client.createProjectile(pc.projectileId, wl, pc.startHeight, p, WorldPoint.fromLocal(client, targetx, targety, wl.getPlane()), pc.endHeight, null, client.getGameCycle() + pc.startMovement, client.getGameCycle() + pc.startMovement + 100, pc.slope, pc.startPos); // api v2
+				client.createProjectile(pc.projectileId, wl, pc.startHeight, p, WorldPoint.fromLocal(client, targetx, targety, wl.getPlane()), pc.endHeight, null, client.getGameCycle() + pc.startMovement, client.getGameCycle() + pc.startMovement + 100, pc.slope, pc.startPos);
 			}
 			if (pc.castAnimation != -1) {
 				p.setAnimation(pc.castAnimation);
