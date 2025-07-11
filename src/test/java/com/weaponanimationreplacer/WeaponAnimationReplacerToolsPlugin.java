@@ -2319,6 +2319,8 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		projectiles.add(p().id(142).name("Dark bow spec (non-dragon arrows)").itemId(ItemID.DARK_BOW).ids(426, 1105, 1101, 1103, 41, 11, 144, 5).build());
 		projectiles.add(p().id(143).name("Dark bow spec (dragon arrows)").itemId(ItemID.DARK_BOW).ids(426, 1111, 1099, 1100, 41, 11, 144, 5).build());
 		projectiles.add(p().id(144).name("Seercull").itemId(ItemID.SEERCULL).ids(426, 472, 473, 474, 41, 11, 144, 15).hit(474, 0).build());
+		projectiles.add(p().id(170).itemId(ItemID.SCORCHING_BOW).cast(426, 1385, 96).projectile(1384, 41, 11, 163, 146, 15).build());
+		projectiles.add(p().id(171).name("Scorching bow (spec)").itemId(ItemID.SCORCHING_BOW).cast(11133, 2806, 0).hit(2808, 146).projectile(2807, 46, 80, 160, 146, 255).build());
 		// TODO ba arrows, brutal arrow, broad arrow.
 		// TODO specs (seercull, msb, magic longbow), dark bow.
 
@@ -2371,15 +2373,26 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		projectiles.add(p().id(109).itemId(ItemID.DRAGON_DART).ids(7554, -1, 1122, -1, 32, 11, 144, 15).build());
 
 		// Blowpipe.
-		projectiles.add(p().id(110).name("Bronze Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 226, -1, 32, 105, 144, 15).build());
-		projectiles.add(p().id(111).name("Iron Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 227, -1,  32, 105, 144, 15).build());
-		projectiles.add(p().id(112).name("Steel Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 228, -1, 32, 105, 144, 15).build());
-		projectiles.add(p().id(113).name("Black Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 32, -1, 32, 105, 144, 15).build());
-		projectiles.add(p().id(114).name("Mithril Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 229, -1, 32, 105, 144, 15).build());
-		projectiles.add(p().id(115).name("Adamant Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 230, -1, 32, 105, 144, 15).build());
-		projectiles.add(p().id(116).name("Rune Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 231, -1, 32, 105, 144, 15).build());
-		projectiles.add(p().id(117).name("Amethyst Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 1936, -1, 32, 105, 144, 15).build());
-		projectiles.add(p().id(118).name("Dragon Dart").itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, 1122, -1, 32, 105, 144, 15).build());
+		ProjectileCast blowpipe = p().itemId(ItemID.TOXIC_BLOWPIPE).ids(5061, -1, -1, -1, 32, 105, 144, 15).build();
+		projectiles.add(blowpipe.toBuilder().id(110).name("Bronze Dart").projectileId(226).build());
+		projectiles.add(blowpipe.toBuilder().id(111).name("Iron Dart").projectileId(227).build());
+		projectiles.add(blowpipe.toBuilder().id(112).name("Steel Dart").projectileId(228).build());
+		projectiles.add(blowpipe.toBuilder().id(113).name("Black Dart").projectileId(32).build());
+		projectiles.add(blowpipe.toBuilder().id(114).name("Mithril Dart").projectileId(229).build());
+		projectiles.add(blowpipe.toBuilder().id(115).name("Adamant Dart").projectileId(230).build());
+		projectiles.add(blowpipe.toBuilder().id(116).name("Rune Dart").projectileId(231).build());
+		projectiles.add(blowpipe.toBuilder().id(117).name("Amethyst Dart").projectileId(193).build());
+		projectiles.add(blowpipe.toBuilder().id(118).name("Dragon Dart").projectileId(1122).build());
+		ProjectileCast blazing = blowpipe.toBuilder().itemId(ItemID.BLAZING_BLOWPIPE).castAnimation(10656).build();
+		projectiles.add(blazing.toBuilder().id(161).name("Bronze Dart").projectileId(226).build());
+		projectiles.add(blazing.toBuilder().id(162).name("Iron Dart").projectileId(227).build());
+		projectiles.add(blazing.toBuilder().id(163).name("Steel Dart").projectileId(228).build());
+		projectiles.add(blazing.toBuilder().id(164).name("Black Dart").projectileId(32).build());
+		projectiles.add(blazing.toBuilder().id(165).name("Mithril Dart").projectileId(229).build());
+		projectiles.add(blazing.toBuilder().id(166).name("Adamant Dart").projectileId(230).build());
+		projectiles.add(blazing.toBuilder().id(167).name("Rune Dart").projectileId(231).build());
+		projectiles.add(blazing.toBuilder().id(168).name("Amethyst Dart").projectileId(193).build());
+		projectiles.add(blazing.toBuilder().id(169).name("Dragon Dart").projectileId(1122).build());
 
 		// Thrownaxes.
 		projectiles.add(p().id(119).itemId(ItemID.BRONZE_THROWNAXE).ids(7617, 43, 36, -1, 32, 11, 144, 15).build());
