@@ -2230,30 +2230,30 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		projectiles.add(p().id(3).name("Earth Strike").sprite(SpriteID.SPELL_EARTH_STRIKE).cast(1162, 96, 92).projectile(97, 51, 64, 172, 124, 16).hit(98, 124).build());
 		projectiles.add(p().id(4).name("Weaken").sprite(SpriteID.SPELL_WEAKEN).cast(1164, 105, 92).projectile(106, 44, 64, 172, 124, 16).hit(107, 124).build());
 		projectiles.add(p().id(5).name("Fire Strike").sprite(SpriteID.SPELL_FIRE_STRIKE).cast(1162, 99, 92).projectile(100, 51, 64, 172, 124, 16).hit(101, 124).build());
-		projectiles.add(p().id(6).name("Wind Bolt").sprite(SpriteID.SPELL_WIND_BOLT).cast(1162, 117, 92).projectile(118, 51, 64, 172, 124, 16).hit(119, 124).build());
+		projectiles.add(p().id(6).name("Wind Bolt").sprite(SpriteID.SPELL_WIND_BOLT).cast(11423, 117, 92).projectile(118, 51, 64, 172, 124, 16).hit(119, 124).build());
 		projectiles.add(p().id(7).name("Curse").sprite(SpriteID.SPELL_CURSE).cast(1165, 108, 92).projectile(109, 51, 64, 172, 124, 16).hit(110, 124).build());
 		projectiles.add(p().id(8).name("Bind").sprite(SpriteID.SPELL_BIND).cast(1161, 177, 92).projectile(178, 75, 64, 172, 0, 16).hit(181, 0).hit(181, 124).build());
-		projectiles.add(p().id(9).name("Water Bolt").sprite(SpriteID.SPELL_WATER_BOLT).cast(1162, 120, 92).projectile(121, 51, 64, 172, 124, 16).hit(122, 124).build());
-		projectiles.add(p().id(10).name("Earth Bolt").sprite(SpriteID.SPELL_EARTH_BOLT).cast(1162, 123, 92).projectile(124, 51, 64, 172, 124, 16).hit(125, 124).build());
+		projectiles.add(p().id(9).name("Water Bolt").sprite(SpriteID.SPELL_WATER_BOLT).cast(11423, 120, 92).projectile(121, 51, 64, 172, 124, 16).hit(122, 124).build());
+		projectiles.add(p().id(10).name("Earth Bolt").sprite(SpriteID.SPELL_EARTH_BOLT).cast(11423, 123, 92).projectile(124, 51, 64, 172, 124, 16).hit(125, 124).build());
 		projectiles.add(p().id(11).name("Telegrab").sprite(SpriteID.SPELL_TELEKINETIC_GRAB).cast(723, 142, 92).projectile(143, 48, 64, 172, 0, 16).hit(144, 0).build());
-		projectiles.add(p().id(12).name("Fire Bolt").sprite(SpriteID.SPELL_FIRE_BOLT).cast(1162, 126, 92).projectile(127, 51, 64, 172, 124, 16).hit(128, 124).build());
+		projectiles.add(p().id(12).name("Fire Bolt").sprite(SpriteID.SPELL_FIRE_BOLT).cast(11423, 126, 92).projectile(127, 51, 64, 172, 124, 16).hit(128, 124).build());
 		projectiles.add(p().id(13).name("Crumble Undead").sprite(SpriteID.SPELL_CRUMBLE_UNDEAD).cast(1166, 145, 92).projectile(146, 46, 64, 172, 124, 16).hit(147, 124).build());
-		projectiles.add(p().id(14).name("Wind Blast").sprite(SpriteID.SPELL_WIND_BLAST).cast(1162, 132, 92).projectile(133, 51, 64, 172, 124, 16).hit(134, 124).build());
-		projectiles.add(p().id(15).name("Water Blast").sprite(SpriteID.SPELL_WATER_BLAST).cast(1162, 135, 92).projectile(136, 51, 64, 172, 124, 16).hit(137, 124).build());
+		projectiles.add(p().id(14).name("Wind Blast").sprite(SpriteID.SPELL_WIND_BLAST).cast(11423, 132, 92).projectile(133, 51, 64, 172, 124, 16).hit(134, 124).build());
+		projectiles.add(p().id(15).name("Water Blast").sprite(SpriteID.SPELL_WATER_BLAST).cast(11423, 135, 92).projectile(136, 51, 64, 172, 124, 16).hit(137, 124).build());
 		projectiles.add(p().id(16).name("Iban Blast").sprite(SpriteID.SPELL_IBAN_BLAST).cast(708, 87, 92).projectile(88, 60, 64, 172, 124, 16).hit(89, 124).build());
 		projectiles.add(p().id(17).name("Snare").sprite(SpriteID.SPELL_SNARE).cast(1161, 177, 92).projectile(178, 75, 64, 172, 0, 16).hit(180, 0).hit(180, 124).build());
 		projectiles.add(p().id(18).name("Magic Dart").sprite(SpriteID.SPELL_MAGIC_DART).cast(1576, -1, 92).projectile(328, 51, 64, 172, 124, 16).hit(329, 124).build());
-		projectiles.add(p().id(19).name("Earth Blast").sprite(SpriteID.SPELL_EARTH_BLAST).cast(1162, 138, 92).projectile(139, 51, 64, 172, 124, 16).hit(140, 124).build());
-		projectiles.add(p().id(20).name("Fire Blast").sprite(SpriteID.SPELL_FIRE_BLAST).cast(1162, 129, 92).projectile(130, 51, 64, 172, 124, 16).hit(131, 124).build());
+		projectiles.add(p().id(19).name("Earth Blast").sprite(SpriteID.SPELL_EARTH_BLAST).cast(11423, 138, 92).projectile(139, 51, 64, 172, 124, 16).hit(140, 124).build());
+		projectiles.add(p().id(20).name("Fire Blast").sprite(SpriteID.SPELL_FIRE_BLAST).cast(11423, 129, 92).projectile(130, 51, 64, 172, 124, 16).hit(131, 124).build());
 		projectiles.add(p().id(21).name("Saradomin Strike").sprite(SpriteID.SPELL_SARADOMIN_STRIKE).simpleSpell(811, 76).build());
 		projectiles.add(p().id(22).name("Claws of Guthix").sprite(SpriteID.SPELL_CLAWS_OF_GUTHIX).simpleSpell(811, 77).build());
 		projectiles.add(p().id(23).name("Flames of Zamorak").sprite(SpriteID.SPELL_FLAMES_OF_ZAMORAK).simpleSpell(811, 78).build());
-		projectiles.add(p().id(24).name("Wind Wave").sprite(SpriteID.SPELL_WIND_WAVE).cast(1167, 158, 92).projectile(159, 51, 64, 172, 124, 16).hit(160, 124).build());
-		projectiles.add(p().id(25).name("Water Wave").sprite(SpriteID.SPELL_WATER_WAVE).cast(1167, 161, 92).projectile(162, 51, 64, 172, 124, 16).hit(163, 124).build());
+		projectiles.add(p().id(24).name("Wind Wave").sprite(SpriteID.SPELL_WIND_WAVE).cast(11430, 158, 92).projectile(159, 51, 64, 172, 124, 16).hit(160, 124).build());
+		projectiles.add(p().id(25).name("Water Wave").sprite(SpriteID.SPELL_WATER_WAVE).cast(11430, 161, 92).projectile(162, 51, 64, 172, 124, 16).hit(163, 124).build());
 		projectiles.add(p().id(26).name("Vulnerability").sprite(SpriteID.SPELL_VULNERABILITY).cast(1165, 167, 92).projectile(168, 34, 64, 172, 124, 16).hit(169, 124).build());
-		projectiles.add(p().id(27).name("Earth Wave").sprite(SpriteID.SPELL_EARTH_WAVE).cast(1167, 164, 92).projectile(165, 51, 64, 172, 124, 16).hit(166, 124).build());
+		projectiles.add(p().id(27).name("Earth Wave").sprite(SpriteID.SPELL_EARTH_WAVE).cast(11430, 164, 92).projectile(165, 51, 64, 172, 124, 16).hit(166, 124).build());
 		projectiles.add(p().id(28).name("Enfeeble").sprite(SpriteID.SPELL_ENFEEBLE).cast(1168, 170, 92).projectile(171, 48, 64, 172, 124, 16).hit(172, 124).build());
-		projectiles.add(p().id(29).name("Fire Wave").sprite(SpriteID.SPELL_FIRE_WAVE).cast(1167, 155, 92).projectile(156, 51, 64, 172, 124, 16).hit(157, 124).build());
+		projectiles.add(p().id(29).name("Fire Wave").sprite(SpriteID.SPELL_FIRE_WAVE).cast(11430, 155, 92).projectile(156, 51, 64, 172, 124, 16).hit(157, 124).build());
 		projectiles.add(p().id(30).name("Entangle").sprite(SpriteID.SPELL_ENTANGLE).cast(1161, 177, 92).projectile(178, 75, 64, 172, 0, 16).hit(179, 0).hit(179, 124).build());
 		projectiles.add(p().id(31).name("Stun").sprite(SpriteID.SPELL_STUN).cast(1169, 173, 92).projectile(174, 52, 64, 172, 124, 16).hit(80, 124).build());
 		projectiles.add(p().id(32).name("Wind Surge").sprite(SpriteID.SPELL_WIND_SURGE).cast(7855, 1455, 92).projectile(1456, 51, 64, 172, 124, 16).hit(1457, 124).build());
@@ -2290,14 +2290,14 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 
 		// Powered staves.
 		// TODO black trident. I forget the ID.
-		projectiles.add(p().id(59).itemId(ItemID.TRIDENT_OF_THE_SEAS).ids(1167, 1251, 92, 1252, 1253, 51, 64, 92, 60, 16).build());
-		projectiles.add(p().id(60).itemId(ItemID.TRIDENT_OF_THE_SWAMP).ids(1167, 665, 92, 1040, 1042, 51, 64, 92, 60, 16).build());
+		projectiles.add(p().id(59).itemId(ItemID.TRIDENT_OF_THE_SEAS).ids(11430, 1251, 92, 1252, 1253, 51, 64, 92, 60, 16).build());
+		projectiles.add(p().id(60).itemId(ItemID.TRIDENT_OF_THE_SWAMP).ids(11430, 665, 92, 1040, 1042, 51, 64, 92, 60, 16).build());
 		projectiles.add(p().id(61).name("trident (purple and gold)").itemId(ItemID.GOLDEN_SCARAB).ids(1167, 1543, 92, 1544, 1545, 51, 64, 92, 60, 16).artificial().build());
 		projectiles.add(p().id(62).name("trident (purple and silver)").itemId(ItemID.STONE_SCARAB).ids(1167, 1546, 92, 1547, 1548, 51, 64, 92, 60, 16).artificial().build());
-		projectiles.add(p().id(63).name("Sanguinesti staff (regular, 92)").itemId(ItemID.SANGUINESTI_STAFF).ids(1167, 1540, 92, 1539, 1541, 51, 64, 92, 60, 16).build());
-		projectiles.add(p().id(64).name("Sanguinesti staff (health restore)").itemId(ItemID.SANGUINESTI_STAFF).ids(1167, 1540, 92, 1539, 1542, 51, 64, 92, 60, 16).build());
-		projectiles.add(p().id(65).name("Holy sanguinesti staff (regular)").itemId(ItemID.HOLY_SANGUINESTI_STAFF).ids(1167, 1900, 92, 1899, 1901, 51, 64, 92, 60, 16).build());
-		projectiles.add(p().id(66).name("Holy sanguinesti staff (health restore)").itemId(ItemID.HOLY_SANGUINESTI_STAFF).ids(1167, 1900, 92, 1899, 1902, 51, 64, 92, 60, 16).build());
+		projectiles.add(p().id(63).name("Sanguinesti staff (regular, 92)").itemId(ItemID.SANGUINESTI_STAFF).ids(11430, 1540, 92, 1539, 1541, 51, 64, 92, 60, 16).build());
+		projectiles.add(p().id(64).name("Sanguinesti staff (health restore)").itemId(ItemID.SANGUINESTI_STAFF).ids(11430, 1540, 92, 1539, 1542, 51, 64, 92, 60, 16).build());
+		projectiles.add(p().id(65).name("Holy sanguinesti staff (regular)").itemId(ItemID.HOLY_SANGUINESTI_STAFF).ids(11430, 1900, 92, 1899, 1901, 51, 64, 92, 60, 16).build());
+		projectiles.add(p().id(66).name("Holy sanguinesti staff (health restore)").itemId(ItemID.HOLY_SANGUINESTI_STAFF).ids(11430, 1900, 92, 1899, 1902, 51, 64, 92, 60, 16).build());
 		projectiles.add(p().id(157).itemId(ItemID.TUMEKENS_SHADOW).cast(9493, 2125, 92 /*TODO*/).projectile(2126, 56, 40, 400, 124, 32).hit(2127, 124).build());
 
 		// Arrows. Many values guessed based off of iron arrow, so stuff like height/slope could be off for some arrows.
