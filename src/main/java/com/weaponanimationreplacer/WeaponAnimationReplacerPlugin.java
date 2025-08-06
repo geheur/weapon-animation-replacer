@@ -812,6 +812,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 				{
 					player.getInteracting().setGraphic(toReplaceWith.getHitGfx());
 					player.getInteracting().setGraphicHeight(toReplaceWith.getHitGfxHeight());
+					player.getInteracting().setSpotAnimFrame(0);
 				}
 			}
 			else
