@@ -53,6 +53,7 @@ import lombok.Getter;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
+import net.runelite.api.ActorSpotAnim;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
@@ -142,10 +143,6 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	private List<ProjectileSwap> projectileSwaps = Collections.emptyList();
 	private List<SoundSwap> soundSwaps = new ArrayList<>();
 	private GraphicEffect currentScytheGraphicEffect = null;
-	int delayedGfxToApply = -1;
-	int delayedGfxHeightToApply = -1;
-	Actor actorToApplyDelayedGfxTo = null;
-	int timeToApplyDelayedGfx = -1;
 
 	int previewItem = -1;
 	AnimationReplacements previewAnimationReplacements = null;
@@ -597,13 +594,6 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	@Subscribe
 	public void onClientTick(ClientTick event)
 	{
-		if (client.getGameCycle() == timeToApplyDelayedGfx) {
-//			System.out.println("it is " + client.getGameCycle() + ", applying delayed gfx.");
-			actorToApplyDelayedGfxTo.setGraphic(delayedGfxToApply);
-			actorToApplyDelayedGfxTo.setSpotAnimFrame(0);
-			actorToApplyDelayedGfxTo.setGraphicHeight(delayedGfxHeightToApply);
-		}
-
 		if (scytheSwingCountdown == 0) {
 			createScytheSwing();
 		} else {
@@ -801,26 +791,20 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		player.setGraphicHeight(toReplaceWith.getCastGfxHeight());
 		player.setSpotAnimFrame(0);
 
-		if (player.getInteracting() != null)
-		{
-			if (toReplace.getHitGfx() != -1)
-			{
-				// TODO remove this section, timing it yourself probably works better.
-				// the spell's hit gfx is on the enemy when the spell is cast, it just has a delay on it.
-				int graphic = player.getInteracting().getGraphic();
-				if (graphic == toReplace.getHitGfx() || (graphic == 85 && true)) // TODO remove second part.
-				{
-					player.getInteracting().setGraphic(toReplaceWith.getHitGfx());
-					player.getInteracting().setGraphicHeight(toReplaceWith.getHitGfxHeight());
-					player.getInteracting().setSpotAnimFrame(0);
-				}
+		if (interacting != null) {
+			if (toReplace.getHitGfx() != -1) {
+				removeSpotAnim(interacting, toReplace.getHitGfx());
 			}
-			else
-			{
-				delayedGfxToApply = toReplaceWith.getHitGfx();
-				delayedGfxHeightToApply = toReplaceWith.getHitGfxHeight();
-				actorToApplyDelayedGfxTo = player.getInteracting();
-				timeToApplyDelayedGfx = endCycle;
+			int hitGfx = interacting.getGraphic() == 85 ? 85 : toReplaceWith.getHitGfx();
+			interacting.createSpotAnim(client.getGameCycle() + hitGfx, hitGfx, toReplaceWith.getHitGfxHeight(), endCycle - client.getGameCycle());
+		}
+	}
+
+	private void removeSpotAnim(Actor a, int id) {
+		for (ActorSpotAnim spotAnim : a.getSpotAnims()) {
+			if (spotAnim.getId() == id) {
+				a.removeSpotAnim((int) spotAnim.getHash());
+				return;
 			}
 		}
 	}
