@@ -240,6 +240,11 @@ public class AnimationSets
 			.put(ATTACK, 1167)
 			.put(DEFEND, 420)
 			.build();
+		new AnimationSetBuilder("Eye of ayak")
+			.poseAnims(813, 1209, 1205, 1206, 1207, 1208, 1210)
+			.put(ATTACK, 12397)
+			.put(DEFEND, 420) // guess
+			.build();
 		new AnimationSetBuilder("Granite maul")
 			.poseAnims(1662, 823, 1663, 1663, 1663, 1663, 1664)
 			.put(ATTACK_CRUSH, 1665)
