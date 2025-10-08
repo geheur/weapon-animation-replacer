@@ -19,6 +19,7 @@ import static com.weaponanimationreplacer.Constants.NegativeIdsMap.HIDE_SLOT;
 import static com.weaponanimationreplacer.Constants.NegativeIdsMap.SHOW_SLOT;
 import static com.weaponanimationreplacer.Constants.WEAPON_SLOT;
 import static com.weaponanimationreplacer.Constants.mapNegativeId;
+import com.weaponanimationreplacer.PartyInterface.PartyMemberData;
 import com.weaponanimationreplacer.Swap.AnimationReplacement;
 import com.weaponanimationreplacer.Swap.AnimationType;
 import static com.weaponanimationreplacer.Swap.AnimationType.ALL;
@@ -50,6 +51,7 @@ import javax.inject.Inject;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
@@ -74,6 +76,8 @@ import net.runelite.api.events.GameTick;
 import net.runelite.api.events.GraphicsObjectCreated;
 import net.runelite.api.events.InteractingChanged;
 import net.runelite.api.events.PlayerChanged;
+import net.runelite.api.events.PlayerDespawned;
+import net.runelite.api.events.PlayerSpawned;
 import net.runelite.api.events.SoundEffectPlayed;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.api.kit.KitType;
@@ -116,8 +120,9 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	@Inject EventBus eventBus;
 	@Inject private ChatBoxFilterableSearch itemSearch;
 	@Inject private ClientToolbar clientToolbar;
-	@Inject private ConfigManager configManager;
+	@Inject ConfigManager configManager;
 	@Inject private TransmogrificationManager transmogManager;
+	@Inject PartyInterface partyInterface;
 	@Inject Gson runeliteGson;
 	@Inject ClientUI clientUI;
 	@Inject ItemManager itemManager;
@@ -134,15 +139,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	WeaponAnimationReplacerPluginPanel pluginPanel;
 	private NavigationButton navigationButton;
 
-	/**
-	 * This is updated earlier than the player's equipment inventory. It uses the kit data, so it will have some negative numbers in it if there is no gear in that slot, or it is a jaw/hair/arms or something like that.
-	 */
-	private List<Integer> equippedItemsFromKit = new ArrayList<>();
-	private final List<Integer> naturalPlayerPoseAnimations = new ArrayList<>();
-	private AnimationReplacements currentAnimations = new AnimationReplacements();
-	private List<ProjectileSwap> projectileSwaps = Collections.emptyList();
 	private List<SoundSwap> soundSwaps = new ArrayList<>();
-	private GraphicEffect currentScytheGraphicEffect = null;
 
 	int previewItem = -1;
 	AnimationReplacements previewAnimationReplacements = null;
@@ -231,6 +228,10 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		clientThread.invokeLater(() -> {
 			transmogManager.startUp();
 			eventBus.register(transmogManager);
+			if (config.partyShare()) {
+				partyInterface.startUp();
+				eventBus.register(partyInterface);
+			}
 
 			loadAndUpdateData();
 			reloadTransmogSetsFromConfig();
@@ -239,15 +240,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			if (client.getGameState() == GameState.LOGGED_IN) {
 				onPlayerChanged(new PlayerChanged(client.getLocalPlayer()));
 			}
-			else
-			{
-				equippedItemsFromKit.clear();
-				naturalPlayerPoseAnimations.clear();
-				currentAnimations = new AnimationReplacements();
-			}
 
-			currentScytheGraphicEffect = null;
-			scytheSwingCountdown = -1;
 			previewItem = -1;
 
 			if (client.getGameState().getState() >= GameState.LOGIN_SCREEN.getState())
@@ -437,20 +430,149 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		clientThread.invokeLater(() -> {
 			eventBus.unregister(transmogManager);
 			transmogManager.shutDown();
-
-			if (!naturalPlayerPoseAnimations.isEmpty())
-			{
-				for (Constants.ActorAnimation animation : Constants.ActorAnimation.values())
-				{
-					animation.setAnimation(client.getLocalPlayer(), naturalPlayerPoseAnimations.get(animation.ordinal()));
-				}
-			}
+			eventBus.unregister(partyInterface);
+			partyInterface.shutDown();
+			resetAllPlayers();
+			playerData.clear();
 		});
-
-		transmogSets = null;
     }
 
-    @Subscribe
+	public void leftParty(long memberId) {
+		for (Map.Entry<Player, PlayerData> entry : playerData.entrySet()) {
+			if (entry.getValue().partyMemberId == memberId) {
+//				System.out.println("leftParty " + entry.getValue().player.getName());
+				resetPlayer(entry.getValue());
+				playerData.remove(entry.getKey());
+				return;
+			}
+		}
+	}
+
+	public void partyTransmogReceived(PartyMemberData data, long memberId) {
+//		System.out.println("partyTransmogReceived " + ((data == null) ? "null" : (data.playerName + " " + data.transmogSets)));
+		if (data.playerName == null || data.transmogSets == null) return; // not usable yet.
+
+		PlayerData pd = getData(data.playerName);
+		if (pd != null) {
+			pd.update(data);
+			updateTransmogAndAnimations(pd);
+		} else {
+			for (Player player : client.getTopLevelWorldView().players())
+			{
+				if (player.getName().equals(data.playerName))
+				{
+					createPlayerData(player, data);
+					return;
+				}
+			}
+		}
+	}
+
+	@RequiredArgsConstructor
+	public static final class PlayerData {
+		final Player player;
+		long partyMemberId = -1; // only not -1 when this playerdata comes from a party.
+		@Getter
+		List<TransmogSet> transmogSets = null;
+		/**
+		 * This is updated earlier than the player's equipment inventory. It uses the kit data, so it will have some negative numbers in it if there is no gear in that slot, or it is a jaw/hair/arms or something like that.
+		 */
+		List<Integer> equippedItemsFromKit = new ArrayList<>();
+		final List<Integer> naturalPlayerPoseAnimations = new ArrayList<>();
+		AnimationReplacements currentAnimations = new AnimationReplacements();
+		List<ProjectileSwap> projectileSwaps = Collections.emptyList();
+		GraphicEffect currentScytheGraphicEffect = null;
+		LocalPoint scytheGraphicPoint;
+		int scytheModel;
+		int scytheSwingCountdown = -1;
+		int scytheGraphicTick = -1;
+		int scytheGraphic;
+		int lastRealAnimation = -1;
+		boolean animationChangedThisTick = false;
+
+		int[] currentActualState;
+		int transmogHash = 0;
+
+		int baseArmsKit = -1;
+		int baseHairKit = -1;
+		int baseJawKit = -1;
+
+		public void update(PartyMemberData data)
+		{
+			this.transmogSets = data.transmogSets;
+			this.baseArmsKit = data.baseArmsKit;
+			this.baseHairKit = data.baseHairKit;
+			this.baseArmsKit = data.baseArmsKit;
+		}
+	}
+
+	Map<Player, PlayerData> playerData = new HashMap<>();
+	@Subscribe public void onPlayerSpawned(PlayerSpawned e) {
+		Player p = e.getPlayer();
+
+		PartyMemberData pmd = partyInterface.getData(p.getName());
+		if ((pmd != null && pmd.playerName != null && pmd.transmogSets != null) || p == client.getLocalPlayer()) {
+//			System.out.println("player spawn " + p.getName() + " valid data");
+			createPlayerData(p, pmd);
+		} else if (pmd != null) {
+//			System.out.println("player spawn " + p.getName() + " name " + pmd.playerName + " transmogsets " + pmd.transmogSets);
+		}
+	}
+
+	public PlayerData createPlayerData(Player p, PartyMemberData pmd) {
+		if (playerData.containsKey(p)) return playerData.get(p);
+
+		PlayerData data = new PlayerData(p);
+		if (p == client.getLocalPlayer()) {
+			Integer baseArmsKit = configManager.getRSProfileConfiguration(GROUP_NAME, "baseArmsKit", Integer.class);
+			data.baseArmsKit = baseArmsKit != null ? baseArmsKit : -1;
+			Integer baseHairKit = configManager.getRSProfileConfiguration(GROUP_NAME, "baseHairKit", Integer.class);
+			data.baseHairKit = baseHairKit != null ? baseHairKit : -1;
+			Integer baseJawKit = configManager.getRSProfileConfiguration(GROUP_NAME, "baseJawKit", Integer.class);
+			data.baseJawKit = baseJawKit != null ? baseJawKit : -1;
+			data.transmogSets = transmogSets;
+		} else if (pmd != null) {
+			data.partyMemberId = pmd.memberId;
+			data.baseArmsKit = pmd.baseArmsKit;
+			data.baseHairKit = pmd.baseHairKit;
+			data.baseJawKit = pmd.baseJawKit;
+			data.transmogSets = pmd.transmogSets;
+		} else {
+			return null;
+		}
+		playerData.put(p, data);
+		onPlayerChanged(new PlayerChanged(p));
+		return data;
+	}
+
+	@Subscribe public void onPlayerDespawned(PlayerDespawned e) {
+		playerData.remove(e.getPlayer());
+	}
+
+	public PlayerData getData(Player p) {
+		return playerData.get(p);
+	}
+
+	public PlayerData getData(Actor a) {
+		if (!(a instanceof Player)) return null;
+		return getData((Player) a);
+	}
+
+	public PlayerData getData(String playerName) {
+		for (PlayerData data : playerData.values())
+		{
+			if (data.player.getName().equals(playerName)) {
+				return data;
+			}
+		}
+		return null;
+	}
+
+	public PlayerData getLocalData() {
+		return playerData.get(client.getLocalPlayer());
+	}
+
+	@Subscribe
 	public void onProfileChanged(ProfileChanged e) {
 		chatboxPanelManager.close();
 		clientThread.invokeLater(() -> {
@@ -516,12 +638,17 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	public void handleTransmogSetChange() {
 		saveTransmogSets();
 
-		if (client.getLocalPlayer() != null)
-		{
-			transmogManager.changeTransmog();
-			updateAnimations();
-			updateSoundSwaps();
-		}
+		PlayerData data = getLocalData();
+		if (data != null) updateTransmogAndAnimations(data);
+
+		updateSoundSwaps();
+
+		pluginPanel.updatePartyButton();
+	}
+
+	public void updateTransmogAndAnimations(PlayerData data) {
+		transmogManager.changeTransmog(data);
+		updateAnimations(data);
     }
 
     public void deleteTransmogSet(int index) {
@@ -549,9 +676,9 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
         return getGson().fromJson(configuration, new TypeToken<ArrayList<TransmogSet>>() {}.getType());
     }
 
-	private void swapPlayerAnimation()
+	private void swapPlayerAnimation(PlayerData data)
 	{
-		Player player = client.getLocalPlayer();
+		Player player = data.player;
 		int playerAnimation = player.getAnimation();
 		if (playerAnimation == -1) return;
 
@@ -561,15 +688,15 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			.findFirst();
 		if (!type.isPresent()) return;
 
-		Integer replacementAnim = currentAnimations.getAnimation(type.get());
+		Integer replacementAnim = data.currentAnimations.getAnimation(type.get());
 		if (replacementAnim != null)
 		{
 			log.debug("replacing animation {} with {}", playerAnimation, replacementAnim);
 			player.setAnimation(replacementAnim);
 		}
 
-		if (currentScytheGraphicEffect != null && AnimationType.ATTACK.appliesTo(type.get())) {
-			doScytheSwing();
+		if (data.currentScytheGraphicEffect != null && AnimationType.ATTACK.appliesTo(type.get())) {
+			doScytheSwing(data);
 		}
 	}
 
@@ -594,26 +721,29 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	@Subscribe
 	public void onClientTick(ClientTick event)
 	{
-		if (scytheSwingCountdown == 0) {
-			createScytheSwing();
-		} else {
-			scytheSwingCountdown--;
+		for (PlayerData data : playerData.values())
+		{
+			if (data.scytheSwingCountdown == 0) {
+				createScytheSwing(data);
+			} else {
+				data.scytheSwingCountdown--;
+			}
 		}
     }
 
-	private void replaceNoProjectileAttack()
+	private void replaceNoProjectileAttack(PlayerData data)
 	{
-		Player player = client.getLocalPlayer();
+		Player player = data.player;
 		final WorldPoint playerPos = player.getWorldLocation();
 		if (playerPos == null) return;
 		final LocalPoint playerPosLocal = LocalPoint.fromWorld(client, playerPos);
 		if (playerPosLocal == null) return;
 		if (player.getInteracting() == null) return;
 
-		for (ProjectileSwap projectileSwap : projectileSwaps)
+		for (ProjectileSwap projectileSwap : data.projectileSwaps)
 		{
 			ProjectileCast toReplace = projectileSwap.getToReplace();
-			if (toReplace.getCastAnimation() != lastRealAnimation || toReplace.getProjectileId() != -1) {
+			if (toReplace.getCastAnimation() != data.lastRealAnimation || toReplace.getProjectileId() != -1) {
 				continue;
 			}
 
@@ -692,35 +822,39 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
 	@Subscribe
 	public void onGameTick(GameTick e) {
-		if (!projectileSwaps.isEmpty()) {
+		Set<Projectile> thisTickProjectiles = new HashSet<>();
+		Set<Projectile> newProjectiles = new HashSet<>();
+		for (Projectile p : client.getProjectiles()) {
+			if (!lastTickProjectiles.contains(p)) {
+				newProjectiles.add(p);
+			}
+			thisTickProjectiles.add(p);
+		}
+		for (PlayerData data : playerData.values())
+		{
 			boolean replaced = false;
-
-			Set<Projectile> thisTickProjectiles = new HashSet<>();
-			for (Projectile p : client.getProjectiles()) {
-				if (!lastTickProjectiles.contains(p)) {
-					replaced = handleNewProjectile(p);
-				}
-				thisTickProjectiles.add(p);
+			for (Projectile p : newProjectiles) {
+				replaced = handleNewProjectile(p, data);
 			}
-			lastTickProjectiles = thisTickProjectiles;
 
-			if (animationChangedThisTick && !replaced) {
-				replaceNoProjectileAttack();
+			if (data.animationChangedThisTick && !replaced) {
+				replaceNoProjectileAttack(data);
 			}
-		}
 
-		if (animationChangedThisTick && frame != null) {
-			frame.spell();
-		}
+			if (data.animationChangedThisTick && frame != null) {
+				frame.spell();
+			}
 
-		animationChangedThisTick = false;
+			data.animationChangedThisTick = false;
+		}
+		lastTickProjectiles = thisTickProjectiles;
 	}
 
-	private boolean handleNewProjectile(Projectile projectile) {
+	private boolean handleNewProjectile(Projectile projectile, PlayerData data) {
 		if (client.getGameCycle() > projectile.getStartCycle()) return false; // skip already seen projectiles.
 
 		// This is the player's actual location which is what projectiles use as their start position. Player#getX, #getSceneX, etc., do not work here.
-		Player player = client.getLocalPlayer();
+		Player player = data.player;
 		final WorldPoint playerPos = player.getWorldLocation();
 		if (playerPos == null) return false;
 		final LocalPoint playerPosLocal = LocalPoint.fromWorld(client, playerPos);
@@ -728,6 +862,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
 		if (projectile.getX1() != playerPosLocal.getX() || projectile.getY1() != playerPosLocal.getY()) return false;
 
+		int lastRealAnimation = data.lastRealAnimation;
 		int castAnimation = // Some standard spellbook spells use a different animation depending on the equipped weapon (or lack thereof).
 			(lastRealAnimation < 710 || lastRealAnimation > 729) ? lastRealAnimation :
 			lastRealAnimation == 710 ? 1161 :
@@ -741,7 +876,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			lastRealAnimation == 729 ? 1169 :
 			lastRealAnimation
 		;
-		for (ProjectileSwap projectileSwap : projectileSwaps)
+		for (ProjectileSwap projectileSwap : data.projectileSwaps)
 		{
 			ProjectileCast toReplace = projectileSwap.getToReplace();
 			if (
@@ -806,42 +941,36 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		}
 	}
 
-	private LocalPoint scytheGraphicPoint;
-	private int scytheModel;
-	private int scytheSwingCountdown = -1;
-	private int scytheGraphicTick = -1;
-	private int scytheGraphic;
-
-	private void doScytheSwing() {
-		scytheSwingCountdown = 20;
-		setScytheData();
-		scytheGraphicTick = client.getTickCount();
-		msg(client.getTickCount() + " " + client.getGameCycle() + " sc: " + scytheGraphic + " " + scytheGraphicPoint);
+	private void doScytheSwing(PlayerData data) {
+		data.scytheSwingCountdown = 20;
+		setScytheData(data);
+		data.scytheGraphicTick = client.getTickCount();
+		msg(client.getTickCount() + " " + client.getGameCycle() + " sc: " + data.scytheGraphic + " " + data.scytheGraphicPoint);
 	}
 
-	private void setScytheData() {
-		WorldPoint point = client.getLocalPlayer().getWorldLocation();
-		Actor interacting = client.getLocalPlayer().getInteracting();
+	private void setScytheData(PlayerData data) {
+		WorldPoint point = data.player.getWorldLocation();
+		Actor interacting = data.player.getInteracting();
 
-		int direction = getScytheDirection(point, interacting);
+		int direction = getScytheDirection(point, interacting, data);
 		if (direction == 0) point = point.dy(1);
 		if (direction == 1) point = point.dx(1);
 		if (direction == 2) point = point.dy(-1);
 		if (direction == 3) point = point.dx(-1);
-		scytheGraphicPoint = LocalPoint.fromWorld(client.getTopLevelWorldView(), point);
+		data.scytheGraphicPoint = LocalPoint.fromWorld(client.getTopLevelWorldView(), point);
 
-		scytheModel = new int[]{4004, 4003, 4005, 4006}[direction];
+		data.scytheModel = new int[]{4004, 4003, 4005, 4006}[direction];
 
 //		chally: 1232 1233 1234 1235
-		Integer weaponId = equippedItemsFromKit.get(KitType.WEAPON.getIndex());
+		Integer weaponId = data.equippedItemsFromKit.get(KitType.WEAPON.getIndex());
 		if (weaponId == ItemID.SCYTHE_OF_VITUR || weaponId == ItemID.SCYTHE_OF_VITUR_UNCHARGED) {
-			scytheGraphic = new int[]{506, 1172, 478, 1231}[direction];
+			data.scytheGraphic = new int[]{506, 1172, 478, 1231}[direction];
 		} else if (weaponId == ItemID.SCYTHE_OF_VITUR_BL || weaponId == ItemID.SCYTHE_OF_VITUR_UNCHARGED_BL) {
-			scytheGraphic = new int[]{1892, 1893, 1891, 1894}[direction];
+			data.scytheGraphic = new int[]{1892, 1893, 1891, 1894}[direction];
 		} else if (weaponId == ItemID.SCYTHE_OF_VITUR_OR || weaponId == ItemID.SCYTHE_OF_VITUR_UNCHARGED_OR) {
-			scytheGraphic = new int[]{1896, 1897, 1895, 1898}[direction];
+			data.scytheGraphic = new int[]{1896, 1897, 1895, 1898}[direction];
 		} else {
-			scytheGraphic = -1;
+			data.scytheGraphic = -1;
 		}
 	}
 
@@ -851,7 +980,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	 for even, this is the lower of the 2 middle tiles.
 	 for all other positions, the game just uses a north or south swing.
 	 */
-	private int getScytheDirection(WorldPoint playerLocation, Actor target) {
+	private int getScytheDirection(WorldPoint playerLocation, Actor target, PlayerData data) {
 		if (target != null) {
 			int playerx = playerLocation.getX(), playery = playerLocation.getY();
 			int npcw = target.getWorldLocation().getX();
@@ -864,7 +993,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			return playery > npcMiddle ? 2 : 0;
 		} else {
 			// I know this can happen if you're attacking a target dummy in varrock, probably also in the poh.
-			int orientation = client.getLocalPlayer().getOrientation();
+			int orientation = data.player.getOrientation();
 			// 70 is just a number I felt might work nice here.
 			if (orientation > 512 - 70 && orientation < 512 + 70) {
 				return 3;
@@ -878,15 +1007,15 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		}
 	}
 
-	private void createScytheSwing()
+	private void createScytheSwing(PlayerData data)
 	{
-		scytheSwingCountdown = -1;
+		data.scytheSwingCountdown = -1;
 
 		RuneLiteObject runeLiteObject = client.createRuneLiteObject();
-		Color scytheSwingColor = currentScytheGraphicEffect != null ? currentScytheGraphicEffect.color : null;
+		Color scytheSwingColor = data.currentScytheGraphicEffect != null ? data.currentScytheGraphicEffect.color : null;
 		if (scytheSwingColor != null)
 		{
-			Model model = client.loadModelData(scytheModel)
+			Model model = client.loadModelData(data.scytheModel)
 				.cloneVertices()
 				.cloneColors()
 				.recolor((short) 960, JagexColor.rgbToHSL(scytheSwingColor.getRGB(), 1.0d))
@@ -895,26 +1024,29 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 				;
 			runeLiteObject.setModel(model);
 		} else {
-			runeLiteObject.setModel(client.loadModel(scytheModel));
+			runeLiteObject.setModel(client.loadModel(data.scytheModel));
 		}
 
 		runeLiteObject.setAnimation(client.loadAnimation(1204));
-		runeLiteObject.setLocation(scytheGraphicPoint, client.getPlane());
+		runeLiteObject.setLocation(data.scytheGraphicPoint, client.getPlane());
 		runeLiteObject.getAnimationController().setOnFinished(ac -> runeLiteObject.setActive(false));
 		runeLiteObject.setActive(true);
 	}
 
 	@Subscribe
 	public void onGraphicsObjectCreated(GraphicsObjectCreated e) {
-		msg(client.getTickCount() + " " + client.getGameCycle() + " go: " + e.getGraphicsObject().getId() + ":" + scytheGraphic + " " + e.getGraphicsObject().getLocation() + ":" + scytheGraphicPoint);
-		if (
-			scytheGraphic != -1 &&
-				e.getGraphicsObject().getId() == scytheGraphic &&
-				client.getTickCount() == scytheGraphicTick &&
-				e.getGraphicsObject().getLocation().equals(scytheGraphicPoint)
-		) {
-			e.getGraphicsObject().setFinished(true);
-			scytheGraphic = -1;
+		for (PlayerData data : playerData.values()) {
+			msg(client.getTickCount() + " " + client.getGameCycle() + " go: " + e.getGraphicsObject().getId() + ":" + data.scytheGraphic + " " + e.getGraphicsObject().getLocation() + ":" + data.scytheGraphicPoint);
+			if (
+				data.scytheGraphic != -1 &&
+				e.getGraphicsObject().getId() == data.scytheGraphic &&
+				client.getTickCount() == data.scytheGraphicTick &&
+				e.getGraphicsObject().getLocation().equals(data.scytheGraphicPoint)
+			) {
+				e.getGraphicsObject().setFinished(true);
+				data.scytheGraphic = -1;
+				break;
+			}
 		}
 	}
 
@@ -1003,8 +1135,8 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		}
 	}
 
-    private void updateAnimations() { // TODO cache maybe based on the current gear.
-		List<Swap> matchingSwaps = getApplicableSwaps();
+    private void updateAnimations(PlayerData data) { // TODO cache maybe based on the current gear.
+		List<Swap> matchingSwaps = getApplicableSwaps(data);
 
 		List<AnimationReplacement> replacements = matchingSwaps.stream()
 			.flatMap(swap -> swap.animationReplacements.stream()
@@ -1012,18 +1144,18 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 				.sorted()
 			)
 			.collect(Collectors.toList());
-		currentAnimations = previewAnimationReplacements != null ? previewAnimationReplacements : new AnimationReplacements(replacements);
-		setPlayerPoseAnimations();
+		data.currentAnimations = previewAnimationReplacements != null ? previewAnimationReplacements : new AnimationReplacements(replacements);
+		setPlayerPoseAnimations(data);
 
-		projectileSwaps = matchingSwaps.stream().flatMap(swap -> swap.getProjectileSwaps().stream()).filter(swap -> swap.getToReplace() != null && swap.getToReplaceWith() != null).collect(Collectors.toList());
-		currentScytheGraphicEffect = matchingSwaps.stream()
+		data.projectileSwaps = matchingSwaps.stream().flatMap(swap -> swap.getProjectileSwaps().stream()).filter(swap -> swap.getToReplace() != null && swap.getToReplaceWith() != null).collect(Collectors.toList());
+		data.currentScytheGraphicEffect = matchingSwaps.stream()
 			.filter(swap -> swap.getGraphicEffects().stream().anyMatch(e -> e.type == GraphicEffect.Type.SCYTHE_SWING))
 			.flatMap(swap -> swap.getGraphicEffects().stream())
 			.findAny().orElse(null);
     }
 
     private void updateSoundSwaps() {
-		soundSwaps = getApplicableSwaps().stream().flatMap(swap -> swap.getSoundSwaps().stream()).filter(swap -> swap.getToReplace() != -1 && swap.getToReplaceWith() != -1).collect(Collectors.toList());
+		soundSwaps = getApplicableSwaps(getLocalData()).stream().flatMap(swap -> swap.getSoundSwaps().stream()).filter(swap -> swap.getToReplace() != -1 && swap.getToReplaceWith() != -1).collect(Collectors.toList());
 	}
 
     public String itemDisplayName(int itemId) {
@@ -1040,39 +1172,48 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		return s;
 	}
 
+	private void resetAllPlayers() {
+		for (PlayerData data : playerData.values()) {
+			resetPlayer(data);
+		}
+	}
+
+	private void resetPlayer(PlayerData data) {
+		data.currentAnimations.replacements.clear();
+		setPlayerPoseAnimations(data);
+		transmogManager.removeTransmog(data);
+	}
+
 	/**
 	 * Sets the player's pose animations (idle/walk/run/etc.).
 	 */
-	private void setPlayerPoseAnimations()
+	private void setPlayerPoseAnimations(PlayerData data)
 	{
-		Player player = client.getLocalPlayer();
-		if (player == null || naturalPlayerPoseAnimations.isEmpty()) return;
+		if (data.naturalPlayerPoseAnimations.isEmpty()) return;
 
-		if (Constants.doNotReplaceIdles.contains(naturalPlayerPoseAnimations.get(Constants.ActorAnimation.IDLE.ordinal()))) return;
+		if (Constants.doNotReplaceIdles.contains(data.naturalPlayerPoseAnimations.get(Constants.ActorAnimation.IDLE.ordinal()))) return;
 
 		for (Constants.ActorAnimation animation : Constants.ActorAnimation.values())
 		{
-			Integer animationId = currentAnimations.getAnimation(animation.getType());
-			if (animationId == null) animationId = naturalPlayerPoseAnimations.get(animation.ordinal());
-			animation.setAnimation(player, animationId);
+			Integer animationId = data.currentAnimations.getAnimation(animation.getType());
+			if (animationId == null) animationId = data.naturalPlayerPoseAnimations.get(animation.ordinal());
+			animation.setAnimation(data.player, animationId);
 		}
 	}
 
 	/** Keep note of the last animationchanged in case some plugin changes it (maybe even us). */
-	private int lastRealAnimation = -1;
-	private boolean animationChangedThisTick = false;
 	@Subscribe(priority = -1000.0f) // I want to run late, so that plugins that need animation changes don't see my changed animation ids, since mine are cosmetic and don't give information on what the player is actually doing.
 	public void onAnimationChanged(AnimationChanged e)
 	{
-		Player player = client.getLocalPlayer();
-		if (!e.getActor().equals(player)) return;
+		PlayerData data = getData(e.getActor());
+		if (data == null) return;
 //		System.out.println("onanimationchanged");
 
-		lastRealAnimation = player.getAnimation();
+		data.lastRealAnimation = e.getActor().getAnimation();
 
-		if (lastRealAnimation != -1) animationChangedThisTick = true;
+		if (data.lastRealAnimation != -1) data.animationChangedThisTick = true;
 
-		swapPlayerAnimation();
+		swapPlayerAnimation(data);
 	}
 
 	@Subscribe
@@ -1084,23 +1225,23 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
 	@Subscribe(priority = 1) // I need kit data to determine what the player is wearing (equipment inventory does not update fast enough to avoid flickering), so I need this information before other plugins might change it.
 	public void onPlayerChanged(PlayerChanged playerChanged) {
-		if (playerChanged.getPlayer() != client.getLocalPlayer()) return;
+		PlayerData data = getData(playerChanged.getPlayer());
+		if (data == null) return;
 
-		equippedItemsFromKit = IntStream.of(client.getLocalPlayer().getPlayerComposition().getEquipmentIds()).map(i -> itemManager.canonicalize(i - ITEM_OFFSET)).boxed().collect(Collectors.toList());
-		recordNaturalPlayerPoseAnimations();
+		data.equippedItemsFromKit = IntStream.of(data.player.getPlayerComposition().getEquipmentIds()).map(i -> itemManager.canonicalize(i - ITEM_OFFSET)).boxed().collect(Collectors.toList());
+		recordNaturalPlayerPoseAnimations(data);
 
-		transmogManager.reapplyTransmog();
-		updateAnimations();
-		updateSoundSwaps();
+		transmogManager.reapplyTransmog(data);
+		updateAnimations(data);
+		if (data.player == client.getLocalPlayer()) updateSoundSwaps();
 	}
 
-	private void recordNaturalPlayerPoseAnimations()
+	private void recordNaturalPlayerPoseAnimations(PlayerData data)
 	{
-		naturalPlayerPoseAnimations.clear();
-		Player player = client.getLocalPlayer();
+		data.naturalPlayerPoseAnimations.clear();
 		for (Constants.ActorAnimation animation : Constants.ActorAnimation.values())
 		{
-			naturalPlayerPoseAnimations.add(animation.getAnimation(player));
+			data.naturalPlayerPoseAnimations.add(animation.getAnimation(data.player));
 		}
 	}
 
@@ -1156,11 +1297,11 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	private void setPreviewItem(Integer itemId, boolean previewAnimations)
 	{
 		previewItem = itemId;
-		transmogManager.changeTransmog();
+		transmogManager.changeTransmog(getLocalData());
 
 		AnimationSet animationSet = Constants.getAnimationSet(itemId);
 		previewAnimationReplacements = animationSet == null || !previewAnimations ? null : new AnimationReplacements(Collections.singletonList(new AnimationReplacement(animationSet, ALL)));
-		updateAnimations();
+		updateAnimations(getData(client.getLocalPlayer()));
 	}
 
 	public AsyncBufferedImage getItemImage(int itemId) {
@@ -1186,7 +1327,11 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
         } else if (event.getGameState() == GameState.LOGGED_IN) {
         	// This is necessary for transmog to show up on teleports.
 			if (client.getLocalPlayer() == null) return; // happens during dcs?
-        	if (client.getLocalPlayer().getPlayerComposition() != null) transmogManager.reapplyTransmog();
+        	if (client.getLocalPlayer().getPlayerComposition() != null) transmogManager.reapplyTransmog(getLocalData());
+		}
+
+        if (event.getGameState().getState() < GameState.LOGGED_IN.getState()) {
+        	playerData.clear();
 		}
 	}
 
@@ -1196,7 +1341,8 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		{
 			player.setAnimation(animation);
 			player.setAnimationFrame(0);
-			if (currentScytheGraphicEffect != null) doScytheSwing();
+			PlayerData data = getData(client.getLocalPlayer());
+			if (data.currentScytheGraphicEffect != null) doScytheSwing(data);
 		}
     }
 
@@ -1208,14 +1354,14 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		return equipment.getSlot();
 	}
 
-	public Integer[] getApplicableModelSwaps()
+	public Integer[] getApplicableModelSwaps(PlayerData data)
 	{
 		Integer[] genericTransmog = new Integer[KitType.values().length];
 		Integer[] specificTransmog = new Integer[KitType.values().length];
 
-		for (Swap swap : getApplicableSwaps())
+		for (Swap swap : getApplicableSwaps(data))
 		{
-			Integer[] transmogMap = swap.appliesSpecificallyToGear(equippedItemsFromKit, this) ? specificTransmog : genericTransmog;
+			Integer[] transmogMap = swap.appliesSpecificallyToGear(data.equippedItemsFromKit, this) ? specificTransmog : genericTransmog;
 			for (Integer modelSwap : swap.getModelSwaps())
 			{
 				SlotAndKitId slotForItem = getSlotAndKitForItem(modelSwap, swap);
@@ -1243,12 +1389,12 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		return genericTransmog;
 	}
 
-	private List<Swap> getApplicableSwaps()
+	private List<Swap> getApplicableSwaps(PlayerData data)
 	{
-		return transmogSets.stream()
+		return data.transmogSets.stream()
 			.filter(TransmogSet::isEnabled)
 			.flatMap(set -> set.getSwaps().stream())
-			.filter(swap -> swap.appliesToGear(equippedItemsFromKit, this))
+			.filter(swap -> swap.appliesToGear(data.equippedItemsFromKit, this))
 			.collect(Collectors.toList());
 	}
 
@@ -1315,6 +1461,14 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		if (e.getGroup().equals(GROUP_NAME)) {
 			if (e.getKey().equals("hideSidePanel")) {
 				showSidePanel(!config.hideSidePanel());
+			} else if (e.getKey().equals("partyShare")) {
+				if (config.partyShare()) {
+					partyInterface.startUp();
+					eventBus.register(partyInterface);
+				} else {
+					eventBus.unregister(partyInterface);
+					partyInterface.shutDown();
+				}
 			}
 		}
 	}
@@ -1353,6 +1507,9 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		if (e.getCommand().equals("warpmsg")) {
 			msg = !msg;
 			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "weapon animation replacer messages " + (msg ? "on" : "off"), "");
+		}
+		if (e.getCommand().equals("update")) {
+			partyInterface.sendTransmog();
 		}
 	}
 

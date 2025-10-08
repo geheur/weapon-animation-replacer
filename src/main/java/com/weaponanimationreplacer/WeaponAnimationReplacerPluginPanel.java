@@ -9,7 +9,9 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
@@ -72,8 +74,11 @@ public class WeaponAnimationReplacerPluginPanel extends PluginPanel {
 
         northPanel.add(title, BorderLayout.WEST);
         northPanel.add(addMarker, BorderLayout.EAST);
+        partyUpdatePanel = new JPanel();
+        partyUpdatePanel.setLayout(new BoxLayout(partyUpdatePanel, BoxLayout.Y_AXIS));
+		northPanel.add(partyUpdatePanel, BorderLayout.NORTH);
 
-        JPanel centerPanel = new JPanel(new BorderLayout());
+		JPanel centerPanel = new JPanel(new BorderLayout());
         centerPanel.setBackground(ColorScheme.DARK_GRAY_COLOR);
 
         markerView.setBackground(ColorScheme.DARK_GRAY_COLOR);
@@ -118,6 +123,18 @@ public class WeaponAnimationReplacerPluginPanel extends PluginPanel {
         add(centerPanel, BorderLayout.CENTER);
     }
 
+    public void updatePartyButton() {
+		if (partyUpdateButton != null) {
+			if (plugin.partyInterface.canUpdate() && plugin.partyInterface.partyData.size() > 0) {
+				partyUpdateButton.setEnabled(true);
+			} else {
+				partyUpdateButton.setEnabled(false);
+			}
+		}
+	}
+
+	JPanel partyUpdatePanel;
+	JButton partyUpdateButton;
     public void rebuild()
     {
         GridBagConstraints constraints = new GridBagConstraints();
@@ -128,8 +145,21 @@ public class WeaponAnimationReplacerPluginPanel extends PluginPanel {
 
         markerView.removeAll();
 
-        int index = 0;
-        for (TransmogSet transmogSet : plugin.getTransmogSets())
+        partyUpdateButton = null;
+		partyUpdatePanel.removeAll();
+		if (plugin.partyInterface.partyService.isInParty()) {
+			partyUpdatePanel.add(new JLabel("In party"));
+			partyUpdateButton = new JButton("Update transmog");
+			updatePartyButton();
+			partyUpdateButton.addActionListener(e -> {
+				plugin.partyInterface.sendTransmog();
+			});
+			partyUpdatePanel.add(partyUpdateButton);
+			constraints.gridy++;
+		}
+
+		int index = 0;
+		for (TransmogSet transmogSet : plugin.getTransmogSets())
         {
             markerView.add(new TransmogSetPanel(plugin, transmogSet, this, index++), constraints);
             constraints.gridy++;

@@ -33,6 +33,7 @@ import static com.weaponanimationreplacer.Constants.JAW_SLOT;
 import static com.weaponanimationreplacer.Constants.SHOWS_ARMS;
 import static com.weaponanimationreplacer.Constants.TORSO_SLOT;
 import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.GROUP_NAME;
+import com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.PlayerData;
 import java.util.Arrays;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -43,8 +44,6 @@ import net.runelite.api.Player;
 import net.runelite.api.PlayerComposition;
 import static net.runelite.api.PlayerComposition.ITEM_OFFSET;
 import net.runelite.client.config.ConfigManager;
-import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.events.RuneScapeProfileChanged;
 
 @Singleton
 @Slf4j
@@ -56,82 +55,62 @@ public class TransmogrificationManager
 	@Inject private ConfigManager configManager;
 	@Inject private WeaponAnimationReplacerPlugin plugin;
 
-    private int[] currentActualState;
-    private int transmogHash = 0;
-
-	private int baseArmsKit = -1;
-	private int baseHairKit = -1;
-	private int baseJawKit = -1;
-
 	public void startUp()
 	{
-		onRuneScapeProfileChanged(null);
 	}
 
     public void shutDown()
     {
-        removeTransmog();
-        currentActualState = null;
-    }
-
-	@Subscribe
-	public void onRuneScapeProfileChanged(RuneScapeProfileChanged e) {
-		Integer baseArmsKit = configManager.getRSProfileConfiguration(GROUP_NAME, "baseArmsKit", Integer.class);
-		this.baseArmsKit = baseArmsKit != null ? baseArmsKit : -1;
-		Integer baseHairKit = configManager.getRSProfileConfiguration(GROUP_NAME, "baseHairKit", Integer.class);
-		this.baseHairKit = baseHairKit != null ? baseHairKit : -1;
-		Integer baseJawKit = configManager.getRSProfileConfiguration(GROUP_NAME, "baseJawKit", Integer.class);
-		this.baseJawKit = baseJawKit != null ? baseJawKit : -1;
 	}
 
 	/**
      * To be called when the kits are force updated by Jagex code
      */
-    public void reapplyTransmog()
+    public void reapplyTransmog(PlayerData data)
     {
 		final int currentHash = Arrays.hashCode(client.getLocalPlayer().getPlayerComposition().getEquipmentIds());
-		if (currentHash == transmogHash)
+		if (currentHash == data.transmogHash)
 		{
 			return;
 		}
 
-		currentActualState = null;
-		changeTransmog();
+		data.currentActualState = null;
+		changeTransmog(data);
     }
 
-	void changeTransmog()
+	void changeTransmog(PlayerData data)
     {
         if (client.getGameState() != GameState.LOGGED_IN || client.getLocalPlayer() == null)
         {
             return;
         }
 
-        Player player = client.getLocalPlayer();
+        Player player = data.player;
         int[] kits = player.getPlayerComposition().getEquipmentIds();
-		if (currentActualState != null)
+		if (data.currentActualState != null)
 		{
 			// restore the player to their actual state.
-			System.arraycopy(currentActualState, 0, kits, 0, kits.length);
+			System.arraycopy(data.currentActualState, 0, kits, 0, kits.length);
 		}
 		else
 		{
-			storeState(kits);
+			storeState(kits, data);
 		}
 
-		Integer[] swaps = plugin.getApplicableModelSwaps();
+		Integer[] swaps = plugin.getApplicableModelSwaps(data);
 
 		// show slots.
 		Integer arms = swaps[ARMS_SLOT];
 		if (arms != null && arms == SHOW_SLOT) {
-        	swaps[ARMS_SLOT] = getBaseArms() - ITEM_OFFSET;
+        	swaps[ARMS_SLOT] = getBaseArms(data) - ITEM_OFFSET;
 		}
 		Integer hair = swaps[HAIR_SLOT];
 		if (hair != null && hair == SHOW_SLOT) {
-			swaps[HAIR_SLOT] = getBaseHair() - ITEM_OFFSET;
+			swaps[HAIR_SLOT] = getBaseHair(data) - ITEM_OFFSET;
 		}
 		Integer jaw = swaps[JAW_SLOT];
 		if (jaw != null && jaw == SHOW_SLOT) {
-			swaps[JAW_SLOT] = getBaseJaw() - ITEM_OFFSET;
+			swaps[JAW_SLOT] = getBaseJaw(data) - ITEM_OFFSET;
 		}
 
 		// auto-apply arms/hair/jaw.
@@ -140,7 +119,7 @@ public class TransmogrificationManager
 		{
 			if (swaps[ARMS_SLOT] == null)
 			{
-				swaps[ARMS_SLOT] = SHOWS_ARMS.contains(torso) ? getBaseArms() - ITEM_OFFSET : 0;
+				swaps[ARMS_SLOT] = SHOWS_ARMS.contains(torso) ? getBaseArms(data) - ITEM_OFFSET : 0;
 			}
 		}
 		Integer head = swaps[HEAD_SLOT];
@@ -148,11 +127,11 @@ public class TransmogrificationManager
 		{
 			if (swaps[HAIR_SLOT] == null)
 			{
-				swaps[HAIR_SLOT] = !HIDES_HAIR.contains(head) ? getBaseHair() - ITEM_OFFSET : 0;
+				swaps[HAIR_SLOT] = !HIDES_HAIR.contains(head) ? getBaseHair(data) - ITEM_OFFSET : 0;
 			}
 			if (swaps[JAW_SLOT] == null && kits[JAW_SLOT] <= ITEM_OFFSET) // Do not replace people's blue icons.
 			{
-				swaps[JAW_SLOT] = !HIDES_JAW.contains(head) ? getBaseJaw() - ITEM_OFFSET : 0;
+				swaps[JAW_SLOT] = !HIDES_JAW.contains(head) ? getBaseJaw(data) - ITEM_OFFSET : 0;
 			}
 		}
 
@@ -165,38 +144,38 @@ public class TransmogrificationManager
 
 		player.getPlayerComposition().setHash();
 
-		transmogHash = Arrays.hashCode(kits);
+		data.transmogHash = Arrays.hashCode(kits);
     }
 
-	private void storeState(int[] kits)
+	private void storeState(int[] kits, PlayerData data)
 	{
 		int arms = kits[ARMS_SLOT];
-		if (arms != 0 && arms != baseArmsKit) {
-			baseArmsKit = arms;
-			configManager.setRSProfileConfiguration(GROUP_NAME, "baseArmsKit", baseArmsKit);
+		if (arms != 0 && arms != data.baseArmsKit) {
+			data.baseArmsKit = arms;
+			if (data.player == client.getLocalPlayer()) configManager.setRSProfileConfiguration(GROUP_NAME, "baseArmsKit", data.baseArmsKit);
 		}
 		int hair = kits[HAIR_SLOT];
-		if (hair != 0 && hair != baseHairKit) {
-			baseHairKit = hair;
-			configManager.setRSProfileConfiguration(GROUP_NAME, "baseHairKit", baseHairKit);
+		if (hair != 0 && hair != data.baseHairKit) {
+			data.baseHairKit = hair;
+			if (data.player == client.getLocalPlayer()) configManager.setRSProfileConfiguration(GROUP_NAME, "baseHairKit", data.baseHairKit);
 		}
 		int jaw = kits[JAW_SLOT];
-		if (jaw != 0 && jaw != baseJawKit) {
-			baseJawKit = jaw;
-			configManager.setRSProfileConfiguration(GROUP_NAME, "baseJawKit", baseJawKit);
+		if (jaw != 0 && jaw != data.baseJawKit) {
+			data.baseJawKit = jaw;
+			if (data.player == client.getLocalPlayer()) configManager.setRSProfileConfiguration(GROUP_NAME, "baseJawKit", data.baseJawKit);
 		}
-		currentActualState = kits.clone();
+		data.currentActualState = kits.clone();
 	}
 
-	void removeTransmog()
+	void removeTransmog(PlayerData data)
     {
-        if (currentActualState == null)
+        if (data.currentActualState == null)
         {
             return;
         }
-        PlayerComposition comp = client.getLocalPlayer().getPlayerComposition();
+        PlayerComposition comp = data.player.getPlayerComposition();
         int[] kits = comp.getEquipmentIds();
-        System.arraycopy(currentActualState, 0, kits, 0, kits.length);
+        System.arraycopy(data.currentActualState, 0, kits, 0, kits.length);
         comp.setHash();
     }
 
@@ -207,19 +186,19 @@ public class TransmogrificationManager
 	private static final int DEFAULT_MALE_JAW = 256 + 14;
 	private static final int DEFAULT_FEMALE_JAW = 552;
 
-	private int getBaseJaw()
+	private int getBaseJaw(PlayerData data)
 	{
-		return getBaseModel(baseJawKit, DEFAULT_FEMALE_JAW, DEFAULT_MALE_JAW);
+		return getBaseModel(data.baseJawKit, DEFAULT_FEMALE_JAW, DEFAULT_MALE_JAW);
 	}
 
-	private int getBaseHair()
+	private int getBaseHair(PlayerData data)
 	{
-		return getBaseModel(baseHairKit, DEFAULT_FEMALE_HAIR, DEFAULT_MALE_HAIR);
+		return getBaseModel(data.baseHairKit, DEFAULT_FEMALE_HAIR, DEFAULT_MALE_HAIR);
 	}
 
-	private int getBaseArms()
+	private int getBaseArms(PlayerData data)
 	{
-		return getBaseModel(baseArmsKit, DEFAULT_FEMALE_ARMS, DEFAULT_MALE_ARMS);
+		return getBaseModel(data.baseArmsKit, DEFAULT_FEMALE_ARMS, DEFAULT_MALE_ARMS);
 	}
 
 	private int getBaseModel(int baseKit, int defaultFemaleModel, int defaultMaleModel)

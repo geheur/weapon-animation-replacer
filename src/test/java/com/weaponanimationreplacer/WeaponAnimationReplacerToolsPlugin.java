@@ -334,22 +334,22 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 			int var9 = tileHeights[z1][sceneX][sceneY + 1] * (128 - x) + x * tileHeights[z1][sceneX + 1][sceneY + 1] >> 7;
 			int height = projectile.getHeight();
 			int tileHeight = Perspective.getTileHeight(client, client.getLocalPlayer().getLocalLocation(), client.getLocalPlayer().getWorldLocation().getPlane());
-			System.out.println(height + " " + tileHeight + " " + var8 + " " + var9);
-			System.out.println(height + " " + (height - tileHeight) + " " + (height - var8) + " " + (height - var9));
+//			System.out.println(height + " " + tileHeight + " " + var8 + " " + var9);
+//			System.out.println(height + " " + (height - tileHeight) + " " + (height - var8) + " " + (height - var9));
 //			return (128 - y) * var8 + y * var9 >> 7;
 //		} else {
 //			return 0;
 		}
 
-		System.out.println(Perspective.getTileHeight(client, client.getLocalPlayer().getLocalLocation(), client.getLocalPlayer().getWorldLocation().getPlane()));
-		System.out.println(
-				projectile.getId() + ", " +
-				(projectile.getStartCycle() - client.getGameCycle()) + ", " +
-				projectile.getStartHeight() + ", " +
-				projectile.getEndHeight() + ", " +
-					projectile.getHeight() + " " + projectile.getZ() + " " +
-				projectile.getSlope() + ", "
-		);
+//		System.out.println(Perspective.getTileHeight(client, client.getLocalPlayer().getLocalLocation(), client.getLocalPlayer().getWorldLocation().getPlane()));
+//		System.out.println(
+//				projectile.getId() + ", " +
+//				(projectile.getStartCycle() - client.getGameCycle()) + ", " +
+//				projectile.getStartHeight() + ", " +
+//				projectile.getEndHeight() + ", " +
+//					projectile.getHeight() + " " + projectile.getZ() + " " +
+//				projectile.getSlope() + ", "
+//		);
 
 		for (Player clientPlayer : client.getPlayers())
 		{
@@ -367,17 +367,17 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 
 			if (projectile.getX1() == playerPosLocal.getX() && projectile.getY1() == playerPosLocal.getY())
 			{
-				System.out.println(
-					clientPlayer.getAnimation() + ", " +
-						clientPlayer.getGraphic() + ", " +
-						projectile.getId() + ", " +
-						(clientPlayer.getInteracting() != null ? clientPlayer.getInteracting().getGraphic() : "-1") + ", " +
-						(projectile.getStartCycle() - client.getGameCycle()) + ", " +
-						projectile.getStartHeight() + ", " +
-						projectile.getEndHeight() + ", " +
-						projectile.getSlope() + ", " +
-						(clientPlayer.getInteracting() != null ? clientPlayer.getInteracting().getGraphicHeight() : "-1")
-				);
+//				System.out.println(
+//					clientPlayer.getAnimation() + ", " +
+//						clientPlayer.getGraphic() + ", " +
+//						projectile.getId() + ", " +
+//						(clientPlayer.getInteracting() != null ? clientPlayer.getInteracting().getGraphic() : "-1") + ", " +
+//						(projectile.getStartCycle() - client.getGameCycle()) + ", " +
+//						projectile.getStartHeight() + ", " +
+//						projectile.getEndHeight() + ", " +
+//						projectile.getSlope() + ", " +
+//						(clientPlayer.getInteracting() != null ? clientPlayer.getInteracting().getGraphicHeight() : "-1")
+//				);
 			}
 		}
 	}
@@ -742,7 +742,7 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 
 		if (command.equals("listanimsets")) {
 			System.out.println("transmog sets: " + plugin.getTransmogSets());
-			System.out.println("applicable: " + plugin.getApplicableModelSwaps());
+			System.out.println("applicable: " + plugin.getApplicableModelSwaps(plugin.getLocalData()));
 		}
 
 		if (command.equals("listweapons")) {
@@ -2301,6 +2301,8 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		projectiles.add(p().id(66).name("Holy sanguinesti staff (health restore)").itemId(ItemID.HOLY_SANGUINESTI_STAFF).ids(11430, 1900, 92, 1899, 1902, 51, 64, 92, 60, 16).build());
 		projectiles.add(p().id(157).itemId(ItemID.TUMEKENS_SHADOW).cast(9493, 2125, 92 /*TODO*/).projectile(2126, 56, 40, 400, 124, 32).hit(2127, 124).build());
 		projectiles.add(p().id(172).itemId(ItemID.EYE_OF_AYAK).cast(12397, 3366, 0).hit(3368, 124).projectile(3367, 51, 64, 172, 124, 16).build());
+		projectiles.add(p().id(173).itemId(ItemID.BURNING_CLAWS).cast(11140, 2814, 0).hit(-1, -1).projectile(-1, 51, 64, 172, 124, 16).build());
+		projectiles.add(p().id(174).itemId(ItemID.RUNE_SCIMITAR).cast(390, -1, 0).hit(-1, -1).projectile(-1, 51, 64, 172, 124, 16).build());
 
 		// Arrows. Many values guessed based off of iron arrow, so stuff like height/slope could be off for some arrows.
 		ProjectileCast bronzeArrow = p().id(67).itemId(ItemID.BRONZE_ARROW).cast(426, 19, 96).projectile(10, 41, 11, 163, 146, 15).build();

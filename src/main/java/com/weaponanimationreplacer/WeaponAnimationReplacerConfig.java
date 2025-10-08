@@ -30,4 +30,16 @@ public interface WeaponAnimationReplacerConfig extends Config
 	{
 		return false;
 	}
+
+	@ConfigItem(
+		keyName = "partyShare",
+		name = "Party share",
+		description = "Share transmog with others in the same runelite party.",
+		warning = "This feature has not been tested for other players sending large, lag-causing transmogs",
+		position = 2
+	)
+	default boolean partyShare()
+	{
+		return false;
+	}
 }

@@ -1,7 +1,9 @@
 package com.weaponanimationreplacer;
 
 import java.awt.Color;
+import lombok.EqualsAndHashCode;
 
+@EqualsAndHashCode
 public class GraphicEffect
 {
 	enum Type {

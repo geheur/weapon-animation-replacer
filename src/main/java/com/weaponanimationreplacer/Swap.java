@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import net.runelite.api.EquipmentInventorySlot;
 
@@ -23,6 +24,7 @@ import net.runelite.api.EquipmentInventorySlot;
  *  List of animation replacements, which each contain an animation type to replace, and animation set to use for replacement, and, optionally, an animation type to use as the replacement (if it is different from the one being replaced).
  *  List of sound replacements, which contain the sound to be replaced and the sound replacing
  */
+@EqualsAndHashCode
 public class Swap
 {
 	/*
