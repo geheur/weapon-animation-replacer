@@ -601,7 +601,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		}
     }
 
-	private void replaceNoProjectileSpell()
+	private void replaceNoProjectileAttack()
 	{
 		Player player = client.getLocalPlayer();
 		final WorldPoint playerPos = player.getWorldLocation();
@@ -625,9 +625,8 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
 			boolean isBarrage = false;
 			int chebyshevDistance = chebyshevDistance(player, player.getInteracting(), isBarrage);
-//			System.out.println("distance is " + chebyshevDistance);
 			// TODO splash detection.
-			int projectileTravelTime;
+			int projectileTravelTime = 0;
 			int graphicDelay;
 			ProjectileCast toReplaceWith = projectileSwap.getToReplaceWith();
 			switch (toReplace.getCastAnimation()) {
@@ -649,8 +648,6 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 					projectileTravelTime = 60; // 2 ticks, according to hit delay article.
 					graphicDelay = 60;
 					break;
-				default:
-					return; // shouldn't happen.
 			}
 			int endCycle = client.getGameCycle() + toReplaceWith.getStartMovement() + projectileTravelTime;
 
@@ -708,7 +705,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			lastTickProjectiles = thisTickProjectiles;
 
 			if (animationChangedThisTick && !replaced) {
-				replaceNoProjectileSpell();
+				replaceNoProjectileAttack();
 			}
 		}
 

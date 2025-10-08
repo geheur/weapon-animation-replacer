@@ -45,8 +45,9 @@ public class WeaponAnimationReplacerPluginPanel extends PluginPanel {
     @Getter
     private int selectedBorderThickness = DEFAULT_BORDER_THICKNESS;
 
-	Swap currentlyEditingThisSwap = null;
-	int currentlyEditingThisProjectileSwapIndex = -1;
+	Swap currentPsSwap = null;
+	int currentPsIndex = -1;
+	boolean currentPsRhs;
 
 	static
     {

@@ -364,7 +364,7 @@ class TransmogSetPanel extends JPanel
 	{
 		ItemSelectionButton button = new ItemSelectionButton();
 		button.nameWhenEmpty = "None";
-		button.setSpell(swap.toReplace);
+		button.setSpell(swap.toReplace, swap.toReplaceCustom != null);
 		button.addListeners(() -> swap.toReplace = -1, (result, plugin) -> swap.toReplace = result.itemId, SPELL_L, null);
 		return button;
 	}
@@ -373,8 +373,7 @@ class TransmogSetPanel extends JPanel
 	{
 		ItemSelectionButton button = new ItemSelectionButton();
 		button.nameWhenEmpty = "None";
-		button.overlayString = swap.toReplaceWithCustom != null ? "Custom" : null;
-		button.setSpell(swap.toReplaceWith);
+		button.setSpell(swap.toReplaceWith, swap.toReplaceWithCustom != null);
 		button.addListeners(() -> swap.toReplaceWith = -1, (result, plugin) -> {swap.toReplaceWith = result.itemId; swap.toReplaceWithCustom = null;}, SPELL_R, null);
 		return button;
 	}
@@ -390,7 +389,7 @@ class TransmogSetPanel extends JPanel
 		addMenuItem(menu, "Add trigger item", e -> addTriggerItem(swap));
 		addMenuItem(menu, "Add model swap", e -> addModelSwap(swap));
 		addMenuItem(menu, "Add animation swap", e -> addAnimationReplacement(swap));
-		addMenuItem(menu, "Add projectile swap", e -> addProjectileSwap(swap));
+		addMenuItem(menu, "Add attack swap", e -> addProjectileSwap(swap));
 		addMenuItem(menu, "Add graphic effect", e -> addGraphicEffect(swap));
 		addMenuItem(menu, "Add sound swap", e -> addSoundSwap(swap));
 
@@ -792,13 +791,14 @@ class TransmogSetPanel extends JPanel
 		JPanel projectileSwapPanel = getRestrictionAndModelSwapPanel();
 		projectileSwapPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		projectileSwapPanel.add(createSpellSwapLButton(projectileSwap));
+		projectileSwapPanel.add(createSpellEditPanel(swap, i, false));
 		projectileSwapPanel.add(new JLabel("->"));
 		projectileSwapPanel.add(createSpellSwapRButton(projectileSwap));
-		projectileSwapPanel.add(createSpellEditPanel(projectileSwap, swap, i));
+		projectileSwapPanel.add(createSpellEditPanel(swap, i, true));
 		row1.add(projectileSwapPanel);
 		animationReplacementPanel.add(row1);
-		if (pluginPanel.currentlyEditingThisSwap == swap && pluginPanel.currentlyEditingThisProjectileSwapIndex == i) {
-			JPanel row = createProjectileEditPanel(projectileSwap);
+		if (pluginPanel.currentPsSwap == swap && pluginPanel.currentPsIndex == i) {
+			JPanel row = createProjectileEditPanel(projectileSwap, pluginPanel.currentPsRhs);
 			animationReplacementPanel.add(row);
 		}
 
@@ -817,82 +817,94 @@ class TransmogSetPanel extends JPanel
 		});
 	}
 
-	private JPanel createProjectileEditPanel(ProjectileSwap projectileSwap)
+	private JPanel createProjectileEditPanel(ProjectileSwap ps, boolean rhs)
 	{
 		JPanel panel = new JPanel();
 		panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-		ProjectileCast defaultValue = projectileSwap.getToReplaceWith() != null ? projectileSwap.getToReplaceWith() : ProjectileCast.p().build();
+		ProjectileCast defaultValue = rhs ? ps.getToReplaceWith() : ps.getToReplace();
+		if (defaultValue == null) defaultValue = ProjectileCast.p().build();
 
 		createProjectileEditPanelRow("anim id", ce -> {
-			projectileSwap.createCustomIfNull();
-			projectileSwap.toReplaceWithCustom.setCastAnimation((int) ((JSpinner) ce.getSource()).getValue());
+			ps.createCustomIfNull(rhs);
+			ProjectileCast pc = ps.getCustom(rhs);
+			pc.setCastAnimation((int) ((JSpinner) ce.getSource()).getValue());
 			plugin.saveTransmogSets();
-			plugin.demoCast(projectileSwap.getToReplaceWith());
+			plugin.demoCast(pc);
 		}, defaultValue.castAnimation, panel);
 		createProjectileEditPanelRow("cast gfx", ce -> {
-			projectileSwap.createCustomIfNull();
-			projectileSwap.toReplaceWithCustom.setCastGfx((int) ((JSpinner) ce.getSource()).getValue());
+			ps.createCustomIfNull(rhs);
+			ProjectileCast pc = ps.getCustom(rhs);
+			pc.setCastGfx((int) ((JSpinner) ce.getSource()).getValue());
 			plugin.saveTransmogSets();
-			plugin.demoCast(projectileSwap.getToReplaceWith());
+			plugin.demoCast(pc);
 		}, defaultValue.castGfx, panel);
-		createProjectileEditPanelRow("cast gfx height", ce -> {
-			projectileSwap.createCustomIfNull();
-			projectileSwap.toReplaceWithCustom.setCastGfxHeight((int) ((JSpinner) ce.getSource()).getValue());
+		if (rhs) createProjectileEditPanelRow("cast gfx height", ce -> {
+			ps.createCustomIfNull(rhs);
+			ProjectileCast pc = ps.getCustom(rhs);
+			pc.setCastGfxHeight((int) ((JSpinner) ce.getSource()).getValue());
 			plugin.saveTransmogSets();
-			plugin.demoCast(projectileSwap.getToReplaceWith());
+			plugin.demoCast(pc);
 		}, defaultValue.castGfxHeight, panel);
 		createProjectileEditPanelRow("hit gfx", ce -> {
-			projectileSwap.createCustomIfNull();
-			projectileSwap.toReplaceWithCustom.setHitGfx((int) ((JSpinner) ce.getSource()).getValue());
+			ps.createCustomIfNull(rhs);
+			ProjectileCast pc = ps.getCustom(rhs);
+			pc.setHitGfx((int) ((JSpinner) ce.getSource()).getValue());
 			plugin.saveTransmogSets();
-			plugin.client.getLocalPlayer().createSpotAnim("demo".hashCode(), projectileSwap.toReplaceWithCustom.hitGfx, 0, 0);
+			plugin.client.getLocalPlayer().createSpotAnim("demo".hashCode(), pc.hitGfx, 0, 0);
 		}, defaultValue.hitGfx, panel);
-		createProjectileEditPanelRow("hit gfx height", ce -> {
-			projectileSwap.createCustomIfNull();
-			projectileSwap.toReplaceWithCustom.setHitGfxHeight((int) ((JSpinner) ce.getSource()).getValue());
+		if (rhs) createProjectileEditPanelRow("hit gfx height", ce -> {
+			ps.createCustomIfNull(rhs);
+			ProjectileCast pc = ps.getCustom(rhs);
+			pc.setHitGfxHeight((int) ((JSpinner) ce.getSource()).getValue());
 			plugin.saveTransmogSets();
-			plugin.client.getLocalPlayer().createSpotAnim("demo".hashCode(), projectileSwap.toReplaceWithCustom.hitGfxHeight, 0, 0);
+			plugin.client.getLocalPlayer().createSpotAnim("demo".hashCode(), pc.hitGfxHeight, 0, 0);
 		}, defaultValue.hitGfxHeight, panel);
 		createProjectileEditPanelRow("projectile id", ce -> {
-			projectileSwap.createCustomIfNull();
-			projectileSwap.toReplaceWithCustom.setProjectileId((int) ((JSpinner) ce.getSource()).getValue());
+			ps.createCustomIfNull(rhs);
+			ProjectileCast pc = ps.getCustom(rhs);
+			pc.setProjectileId((int) ((JSpinner) ce.getSource()).getValue());
 			plugin.saveTransmogSets();
-			plugin.demoCast(projectileSwap.getToReplaceWith());
+			plugin.demoCast(pc);
 		}, defaultValue.projectileId, panel);
-		createProjectileEditPanelRow("arc", ce -> {
-			projectileSwap.createCustomIfNull();
-			projectileSwap.toReplaceWithCustom.setSlope((int) ((JSpinner) ce.getSource()).getValue());
+		if (rhs) createProjectileEditPanelRow("arc", ce -> {
+			ps.createCustomIfNull(rhs);
+			ProjectileCast pc = ps.getCustom(rhs);
+			pc.setSlope((int) ((JSpinner) ce.getSource()).getValue());
 			plugin.saveTransmogSets();
-			plugin.demoCast(projectileSwap.getToReplaceWith());
+			plugin.demoCast(pc);
 		}, defaultValue.slope, panel, -64, 64);
-		createProjectileEditPanelRow("delay", ce -> {
-			projectileSwap.createCustomIfNull();
-			projectileSwap.toReplaceWithCustom.setStartMovement((int) ((JSpinner) ce.getSource()).getValue());
+		if (rhs) createProjectileEditPanelRow("delay", ce -> {
+			ps.createCustomIfNull(rhs);
+			ProjectileCast pc = ps.getCustom(rhs);
+			pc.setStartMovement((int) ((JSpinner) ce.getSource()).getValue());
 			plugin.saveTransmogSets();
-			plugin.demoCast(projectileSwap.getToReplaceWith());
+			plugin.demoCast(pc);
 		}, defaultValue.startMovement, panel);
-		createProjectileEditPanelRow("start offset", ce -> {
-			projectileSwap.createCustomIfNull();
-			projectileSwap.toReplaceWithCustom.setStartPos((int) ((JSpinner) ce.getSource()).getValue());
+		if (rhs) createProjectileEditPanelRow("start offset", ce -> {
+			ps.createCustomIfNull(rhs);
+			ProjectileCast pc = ps.getCustom(rhs);
+			pc.setStartPos((int) ((JSpinner) ce.getSource()).getValue());
 			plugin.saveTransmogSets();
-			plugin.demoCast(projectileSwap.getToReplaceWith());
+			plugin.demoCast(pc);
 		}, defaultValue.startPos, panel);
-		createProjectileEditPanelRow("start height", ce -> {
-			projectileSwap.createCustomIfNull();
-			projectileSwap.toReplaceWithCustom.setStartHeight((int) ((JSpinner) ce.getSource()).getValue());
+		if (rhs) createProjectileEditPanelRow("start height", ce -> {
+			ps.createCustomIfNull(rhs);
+			ProjectileCast pc = ps.getCustom(rhs);
+			pc.setStartHeight((int) ((JSpinner) ce.getSource()).getValue());
 			plugin.saveTransmogSets();
-			plugin.demoCast(projectileSwap.getToReplaceWith());
+			plugin.demoCast(pc);
 		}, defaultValue.startHeight, panel, Integer.MIN_VALUE, Integer.MAX_VALUE);
-		createProjectileEditPanelRow("end height", ce -> {
-			projectileSwap.createCustomIfNull();
-			projectileSwap.toReplaceWithCustom.setEndHeight((int) ((JSpinner) ce.getSource()).getValue());
+		if (rhs) createProjectileEditPanelRow("end height", ce -> {
+			ps.createCustomIfNull(rhs);
+			ProjectileCast pc = ps.getCustom(rhs);
+			pc.setEndHeight((int) ((JSpinner) ce.getSource()).getValue());
 			plugin.saveTransmogSets();
-			plugin.demoCast(projectileSwap.getToReplaceWith());
+			plugin.demoCast(pc);
 		}, defaultValue.endHeight, panel);
 		JButton demo = new JButton("demo");
-		demo.addActionListener(al -> plugin.demoCast(projectileSwap.getToReplaceWith()));
+		demo.addActionListener(al -> plugin.demoCast(rhs ? ps.getToReplaceWith() : ps.getToReplace()));
 		panel.add(demo);
-		JButton projectileIdsButton = new JButton("projectile ids");
+		JButton projectileIdsButton = new JButton("id finder");
 		projectileIdsButton.addActionListener(al -> {
 			new ProjectileIdsFrame().setVisible(true);
 		});
@@ -909,7 +921,7 @@ class TransmogSetPanel extends JPanel
 		private boolean debug = false;
 
 		public ProjectileIdsFrame() {
-			super("Projectile ids, most recently seen last");
+			super("Ids your character is doing.");
 			setSize(800, 500);
 			setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 			addWindowListener(new WindowAdapter()
@@ -1048,26 +1060,27 @@ class TransmogSetPanel extends JPanel
 					panel1.add(demo);
 					JButton use = new JButton("use");
 					use.addActionListener(al -> {
-						if (pluginPanel.currentlyEditingThisSwap == null || pluginPanel.currentlyEditingThisProjectileSwapIndex == -1)
+						if (pluginPanel.currentPsSwap == null || pluginPanel.currentPsIndex == -1)
 						{
 							panel.add(new JLabel("not editing a projectile swap"));
 							panel.revalidate();
 							panel.repaint();
 							return;
 						}
-						ProjectileSwap projectileSwap = pluginPanel.currentlyEditingThisSwap.getProjectileSwaps().get(pluginPanel.currentlyEditingThisProjectileSwapIndex);
-						projectileSwap.createCustomIfNull();
-						projectileSwap.toReplaceWithCustom.castAnimation = pc.castAnimation;
-						projectileSwap.toReplaceWithCustom.castGfx = pc.castGfx;
-						projectileSwap.toReplaceWithCustom.castGfxHeight = pc.castGfxHeight;
-						projectileSwap.toReplaceWithCustom.hitGfx = pc.hitGfx;
-						projectileSwap.toReplaceWithCustom.hitGfxHeight = pc.hitGfxHeight;
-						projectileSwap.toReplaceWithCustom.projectileId = pc.projectileId;
-						projectileSwap.toReplaceWithCustom.startMovement = pc.startMovement;
-						projectileSwap.toReplaceWithCustom.startPos = pc.startPos;
-						projectileSwap.toReplaceWithCustom.startHeight = pc.startHeight;
-						projectileSwap.toReplaceWithCustom.endHeight = pc.endHeight;
-						projectileSwap.toReplaceWithCustom.slope = pc.slope;
+						ProjectileSwap projectileSwap = pluginPanel.currentPsSwap.getProjectileSwaps().get(pluginPanel.currentPsIndex);
+						ProjectileCast replacement = pluginPanel.currentPsRhs ? projectileSwap.toReplaceWithCustom : projectileSwap.toReplaceCustom;
+						projectileSwap.createCustomIfNull(pluginPanel.currentPsRhs);
+						replacement.castAnimation = pc.castAnimation;
+						replacement.castGfx = pc.castGfx;
+						replacement.castGfxHeight = pc.castGfxHeight;
+						replacement.hitGfx = pc.hitGfx;
+						replacement.hitGfxHeight = pc.hitGfxHeight;
+						replacement.projectileId = pc.projectileId;
+						replacement.startMovement = pc.startMovement;
+						replacement.startPos = pc.startPos;
+						replacement.startHeight = pc.startHeight;
+						replacement.endHeight = pc.endHeight;
+						replacement.slope = pc.slope;
 						pluginPanel.rebuild();
 					});
 					panel1.add(use);
@@ -1139,16 +1152,17 @@ class TransmogSetPanel extends JPanel
 		return spinner;
 	}
 
-	private Component createSpellEditPanel(ProjectileSwap projectileSwap, Swap swap, int index)
+	private Component createSpellEditPanel(Swap swap, int index, boolean rhs)
 	{
 		JButton button = new JButton("", EDIT_ICON);
 		button.addActionListener(e -> {
-			if (pluginPanel.currentlyEditingThisSwap == swap && pluginPanel.currentlyEditingThisProjectileSwapIndex == index) {
-				pluginPanel.currentlyEditingThisSwap = null;
-				pluginPanel.currentlyEditingThisProjectileSwapIndex = -1;
+			if (pluginPanel.currentPsSwap == swap && pluginPanel.currentPsIndex == index && pluginPanel.currentPsRhs == rhs) {
+				pluginPanel.currentPsSwap = null;
+				pluginPanel.currentPsIndex = -1;
 			} else {
-				pluginPanel.currentlyEditingThisSwap = swap;
-				pluginPanel.currentlyEditingThisProjectileSwapIndex = index;
+				pluginPanel.currentPsSwap = swap;
+				pluginPanel.currentPsIndex = index;
+				pluginPanel.currentPsRhs = rhs;
 			}
 			rebuild();
 		});
@@ -1390,14 +1404,21 @@ class TransmogSetPanel extends JPanel
 			this.setComponentPopupMenu(rightClickMenu);
 		}
 
-		public void setSpell(int spellId)
+		public void setSpell(int spellId, boolean custom)
 		{
+			if (custom) overlayString = "Custom";
 			if (spellId == -1)
 			{
 				setIcon(null);
+				if (custom) {
+					setItem(ItemID.FEATHER, "Custom");
+				}
 				setText(nameWhenEmpty);
 				setBorder(null);
 			} else {
+				if (spellId >= Constants.projectilesById.length) {
+					return;
+				}
 				ProjectileCast projectileCast = Constants.projectilesById[spellId];
 				setText(null);
 

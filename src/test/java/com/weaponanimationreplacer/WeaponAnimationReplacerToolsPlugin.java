@@ -123,9 +123,9 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 	@Override
 	public void startUp()
 	{
-		SpellDataCollector sdc = new SpellDataCollector(plugin);
-		this.getInjector().injectMembers(sdc);
-		eventBus.register(sdc);
+//		SpellDataCollector sdc = new SpellDataCollector(plugin);
+//		this.getInjector().injectMembers(sdc);
+//		eventBus.register(sdc);
 
 		for (int i = 0; i < fileNames.length; i++)
 		{
