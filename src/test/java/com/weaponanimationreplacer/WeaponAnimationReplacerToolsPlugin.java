@@ -2301,6 +2301,8 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		projectiles.add(p().id(66).name("Holy sanguinesti staff (health restore)").itemId(ItemID.HOLY_SANGUINESTI_STAFF).ids(11430, 1900, 92, 1899, 1902, 51, 64, 92, 60, 16).build());
 		projectiles.add(p().id(157).itemId(ItemID.TUMEKENS_SHADOW).cast(9493, 2125, 92 /*TODO*/).projectile(2126, 56, 40, 400, 124, 32).hit(2127, 124).build());
 		projectiles.add(p().id(172).itemId(ItemID.EYE_OF_AYAK).cast(12397, 3366, 0).hit(3368, 124).projectile(3367, 51, 64, 172, 124, 16).build());
+		projectiles.add(p().id(173).itemId(ItemID.BURNING_CLAWS).cast(11140, 2814, 0).hit(-1, -1).projectile(-1, 51, 64, 172, 124, 16).build());
+		projectiles.add(p().id(174).itemId(ItemID.RUNE_SCIMITAR).cast(390, -1, 0).hit(-1, -1).projectile(-1, 51, 64, 172, 124, 16).build());
 
 		// Arrows. Many values guessed based off of iron arrow, so stuff like height/slope could be off for some arrows.
 		ProjectileCast bronzeArrow = p().id(67).itemId(ItemID.BRONZE_ARROW).cast(426, 19, 96).projectile(10, 41, 11, 163, 146, 15).build();

@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.OptionalInt;
@@ -54,6 +55,8 @@ public class Constants
 	public static final List<AnimationSet> animationSets = new ArrayList<>();
 	public static final List<Integer> doNotReplaceIdles = new ArrayList<>();
 	public static final Map<Integer, String> descriptions = new HashMap<>();
+
+//	public static final Set<Integer> ATTACK_ANIMATIONS = new HashSet<>();
 
 	public static AnimationSet getAnimationSet(int itemId)
 	{

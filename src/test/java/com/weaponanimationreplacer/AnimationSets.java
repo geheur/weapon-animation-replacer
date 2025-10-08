@@ -697,6 +697,10 @@ public class AnimationSets
 			.copy("Staff")
 			.put(ATTACK, 10501)
 			.build();
+		new AnimationSetBuilder("Eclipse atlatl")
+			.copy("Staff")
+			.put(ATTACK, 11057)
+			.build();
 
 		return animationSets;
 	}
