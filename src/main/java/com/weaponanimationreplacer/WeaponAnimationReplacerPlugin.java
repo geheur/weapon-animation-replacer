@@ -1327,6 +1327,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
         } else if (event.getGameState() == GameState.LOGGED_IN) {
         	// This is necessary for transmog to show up on teleports.
 			if (client.getLocalPlayer() == null) return; // happens during dcs?
+			createPlayerData(client.getLocalPlayer(), null);
         	if (client.getLocalPlayer().getPlayerComposition() != null) transmogManager.reapplyTransmog(getLocalData());
 		}
 
