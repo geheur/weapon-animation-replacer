@@ -39,7 +39,6 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
-import net.runelite.api.GameState;
 import net.runelite.api.Player;
 import net.runelite.api.PlayerComposition;
 import static net.runelite.api.PlayerComposition.ITEM_OFFSET;
@@ -64,37 +63,23 @@ public class TransmogrificationManager
 	}
 
 	/**
-     * To be called when the kits are force updated by Jagex code
+	 * This stores the current player's real appearance so it should only be called when transmog is not applied currently, such as in onPlayerChanged.
      */
     public void reapplyTransmog(PlayerData data)
     {
-		final int currentHash = Arrays.hashCode(client.getLocalPlayer().getPlayerComposition().getEquipmentIds());
-		if (currentHash == data.transmogHash)
-		{
-			return;
-		}
-
-		data.currentActualState = null;
+		int[] kits = data.player.getPlayerComposition().getEquipmentIds();
+		storeState(kits, data);
 		changeTransmog(data);
     }
 
 	void changeTransmog(PlayerData data)
     {
-        if (client.getGameState() != GameState.LOGGED_IN || client.getLocalPlayer() == null)
-        {
-            return;
-        }
-
         Player player = data.player;
         int[] kits = player.getPlayerComposition().getEquipmentIds();
 		if (data.currentActualState != null)
 		{
 			// restore the player to their actual state.
 			System.arraycopy(data.currentActualState, 0, kits, 0, kits.length);
-		}
-		else
-		{
-			storeState(kits, data);
 		}
 
 		Integer[] swaps = plugin.getApplicableModelSwaps(data);
@@ -188,23 +173,23 @@ public class TransmogrificationManager
 
 	private int getBaseJaw(PlayerData data)
 	{
-		return getBaseModel(data.baseJawKit, DEFAULT_FEMALE_JAW, DEFAULT_MALE_JAW);
+		return getBaseModel(data.player, data.baseJawKit, DEFAULT_FEMALE_JAW, DEFAULT_MALE_JAW);
 	}
 
 	private int getBaseHair(PlayerData data)
 	{
-		return getBaseModel(data.baseHairKit, DEFAULT_FEMALE_HAIR, DEFAULT_MALE_HAIR);
+		return getBaseModel(data.player, data.baseHairKit, DEFAULT_FEMALE_HAIR, DEFAULT_MALE_HAIR);
 	}
 
 	private int getBaseArms(PlayerData data)
 	{
-		return getBaseModel(data.baseArmsKit, DEFAULT_FEMALE_ARMS, DEFAULT_MALE_ARMS);
+		return getBaseModel(data.player, data.baseArmsKit, DEFAULT_FEMALE_ARMS, DEFAULT_MALE_ARMS);
 	}
 
-	private int getBaseModel(int baseKit, int defaultFemaleModel, int defaultMaleModel)
+	private int getBaseModel(Player player, int baseKit, int defaultFemaleModel, int defaultMaleModel)
 	{
 		return baseKit != -1 ?
 			baseKit :
-			(client.getLocalPlayer().getPlayerComposition().getGender() == 1 /* female */ ? defaultFemaleModel : defaultMaleModel);
+			(player.getPlayerComposition().getGender() == 1 /* female */ ? defaultFemaleModel : defaultMaleModel);
 	}
 }

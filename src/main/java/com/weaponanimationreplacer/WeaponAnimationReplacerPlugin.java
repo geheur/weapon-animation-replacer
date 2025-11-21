@@ -1324,15 +1324,11 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 				showSidePanel(!config.hideSidePanel());
 			}
 			lastTickProjectiles.clear(); // avoid potential memory leak.
-        } else if (event.getGameState() == GameState.LOGGED_IN) {
+			playerData.clear();
+		} else if (event.getGameState() == GameState.LOGGED_IN) {
         	// This is necessary for transmog to show up on teleports.
 			if (client.getLocalPlayer() == null) return; // happens during dcs?
-			createPlayerData(client.getLocalPlayer(), null);
-        	if (client.getLocalPlayer().getPlayerComposition() != null) transmogManager.reapplyTransmog(getLocalData());
-		}
-
-        if (event.getGameState().getState() < GameState.LOGGED_IN.getState()) {
-        	playerData.clear();
+        	if (client.getLocalPlayer().getPlayerComposition() != null) transmogManager.changeTransmog(getLocalData());
 		}
 	}
 
