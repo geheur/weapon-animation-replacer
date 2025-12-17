@@ -66,6 +66,7 @@ import net.runelite.api.Player;
 import static net.runelite.api.PlayerComposition.ITEM_OFFSET;
 import net.runelite.api.Projectile;
 import net.runelite.api.RuneLiteObject;
+import net.runelite.api.WorldView;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.AnimationChanged;
@@ -452,17 +453,23 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 //		System.out.println("partyTransmogReceived " + ((data == null) ? "null" : (data.playerName + " " + data.transmogSets)));
 		if (data.playerName == null || data.transmogSets == null) return; // not usable yet.
 
-		PlayerData pd = getData(data.playerName);
-		if (pd != null) {
-			pd.update(data);
-			updateTransmogAndAnimations(pd);
+		List<PlayerData> pds = getData(data.playerName);
+		if (pds.size() > 0) {
+			for (PlayerData pd : pds) {
+				pd.update(data);
+				updateTransmogAndAnimations(pd);
+			}
 		} else {
-			for (Player player : client.getTopLevelWorldView().players())
-			{
-				if (player.getName().equals(data.playerName))
-				{
+			for (Player player : client.getTopLevelWorldView().players()) {
+				if (data.playerName.equals(player.getName())) {
 					createPlayerData(player, data);
-					return;
+				}
+			}
+			for (WorldView wv : client.getTopLevelWorldView().worldViews()) {
+				for (Player player : wv.players()) {
+					if (data.playerName.equals(player.getName())) {
+						createPlayerData(player, data);
+					}
 				}
 			}
 		}
@@ -511,7 +518,10 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		Player p = e.getPlayer();
 
 		PartyMemberData pmd = partyInterface.getData(p.getName());
-		if ((pmd != null && pmd.playerName != null && pmd.transmogSets != null) || p == client.getLocalPlayer()) {
+		if (
+			(pmd != null && pmd.playerName != null && pmd.transmogSets != null) ||
+			isLocalPlayer(p)
+		) {
 //			System.out.println("player spawn " + p.getName() + " valid data");
 			createPlayerData(p, pmd);
 		} else if (pmd != null) {
@@ -519,11 +529,15 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		}
 	}
 
+	private boolean isLocalPlayer(Player p) {
+		return p.getId() == client.getLocalPlayer().getId();
+	}
+
 	public PlayerData createPlayerData(Player p, PartyMemberData pmd) {
 		if (playerData.containsKey(p)) return playerData.get(p);
 
 		PlayerData data = new PlayerData(p);
-		if (p == client.getLocalPlayer()) {
+		if (isLocalPlayer(p)) {
 			Integer baseArmsKit = configManager.getRSProfileConfiguration(GROUP_NAME, "baseArmsKit", Integer.class);
 			data.baseArmsKit = baseArmsKit != null ? baseArmsKit : -1;
 			Integer baseHairKit = configManager.getRSProfileConfiguration(GROUP_NAME, "baseHairKit", Integer.class);
@@ -558,14 +572,15 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		return getData((Player) a);
 	}
 
-	public PlayerData getData(String playerName) {
+	public List<PlayerData> getData(String playerName) {
+		List<PlayerData> result = new ArrayList<>();
 		for (PlayerData data : playerData.values())
 		{
 			if (data.player.getName().equals(playerName)) {
-				return data;
+				result.add(data);
 			}
 		}
-		return null;
+		return result;
 	}
 
 	public PlayerData getLocalData() {
@@ -638,8 +653,11 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	public void handleTransmogSetChange() {
 		saveTransmogSets();
 
-		PlayerData data = getLocalData();
-		if (data != null) updateTransmogAndAnimations(data);
+		List<PlayerData> pds = getData(client.getLocalPlayer().getName());
+		for (PlayerData pd : pds)
+		{
+			updateTransmogAndAnimations(pd);
+		}
 
 		updateSoundSwaps();
 
