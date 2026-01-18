@@ -756,7 +756,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		if (playerPos == null) return;
 		final LocalPoint playerPosLocal = LocalPoint.fromWorld(client, playerPos);
 		if (playerPosLocal == null) return;
-		if (player.getInteracting() == null) return;
+		Actor target = player.getInteracting();
 
 		for (ProjectileSwap projectileSwap : data.projectileSwaps)
 		{
@@ -764,6 +764,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			if (toReplace.getCastAnimation() != data.lastRealAnimation || toReplace.getProjectileId() != -1) {
 				continue;
 			}
+			if (target == null && (toReplace.projectileId != -1 || toReplace.hitGfx != -1)) continue;
 
 			if (toReplace.getCastGfx() != -1) {
 				if (toReplace.getCastGfx() != player.getGraphic()) continue;
@@ -772,7 +773,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			}
 
 			boolean isBarrage = false;
-			int chebyshevDistance = chebyshevDistance(player, player.getInteracting(), isBarrage);
+			int chebyshevDistance = chebyshevDistance(player, target, isBarrage);
 			// TODO splash detection.
 			int projectileTravelTime = 0;
 			int graphicDelay;
@@ -799,7 +800,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			}
 			int endCycle = client.getGameCycle() + toReplaceWith.getStartMovement() + projectileTravelTime;
 
-			replaceSpell(projectileSwap, player, playerPos, player.getInteracting(), player.getInteracting().getWorldLocation(), endCycle);
+			replaceSpell(projectileSwap, player, playerPos, target, target != null ? target.getWorldLocation() : null, endCycle);
 			break;
 		}
 	}
@@ -924,7 +925,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		ProjectileCast toReplace = projectileSwap.getToReplace();
 		ProjectileCast toReplaceWith = projectileSwap.getToReplaceWith();
 
-		if (toReplaceWith.getProjectileId() != -1)
+		if (toReplaceWith.getProjectileId() != -1 && target != null)
 		{
 			int startCycle = client.getGameCycle() + toReplaceWith.getStartMovement();
 			Projectile p = client.createProjectile(toReplaceWith.getProjectileId(),
