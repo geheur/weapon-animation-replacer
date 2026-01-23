@@ -765,7 +765,7 @@ public class AnimationSets
 				int animation = animations[STAND.ordinal()];
 //				if (animation > 0) doNotReplaceIdles.add(animation);
 			}
-			animationSets.add(new AnimationSet(name, doNotReplace, animations));
+			animationSets.add(new AnimationSet(name, doNotReplace, animations, false));
 		}
 
 		public AnimationSetBuilder standMovement(int stand, int movement)

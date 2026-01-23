@@ -12,16 +12,28 @@ public class AnimationSet implements Comparable<AnimationSet> {
 	public final String name;
 	public final int[] animations;
 	public final boolean doNotReplace;
+	public final boolean custom;
 
 	AnimationSet() {
-		this("", false, new int[AnimationType.values().length]);
+		this("", false, new int[AnimationType.values().length], false);
 	}
 
-	AnimationSet(String name, boolean doNotReplace, int[] animations) {
+	AnimationSet(String name, boolean custom) {
+		this(name, false, new int[AnimationType.values().length], custom);
+		Arrays.fill(animations, -1);
+	}
+
+	AnimationSet(String name, boolean doNotReplace, int[] animations, boolean custom) {
 		this.name = name;
 		this.doNotReplace = doNotReplace;
 		assert animations.length == AnimationType.values().length;
 		this.animations = animations;
+		this.custom = custom;
+	}
+
+	public static AnimationSet withName(AnimationSet as, String name)
+	{
+		return new AnimationSet(name, false, Arrays.copyOf(as.animations, as.animations.length), true);
 	}
 
 	@Override

@@ -50,6 +50,8 @@ public class WeaponAnimationReplacerPluginPanel extends PluginPanel {
 	Swap currentPsSwap = null;
 	int currentPsIndex = -1;
 	boolean currentPsRhs;
+	Swap currentAsSwap = null;
+	int currentAsIndex = -1;
 
 	static
     {

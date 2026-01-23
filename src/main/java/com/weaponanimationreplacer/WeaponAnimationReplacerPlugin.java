@@ -189,7 +189,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		JsonSerializer<AnimationSet> serializer = new JsonSerializer<AnimationSet>() {
 			@Override
 			public JsonElement serialize(AnimationSet set, Type typeOfSrc, JsonSerializationContext context) {
-				return new JsonPrimitive(set.name);
+				return new JsonPrimitive(set.custom ? "usergenerated_" + set.name : set.name);
 			}
 		};
 		gsonBuilder.registerTypeAdapter(animationSetTypeToken, serializer);
@@ -204,6 +204,10 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 						s = newS;
 					}
 					AnimationSet animationSet = AnimationSet.getAnimationSet(s);
+					if (animationSet == null && s.startsWith("usergenerated_")) {
+						// we'll replace it later, since we cannot specify which custom animation sets to search.
+						return new AnimationSet(s.substring("usergenerated_".length()), false, new int[AnimationType.values().length], true);
+					}
 					return animationSet;
 				} else {
 					throw new JsonParseException("animationset is supposed to be a string.");
@@ -475,6 +479,145 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		}
 	}
 
+	public AnimationSet getCustomAnimationSet(String name)
+	{
+		String s = configManager.getConfiguration(GROUP_NAME, "customAnimationSet" + name);
+		if (s == null) return null;
+		String[] split = s.split(",");
+		int[] ids = new int[split.length];
+		for (int i = 0; i < split.length; i++)
+		{
+			ids[i] = Integer.parseInt(split[i]);
+		}
+		return new AnimationSet(name, false, ids, true);
+	}
+
+	public String createCustomAnimationSetName(String name)
+	{
+		String s = configManager.getConfiguration(GROUP_NAME, "customAnimationSet" + name);
+		if (s == null) {
+			return name;
+		} else {
+			for (int i = 0; i < 100; i++)
+			{
+				s = configManager.getConfiguration(GROUP_NAME, "customAnimationSet" + name + " " + i);
+				if (s == null) {
+					return name + " " + i;
+				}
+			}
+		}
+		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "you have too many animationsets with that name", "");
+		throw new RuntimeException("you have too many animationsets lol");
+	}
+
+	public boolean animationIdCrashes(int id) {
+		int[] animIds = client.getIndexConfig().getFileIds(12);
+		int start = Math.min(id, animIds.length - 1);
+		for (; start >= 0; start--) {
+			if (animIds[start] == id) {
+				return false;
+			} else if (animIds[start] < id) {
+				return true;
+			}
+		}
+		return true;
+	}
+
+	public void saveCustomAnimationSet(AnimationSet as)
+	{
+		String s = "";
+		for (int animation : as.animations)
+		{
+			s += animation + ",";
+		}
+		s = s.substring(0, s.length() - 1);
+		configManager.setConfiguration(GROUP_NAME, "customAnimationSet" + as.name, s);
+		customAnimationSetsCache = null;
+	}
+
+	private List<AnimationSet> customAnimationSetsCache = null;
+	public List<AnimationSet> getCustomAnimationSetsCache()
+	{
+		if (customAnimationSetsCache == null) {
+			customAnimationSetsCache = new ArrayList<>();
+			String prefix = GROUP_NAME + ".customAnimationSet";
+			for (String configurationKey : configManager.getConfigurationKeys(prefix)) {
+				String name = configurationKey.substring((prefix).length());
+				customAnimationSetsCache.add(getCustomAnimationSet(name));
+			}
+		}
+		return customAnimationSetsCache;
+	}
+
+	public void changeCustomAnimationSet(String originalName, AnimationSet newAnimationSet)
+	{
+		for (TransmogSet transmogSet : transmogSets) {
+			for (Swap swap : transmogSet.getSwaps()) {
+				for (AnimationReplacement animationReplacement : swap.animationReplacements) {
+					if (
+						animationReplacement.animationSet != null &&
+						animationReplacement.animationSet.custom &&
+						animationReplacement.animationSet.name.equals(originalName)
+					) {
+						animationReplacement.animationSet = newAnimationSet;
+					}
+				}
+			}
+		}
+		saveCustomAnimationSet(newAnimationSet);
+		saveTransmogSets();
+	}
+
+	public void deleteCustomAnimationSetUserFacing(String name)
+	{
+		int count = 0;
+		outer:
+		for (TransmogSet transmogSet : transmogSets) {
+			for (Swap swap : transmogSet.getSwaps()) {
+				for (AnimationReplacement ar : swap.animationReplacements) {
+					if (
+						ar.animationSet != null &&
+						ar.animationSet.custom &&
+						ar.animationSet.name.equals(name)
+					) {
+						count++;
+						if (count > 1) {
+							int result = JOptionPane.showConfirmDialog(pluginPanel,
+								"You are about to delete " + count + " animation replacements that use this custom animation set. Continue?",
+								"Delete " + count + " animation replacements?",
+								JOptionPane.OK_CANCEL_OPTION);
+							if (result == JOptionPane.CANCEL_OPTION) {
+								return;
+							} else {
+								break outer;
+							}
+						}
+					}
+				}
+			}
+		}
+		deleteCustomAnimationSet(name);
+	}
+
+	private void deleteCustomAnimationSet(String name)
+	{
+		for (TransmogSet transmogSet : transmogSets) {
+			for (Swap swap : transmogSet.getSwaps()) {
+				swap.animationReplacements.removeIf(ar ->
+					ar.animationSet != null &&
+					ar.animationSet.custom &&
+					ar.animationSet.name.equals(name));
+			}
+		}
+		configManager.unsetConfiguration(GROUP_NAME, "customAnimationSet" + name);
+		saveTransmogSets();
+		clientThread.invoke(this::handleTransmogSetChange);
+
+		pluginPanel.currentAsSwap = null;
+		pluginPanel.currentAsIndex = -1;
+		pluginPanel.rebuild();
+	}
+
 	@RequiredArgsConstructor
 	public static final class PlayerData {
 		final Player player;
@@ -595,6 +738,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			handleTransmogSetChange();
 			if (pluginPanel != null) SwingUtilities.invokeLater(pluginPanel::rebuild);
 		});
+		customAnimationSetsCache = null;
 	}
 
 	private void reloadTransmogSetsFromConfig()
@@ -634,10 +778,32 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		}
 		List<TransmogSet> transmogSets = getGson().fromJson(configuration, new TypeToken<ArrayList<TransmogSet>>() {}.getType());
 		if (transmogSets == null) transmogSets = new ArrayList<>();
+		populateCustomAnimationSets(transmogSets, getCustomAnimationSetsCache());
 		return transmogSets;
     }
 
-    public void saveTransmogSets() {
+	public void populateCustomAnimationSets(List<TransmogSet> transmogSets, List<AnimationSet> customAnimationSets)
+	{
+		for (TransmogSet transmogSet : transmogSets)
+		{
+			for (Swap swap : transmogSet.getSwaps())
+			{
+				for (AnimationReplacement animationReplacement : swap.animationReplacements)
+				{
+					if (animationReplacement.animationSet != null && animationReplacement.animationSet.custom) {
+						for (AnimationSet customAnimationSet : customAnimationSets)
+						{
+							if (customAnimationSet.name.equals(animationReplacement.animationSet.name)) {
+								animationReplacement.animationSet = customAnimationSet;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	public void saveTransmogSets() {
 		if (transmogSets == null) return; // not sure how this could happen, but I've had people report it and I don't want to write null into the config.
 
     	// Runelite won't store config values that are valid json with a nested depth of 8 or higher. Adding "NOT_JSON"
@@ -653,13 +819,14 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	public void handleTransmogSetChange() {
 		saveTransmogSets();
 
-		List<PlayerData> pds = getData(client.getLocalPlayer().getName());
-		for (PlayerData pd : pds)
-		{
-			updateTransmogAndAnimations(pd);
+		if (client.getLocalPlayer() != null) {
+			List<PlayerData> pds = getData(client.getLocalPlayer().getName());
+			for (PlayerData pd : pds)
+			{
+				updateTransmogAndAnimations(pd);
+				updateSoundSwaps();
+			}
 		}
-
-		updateSoundSwaps();
 
 		pluginPanel.updatePartyButton();
 	}

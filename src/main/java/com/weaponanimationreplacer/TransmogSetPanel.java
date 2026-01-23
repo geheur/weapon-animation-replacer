@@ -33,7 +33,11 @@ import com.weaponanimationreplacer.Constants.IdIconNameAndSlot;
 import static com.weaponanimationreplacer.Constants.TriggerItemIds;
 import static com.weaponanimationreplacer.Swap.AnimationReplacement;
 import com.weaponanimationreplacer.Swap.AnimationType;
+import static com.weaponanimationreplacer.Swap.AnimationType.ALL;
 import static com.weaponanimationreplacer.Swap.AnimationType.ATTACK;
+import static com.weaponanimationreplacer.Swap.AnimationType.MOVEMENT;
+import static com.weaponanimationreplacer.Swap.AnimationType.SHUFFLE;
+import static com.weaponanimationreplacer.Swap.AnimationType.STAND_PLUS_MOVEMENT;
 import com.weaponanimationreplacer.Swap.SoundSwap;
 import com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType;
 import static com.weaponanimationreplacer.WeaponAnimationReplacerPlugin.SearchType.MODEL_SWAP;
@@ -451,6 +455,9 @@ class TransmogSetPanel extends JPanel
 	private void addAnimationReplacement(Swap swap)
 	{
 		plugin.clientThread.invokeLater(() -> {
+			pluginPanel.currentAsSwap = null;
+			pluginPanel.currentAsIndex = -1;
+
 			swap.addNewAnimationReplacement();
 			plugin.handleTransmogSetChange();
 			SwingUtilities.invokeLater(this::rebuild);
@@ -691,12 +698,15 @@ class TransmogSetPanel extends JPanel
 		row2.setLayout(new BoxLayout(row2, BoxLayout.X_AXIS));
 		row2.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		row2.add(new JLabel("with"));
-		JComboBox<AnimationSet> animationSetToUse = new JComboBox<>(Constants.animationSets.toArray(new AnimationSet[]{}));
+		row2.add(createAnimationSetEditButton(swap, i));
+		List<AnimationSet> animationSets = plugin.getCustomAnimationSetsCache();
+		animationSets.addAll(Constants.animationSets);
+		JComboBox<AnimationSet> animationSetToUse = new JComboBox<>(animationSets.toArray(new AnimationSet[]{}));
 		animationSetToUse.setRenderer(new DefaultListCellRenderer() {
 			@Override
 			public Component getListCellRendererComponent(JList list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
 				Component rendererComponent = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-				setText(value == null ? "<choose>" : ((AnimationSet) value).getComboBoxName());
+				setText(value == null ? "<choose>" : ((AnimationSet) value).custom ? "(c) " + ((AnimationSet) value).getComboBoxName() : ((AnimationSet) value).getComboBoxName());
 				return rendererComponent;
 			}
 		});
@@ -760,8 +770,14 @@ class TransmogSetPanel extends JPanel
 			animationReplacementPanel.add(row3);
 		}
 
+		if (pluginPanel.currentAsSwap == swap && pluginPanel.currentAsIndex == i) {
+			animationReplacementPanel.add(createAnimationSetEditPanel(swap, i));
+		}
+
 		return new EntryPanel(false, true, true, i == size - 1, animationReplacementPanel, () -> {
 			swap.animationReplacements.remove(i);
+			pluginPanel.currentAsSwap = null;
+			pluginPanel.currentAsIndex = -1;
 			plugin.clientThread.invoke(plugin::handleTransmogSetChange);
 			SwingUtilities.invokeLater(this::rebuild);
 		}, () -> {
@@ -773,6 +789,102 @@ class TransmogSetPanel extends JPanel
 		}, (enabled) -> {
 			plugin.clientThread.invoke(plugin::handleTransmogSetChange);
 		});
+	}
+
+	private Component createAnimationSetEditButton(Swap swap, int index)
+	{
+		JButton button = new JButton("", EDIT_ICON);
+		button.addActionListener(e -> {
+			if (pluginPanel.currentAsSwap == swap && pluginPanel.currentAsIndex == index) {
+				pluginPanel.currentAsSwap = null;
+				pluginPanel.currentAsIndex = -1;
+			} else {
+				pluginPanel.currentAsSwap = swap;
+				pluginPanel.currentAsIndex = index;
+			}
+			rebuild();
+		});
+		return button;
+	}
+
+	private JPanel createAnimationSetEditPanel(Swap swap, int index)
+	{
+		AnimationReplacement animationReplacement = swap.animationReplacements.get(index);
+		AnimationSet as = animationReplacement.animationSet;
+		String name = as == null ? "custom" : as.name;
+
+		JPanel panel = new JPanel();
+		panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+
+		JPanel row = new JPanel();
+		row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
+		JLabel label = new JLabel("Name");
+		row.add(label);
+		JTextField nameField = new JTextField(name);
+		nameField.addFocusListener(new FocusAdapter() {
+			@Override public void focusLost(FocusEvent e) {
+				String previousName = animationReplacement.animationSet == null ? "custom" : animationReplacement.animationSet.name;
+				if (!nameField.getText().equals(previousName))
+				{
+					boolean created = createAnimationSetIfNotCustom(animationReplacement, nameField.getText());
+					if (!created) {
+						AnimationSet newAnimationSet = AnimationSet.withName(animationReplacement.animationSet, nameField.getText());
+						plugin.changeCustomAnimationSet(animationReplacement.animationSet.name, newAnimationSet);
+					} else {
+						plugin.saveTransmogSets();
+						if (created) pluginPanel.rebuild();
+					}
+				}
+			}
+		});
+		row.add(nameField);
+		panel.add(row);
+
+		for (AnimationType animationType : AnimationType.values()) {
+			if (animationType == ALL || animationType == MOVEMENT || animationType == STAND_PLUS_MOVEMENT || animationType == SHUFFLE) continue;
+
+			createProjectileEditPanelRow(animationType.prettyName, ce -> {
+				// the current animation set may not be a custom set already, if not create a new one.
+				int animId = (int) ((JSpinner) ce.getSource()).getValue();
+				if (plugin.animationIdCrashes(animId)) return;
+
+				boolean created = createAnimationSetIfNotCustom(animationReplacement, name);
+
+				animationReplacement.animationSet.animations[animationType.ordinal()] = animId;
+				plugin.changeCustomAnimationSet(animationReplacement.animationSet.name, animationReplacement.animationSet);
+
+				if (created) pluginPanel.rebuild();
+
+				plugin.clientThread.invoke(plugin::handleTransmogSetChange);
+			}, as != null ? as.animations[animationType.ordinal()] : -1, panel);
+		}
+
+		if (animationReplacement.animationSet != null && animationReplacement.animationSet.custom) {
+			JButton deleteButton = new JButton("delete");
+			deleteButton.addActionListener(al -> {
+				plugin.deleteCustomAnimationSetUserFacing(animationReplacement.animationSet.name);
+			});
+			panel.add(deleteButton);
+		}
+		JButton projectileIdsButton = new JButton("id finder");
+		projectileIdsButton.addActionListener(al -> {
+			new ProjectileIdsFrame().setVisible(true);
+		});
+		panel.add(projectileIdsButton);
+
+		return panel;
+	}
+
+	private boolean createAnimationSetIfNotCustom(AnimationReplacement animationReplacement, String name)
+	{
+		if (animationReplacement.animationSet == null) {
+			animationReplacement.animationSet = new AnimationSet(plugin.createCustomAnimationSetName("custom"), true);
+			return true;
+		} else if (!animationReplacement.animationSet.custom) { // built-in animation set.
+			animationReplacement.animationSet = AnimationSet.withName(animationReplacement.animationSet, plugin.createCustomAnimationSetName(name));
+			return true;
+		}
+		return false;
 	}
 
 	private Component createProjectileSwapPanel(Swap swap, int i, int size)
@@ -825,9 +937,11 @@ class TransmogSetPanel extends JPanel
 		if (defaultValue == null) defaultValue = ProjectileCast.p().build();
 
 		createProjectileEditPanelRow("anim id", ce -> {
+			int animId = (int) ((JSpinner) ce.getSource()).getValue();
+			if (plugin.animationIdCrashes(animId)) return;
 			ps.createCustomIfNull(rhs);
 			ProjectileCast pc = ps.getCustom(rhs);
-			pc.setCastAnimation((int) ((JSpinner) ce.getSource()).getValue());
+			pc.setCastAnimation(animId);
 			plugin.saveTransmogSets();
 			plugin.demoCast(pc);
 		}, defaultValue.castAnimation, panel);
@@ -939,6 +1053,7 @@ class TransmogSetPanel extends JPanel
 			JPanel squeezePanel = new JPanel(new BorderLayout());
 			squeezePanel.add(panel, BorderLayout.NORTH);
 			add(squeezePanel);
+			redraw(true);
 		}
 
 		@Value
@@ -958,7 +1073,8 @@ class TransmogSetPanel extends JPanel
 			Set<Projectile> thisTickProjectiles = new HashSet<>();
 			Projectile projectile = null;
 			Client client = plugin.client;
-			Player player = client.getLocalPlayer();
+			Player player = getPlayer();
+			if (player == null) return;
 			for (Projectile p : client.getProjectiles()) {
 				if (!lastTickProjectiles.contains(p)) {
 					if (client.getGameCycle() > p.getStartCycle()) continue; // skip already seen projectiles.
@@ -1000,10 +1116,32 @@ class TransmogSetPanel extends JPanel
 			liveProjectiles.add(new PCwI(builder.build(), projectile != null ? projectile.getEndCycle() : client.getGameCycle() + 100));
 		}
 
+		private Player getPlayer() {
+			String name = playerName != null ? playerName.getText() : "";
+			for (Player player : plugin.client.getTopLevelWorldView().players()) {
+				if (name.equals(player.getName())) return player;
+			}
+			return null;
+		}
+
+		boolean playerFound = false;
+		List<Integer> poseanims = new ArrayList<>();
 		@Subscribe
 		public void onClientTick(ClientTick e) {
 			boolean redraw = false;
 
+			Player player = getPlayer();
+			boolean playerFound = player != null;
+			redraw |= playerFound != this.playerFound;
+			this.playerFound = playerFound;
+			if (playerFound) {
+				List<Integer> poseanims = new ArrayList<>();
+				for (Constants.ActorAnimation animation : Constants.ActorAnimation.values()) {
+					poseanims.add(animation.getAnimation(player));
+				}
+				redraw |= !poseanims.equals(this.poseanims);
+				this.poseanims = poseanims;
+			}
 			outer:
 			for (int j = 0; j < liveProjectiles.size(); j++)
 			{
@@ -1026,17 +1164,31 @@ class TransmogSetPanel extends JPanel
 
 			if (redraw)
 			{
-				redraw();
+				redraw(false);
 			}
 		}
 
-		private void redraw()
+		JTextField playerName = null;
+		JLabel notFoundLabel = null;
+		JLabel poseAnimsLabel = null;
+		private void redraw(boolean firstTime)
 		{
 			SwingUtilities.invokeLater(() -> {
+				String currentPlayerName = playerName != null ? playerName.getText() : "";
+				Player localPlayer = plugin.client.getLocalPlayer();
+				if (firstTime) currentPlayerName = localPlayer != null ? localPlayer.getName() : "";
+
 				panel.removeAll();
 
 				JPanel row = new JPanel();
 				row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
+				JLabel observing = new JLabel("Observing: ");
+				row.add(observing);
+				JTextField playerNameField = new JTextField(currentPlayerName);
+				playerName = playerNameField;
+				row.add(playerNameField);
+				notFoundLabel = new JLabel(!playerFound ? "(player not found)" : "");
+				row.add(notFoundLabel);
 				JCheckBox pause = new JCheckBox("pause", paused);
 				pause.addItemListener(ce -> {
 					paused = ((JCheckBox) ce.getSource()).isSelected();
@@ -1045,10 +1197,24 @@ class TransmogSetPanel extends JPanel
 				JCheckBox debugCheckbox = new JCheckBox("author use", debug);
 				debugCheckbox.addItemListener(ce -> {
 					debug = ((JCheckBox) ce.getSource()).isSelected();
-					redraw();
+					redraw(false);
 				});
 				row.add(debugCheckbox);
 				panel.add(row);
+
+				if (!poseanims.isEmpty()) {
+					JPanel row2 = new JPanel();
+					row2.setLayout(new BoxLayout(row2, BoxLayout.X_AXIS));
+					String result = "pose anims: ";
+					for (int i = 0; i < Constants.ActorAnimation.values().length; i++)
+					{
+						Constants.ActorAnimation actorAnimation = Constants.ActorAnimation.values()[i];
+						result += actorAnimation.name() + ": " + poseanims.get(i) + " ";
+					}
+					poseAnimsLabel = new JLabel(result);
+					row2.add(poseAnimsLabel);
+					panel.add(row2);
+				}
 
 				for (PCwI projectile : finishedProjectiles)
 				{

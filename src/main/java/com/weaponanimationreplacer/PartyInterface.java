@@ -29,6 +29,7 @@ public class PartyInterface
 		int baseHairKit;
 		int baseJawKit;
 		List<TransmogSet> transmogSets;
+		List<AnimationSet> customAnimationSets;
 		String playerName = null;
 		final long memberId;
 
@@ -42,6 +43,7 @@ public class PartyInterface
 
 		public void update(TransmogUpdateMessage e) {
 			this.transmogSets = e.transmogSets;
+			this.customAnimationSets = e.customAnimationSets;
 		}
 	}
 
@@ -70,12 +72,41 @@ public class PartyInterface
 //		System.out.println("TransmogUpdateMessage " + partyService.getMemberById(e.getMemberId()).getDisplayName());
 
 		PartyMemberData data = getPartyData(e.getMemberId());
+
+		purgeCrashingAnimationIds(e);
+		plugin.populateCustomAnimationSets(e.transmogSets, e.customAnimationSets);
+
 		data.update(e);
 		updateTransmog(data);
 
 		if (awaitingHelloResponse) {
 			awaitingHelloResponse = false;
 			sendNameAndTransmog();
+		}
+	}
+
+	private void purgeCrashingAnimationIds(TransmogUpdateMessage e) {
+		for (TransmogSet ts : e.transmogSets) {
+			for (Swap swap : ts.getSwaps()) {
+				for (ProjectileSwap ps : swap.getProjectileSwaps()) {
+					ProjectileCast a = ps.toReplaceCustom;
+					ProjectileCast b = ps.toReplaceWithCustom;
+					if (a != null && plugin.animationIdCrashes(a.castAnimation)) {
+						a.castAnimation = -1;
+					}
+					if (b != null && plugin.animationIdCrashes(b.castAnimation)) {
+						b.castAnimation = -1;
+					}
+				}
+			}
+		}
+		for (AnimationSet as : e.customAnimationSets) {
+			for (int i = 0; i < as.animations.length; i++) {
+				int id = as.animations[i];
+				if (id != -1 && plugin.animationIdCrashes(id)) {
+					as.animations[i] = -1;
+				}
+			}
 		}
 	}
 
@@ -126,7 +157,7 @@ public class PartyInterface
 		lastSentTransmogHash = activeTransmogs.hashCode();
 		plugin.pluginPanel.updatePartyButton();
 //		System.out.println("   new hash is " + lastSentTransmogHash);
-		partyService.send(new TransmogUpdateMessage(plugin.transmogSets));
+		partyService.send(new TransmogUpdateMessage(plugin.transmogSets, plugin.getCustomAnimationSetsCache()));
 	}
 
 	private void sendName() {
@@ -176,6 +207,7 @@ public class PartyInterface
 	@RequiredArgsConstructor
 	public static final class TransmogUpdateMessage extends PartyMemberMessage {
 		final List<TransmogSet> transmogSets;
+		final List<AnimationSet> customAnimationSets;
 	}
 
 	@RequiredArgsConstructor
