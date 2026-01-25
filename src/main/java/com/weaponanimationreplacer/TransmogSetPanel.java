@@ -107,7 +107,9 @@ import net.runelite.api.Player;
 import net.runelite.api.Projectile;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.ClientTick;
+import net.runelite.api.events.GameTick;
 import net.runelite.api.kit.KitType;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.ui.ColorScheme;
@@ -1122,6 +1124,22 @@ class TransmogSetPanel extends JPanel
 				if (name.equals(player.getName())) return player;
 			}
 			return null;
+		}
+
+		boolean animationChanged = false;
+		public void onAnimationChanged(AnimationChanged e)
+		{
+			if (e.getActor() == getPlayer()) {
+				animationChanged = true;
+			}
+		}
+
+		public void onGameTick(GameTick e)
+		{
+			if (animationChanged) {
+				animationChanged = false;
+				spell();
+			}
 		}
 
 		boolean playerFound = false;

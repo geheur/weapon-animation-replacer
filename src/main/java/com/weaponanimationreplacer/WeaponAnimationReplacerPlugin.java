@@ -1027,10 +1027,6 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 				replaceNoProjectileAttack(data);
 			}
 
-			if (data.animationChangedThisTick && frame != null) {
-				frame.spell();
-			}
-
 			data.animationChangedThisTick = false;
 		}
 		lastTickProjectiles = thisTickProjectiles;
