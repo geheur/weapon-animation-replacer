@@ -157,7 +157,7 @@ public class PartyInterface
 		lastSentTransmogHash = activeTransmogs.hashCode();
 		plugin.pluginPanel.updatePartyButton();
 //		System.out.println("   new hash is " + lastSentTransmogHash);
-		partyService.send(new TransmogUpdateMessage(plugin.transmogSets, plugin.getCustomAnimationSetsCache()));
+		partyService.send(new TransmogUpdateMessage(plugin.transmogSets, plugin.getCustomAnimationSets()));
 	}
 
 	private void sendName() {

@@ -701,7 +701,7 @@ class TransmogSetPanel extends JPanel
 		row2.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		row2.add(new JLabel("with"));
 		row2.add(createAnimationSetEditButton(swap, i));
-		List<AnimationSet> animationSets = plugin.getCustomAnimationSetsCache();
+		List<AnimationSet> animationSets = new ArrayList<>(plugin.getCustomAnimationSets());
 		animationSets.addAll(Constants.animationSets);
 		JComboBox<AnimationSet> animationSetToUse = new JComboBox<>(animationSets.toArray(new AnimationSet[]{}));
 		animationSetToUse.setRenderer(new DefaultListCellRenderer() {

@@ -536,15 +536,16 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	}
 
 	private List<AnimationSet> customAnimationSetsCache = null;
-	public List<AnimationSet> getCustomAnimationSetsCache()
+	public List<AnimationSet> getCustomAnimationSets()
 	{
 		if (customAnimationSetsCache == null) {
-			customAnimationSetsCache = new ArrayList<>();
+			List<AnimationSet> l = new ArrayList<>();
 			String prefix = GROUP_NAME + ".customAnimationSet";
 			for (String configurationKey : configManager.getConfigurationKeys(prefix)) {
 				String name = configurationKey.substring((prefix).length());
-				customAnimationSetsCache.add(getCustomAnimationSet(name));
+				l.add(getCustomAnimationSet(name));
 			}
+			customAnimationSetsCache = Collections.unmodifiableList(l);
 		}
 		return customAnimationSetsCache;
 	}
@@ -615,6 +616,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
 		pluginPanel.currentAsSwap = null;
 		pluginPanel.currentAsIndex = -1;
+		customAnimationSetsCache = null;
 		pluginPanel.rebuild();
 	}
 
@@ -778,7 +780,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		}
 		List<TransmogSet> transmogSets = getGson().fromJson(configuration, new TypeToken<ArrayList<TransmogSet>>() {}.getType());
 		if (transmogSets == null) transmogSets = new ArrayList<>();
-		populateCustomAnimationSets(transmogSets, getCustomAnimationSetsCache());
+		populateCustomAnimationSets(transmogSets, getCustomAnimationSets());
 		return transmogSets;
     }
 
