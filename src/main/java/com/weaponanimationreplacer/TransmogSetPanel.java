@@ -1127,6 +1127,7 @@ class TransmogSetPanel extends JPanel
 		}
 
 		boolean animationChanged = false;
+		@Subscribe
 		public void onAnimationChanged(AnimationChanged e)
 		{
 			if (e.getActor() == getPlayer()) {
@@ -1134,6 +1135,7 @@ class TransmogSetPanel extends JPanel
 			}
 		}
 
+		@Subscribe
 		public void onGameTick(GameTick e)
 		{
 			if (animationChanged) {

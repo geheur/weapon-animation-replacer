@@ -2,8 +2,7 @@ plugins {
 	id 'java'
 }
 
-repositories {
-	mavenLocal()
+repositories { mavenLocal()
 	maven {
 		url = 'https://repo.runelite.net'
 	}
@@ -25,7 +24,7 @@ dependencies {
 }
 
 group = 'com.weaponanimationreplacer'
-version = '3.7.19'
+version = '3.7.20'
 sourceCompatibility = '1.8'
 
 tasks.withType(JavaCompile) {
