@@ -24,7 +24,7 @@ dependencies {
 }
 
 group = 'com.weaponanimationreplacer'
-version = '3.7.20'
+version = '3.7.21'
 sourceCompatibility = '1.8'
 
 tasks.withType(JavaCompile) {

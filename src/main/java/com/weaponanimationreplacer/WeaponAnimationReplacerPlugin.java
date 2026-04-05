@@ -1047,34 +1047,32 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		if (projectile.getX1() != playerPosLocal.getX() || projectile.getY1() != playerPosLocal.getY()) return false;
 
 		int lastRealAnimation = data.lastRealAnimation;
-		int castAnimation = // Some standard spellbook spells use a different animation depending on the equipped weapon (or lack thereof).
-			(lastRealAnimation < 710 || lastRealAnimation > 729) ? lastRealAnimation :
-			lastRealAnimation == 710 ? 1161 :
-			lastRealAnimation == 711 ? 1162 :
-			lastRealAnimation == 716 ? 1163 :
-			lastRealAnimation == 717 ? 1164 :
-			lastRealAnimation == 718 ? 1165 :
-			lastRealAnimation == 724 ? 1166 :
-			lastRealAnimation == 727 ? 1167 :
-			lastRealAnimation == 728 ? 1168 :
-			lastRealAnimation == 729 ? 1169 :
-			lastRealAnimation
-		;
+		int castAnimation = Constants.getBaseAnimationId(lastRealAnimation);// Some standard spellbook spells use a different animation depending on the equipped weapon (or lack thereof).
+		if (castAnimation == -1) return false;
+
+		ProjectileSwap match = null;
 		for (ProjectileSwap projectileSwap : data.projectileSwaps)
 		{
 			ProjectileCast toReplace = projectileSwap.getToReplace();
 			if (
-				toReplace.getCastAnimation() == castAnimation && castAnimation != -1 &&
 				toReplace.getProjectileId() == projectile.getId() &&
 				(toReplace.getCastGfx() == -1 || toReplace.getCastGfx() == player.getGraphic())
 			) {
-				int endCycle = projectile.getEndCycle();
-
-				replaceSpell(projectileSwap, player, projectile.getSourcePoint(), projectile.getTargetActor(), projectile.getTargetPoint(), endCycle);
-				projectile.setEndCycle(0);
-
-				return true;
+				if (toReplace.getCastAnimation() == castAnimation) {
+					match = projectileSwap;
+					break;
+				} else if (match == null && Constants.getBaseAnimationId(toReplace.getCastAnimation()) == castAnimation) {
+					match = projectileSwap;
+				}
 			}
+		}
+		if (match != null) {
+			int endCycle = projectile.getEndCycle();
+
+			replaceSpell(match, player, projectile.getSourcePoint(), projectile.getTargetActor(), projectile.getTargetPoint(), endCycle);
+			projectile.setEndCycle(0);
+
+			return true;
 		}
 		return false;
 	}

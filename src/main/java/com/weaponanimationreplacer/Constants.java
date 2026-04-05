@@ -386,4 +386,36 @@ public class Constants
 			return EMPTY_SLOTS.get(-itemId - 1_000_000);
 		}
 	}
+
+	static int[][] ids = new int[][]{
+		{1161, -1, 710, -1}, // bind/snare/etc.
+		{1162, 11423, 711, 9144}, // strike/bolt/blast
+		{1163, 11425, 716, 11424}, // confuse
+		{1164, 11427, 717, 11426}, // weaken
+		{1165, 10413, 718, 11428}, // curse/vuln
+		{1166, -1, 724, -1}, // crumble undead
+		{1167, 11430, 727, 11429}, // wave/trident
+		{-1, -1, 7855, 9145}, // surge (idk if 11431 is used anywhere)
+		{1168, -1, 728, -1}, // enfeeble
+		{1169, -1, 729, -1}, // stun
+		{4230, 7552}, // crossbow
+		{9166, 9168}, // zaryte crossbow
+		{1978, 10091}, // rush/blitz
+		{1979, 10092}, // burst/barrage
+		{1819, 10093} // teleblock
+	};
+
+	public static int getBaseAnimationId(int id) {
+		for (int[] ints : ids) {
+			for (int anInt : ints) {
+				if (anInt == id) {
+					for (int i : ints) {
+						if (i != -1) return i;
+					}
+					return ints[0];
+				}
+			}
+		}
+		return id;
+	}
 }
