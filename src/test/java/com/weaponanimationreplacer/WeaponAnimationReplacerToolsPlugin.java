@@ -2303,6 +2303,8 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		projectiles.add(p().id(172).itemId(ItemID.EYE_OF_AYAK).cast(12397, 3366, 0).hit(3368, 124).projectile(3367, 51, 64, 172, 124, 16).build());
 		projectiles.add(p().id(173).itemId(ItemID.BURNING_CLAWS).cast(11140, 2814, 0).hit(-1, -1).projectile(-1, 51, 64, 172, 124, 16).build());
 		projectiles.add(p().id(174).itemId(ItemID.RUNE_SCIMITAR).cast(390, -1, 0).hit(-1, -1).projectile(-1, 51, 64, 172, 124, 16).build());
+		projectiles.add(p().id(175).itemId(ItemID.ACCURSED_SCEPTRE).cast(1167, -1, -1).hit(78, 92).projectile(2337, 46, 64, 120, 92, 10).build());
+		projectiles.add(p().id(176).itemId(ItemID.THAMMARONS_SCEPTRE).cast(1167, -1, -1).hit(78, 92).projectile(2340, 46, 64, 120, 92, 10).build());
 
 		// Arrows. Many values guessed based off of iron arrow, so stuff like height/slope could be off for some arrows.
 		ProjectileCast bronzeArrow = p().id(67).itemId(ItemID.BRONZE_ARROW).cast(426, 19, 96).projectile(10, 41, 11, 163, 146, 15).build();

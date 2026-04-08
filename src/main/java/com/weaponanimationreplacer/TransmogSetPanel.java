@@ -1275,7 +1275,7 @@ class TransmogSetPanel extends JPanel
 						s = //".name(\"" + lastSpellCastName + "\")" +
 								".cast(" + pc.castAnimation + ", " + (pc.castGfx != -1 ? (pc.castGfx + ", " + pc.castGfxHeight) : "-1, -1") + ")" +
 								(pc.hitGfx != -1 ?
-									".hitGfx(" + pc.hitGfx + ", " + pc.hitGfxHeight + ")"
+									".hit(" + pc.hitGfx + ", " + pc.hitGfxHeight + ")"
 									: "") +
 								(pc.projectileId != -1 ?
 									".projectile(" + pc.projectileId + ", " + pc.startMovement + ", " + pc.startPos + ", " + pc.startHeight + ", " + pc.endHeight + ", " + pc.slope + ")"
