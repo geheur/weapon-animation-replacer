@@ -353,6 +353,10 @@ public class AnimationSets
 			.poseAnims(9050, 9050, 9051, 9054, 9052, 9053, 9051)
 			.doNotReplace()
 			.build();
+		new AnimationSetBuilder("Minecart")
+			.poseAnims(2148, 2148, 2148, 2148, 2148, 2148, 2148)
+			.doNotReplace()
+			.build();
 		new AnimationSetBuilder("Dart")
 			.poseAnims(808, 823, 819, 820, 821, 822, 824)
 			.put(ATTACK, 7554)
