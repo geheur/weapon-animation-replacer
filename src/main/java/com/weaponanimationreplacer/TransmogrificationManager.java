@@ -25,6 +25,7 @@
 package com.weaponanimationreplacer;
 
 import static com.weaponanimationreplacer.Constants.ARMS_SLOT;
+import static com.weaponanimationreplacer.Constants.BOOTS_SLOT;
 import static com.weaponanimationreplacer.Constants.HAIR_SLOT;
 import static com.weaponanimationreplacer.Constants.HEAD_SLOT;
 import static com.weaponanimationreplacer.Constants.HIDES_HAIR;
@@ -123,6 +124,9 @@ public class TransmogrificationManager
 		for (int i = 0; i < swaps.length; i++)
 		{
 			if (swaps[i] != null) {
+				if (i == BOOTS_SLOT && kits[BOOTS_SLOT] == 338) { // minecart boots
+					continue;
+				}
 				kits[i] = swaps[i] + ITEM_OFFSET;
 			}
 		}
