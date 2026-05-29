@@ -705,6 +705,10 @@ public class AnimationSets
 			.copy("Staff")
 			.put(ATTACK, 11057)
 			.build();
+		new AnimationSetBuilder("Fang of the hound")
+			.copy("Dragon dagger")
+			.put(ATTACK, 13753)
+			.build();
 
 		return animationSets;
 	}
