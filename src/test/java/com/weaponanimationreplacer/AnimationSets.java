@@ -709,6 +709,31 @@ public class AnimationSets
 			.copy("Dragon dagger")
 			.put(ATTACK, 13753)
 			.build();
+		new AnimationSetBuilder("Crimson kisten (old)")
+			.doNotReplace()
+			.standMovement(14251, 14252)
+			.put(RUN, 14254)
+			.put(ATTACK, 14253)
+			.put(ATTACK_SPEC, 14255)
+			.build();
+		new AnimationSetBuilder("Rolling")
+			.doNotReplace()
+			.movement(14238)
+			.build();
+		new AnimationSetBuilder("Sprinting")
+			.doNotReplace()
+			.movement(14237)
+			.build();
+		new AnimationSetBuilder("Floating")
+			.doNotReplace()
+			.movement(14237)
+			.build();
+		new AnimationSetBuilder("Hallowfell")
+			.stand(14465).walk(14466).run(14468)
+			.put(ATTACK_SLASH, 14470)
+			.put(ATTACK_CRUSH, 14469)
+			.put(DEFEND, 14472)
+			.build();
 
 		return animationSets;
 	}
@@ -774,6 +799,28 @@ public class AnimationSets
 //				if (animation > 0) doNotReplaceIdles.add(animation);
 			}
 			animationSets.add(new AnimationSet(name, doNotReplace, animations, false));
+		}
+
+		public AnimationSetBuilder stand(int stand)
+		{
+			put(STAND, stand);
+			put(ROTATE, stand);
+			return this;
+		}
+
+		public AnimationSetBuilder walk(int walk)
+		{
+			put(WALK, walk);
+			put(WALK_BACKWARD, walk);
+			put(SHUFFLE_LEFT, walk);
+			put(SHUFFLE_RIGHT, walk);
+			return this;
+		}
+
+		public AnimationSetBuilder run(int run)
+		{
+			put(RUN, run);
+			return this;
 		}
 
 		public AnimationSetBuilder standMovement(int stand, int movement)
