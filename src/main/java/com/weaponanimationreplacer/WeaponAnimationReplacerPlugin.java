@@ -285,7 +285,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 				Files.write(Paths.get(System.getProperty("user.home"), ".runelite", "weaponanimationreplacerdata.json"), runeliteGson.toJson(bundledData).getBytes());
 			}
 			catch (IOException e) {
-				e.printStackTrace();
+				log.error("weapon animation replacer", e);
 			}
 			localData = bundledData;
 			log.info("updated local data.");
@@ -319,7 +319,7 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 					try {
 						Files.write(Paths.get(System.getProperty("user.home"), ".runelite", "weaponanimationreplacerdata.json"), runeliteGson.toJson(onlineData).getBytes());
 					} catch (IOException e) {
-						e.printStackTrace();
+						log.error("weapon animation replacer", e);
 					}
 					clientThread.invokeLater(() -> {
 						Constants.loadData(onlineData);
