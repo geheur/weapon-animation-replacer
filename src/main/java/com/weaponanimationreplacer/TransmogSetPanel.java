@@ -858,7 +858,7 @@ class TransmogSetPanel extends JPanel
 				if (created) pluginPanel.rebuild();
 
 				plugin.clientThread.invoke(plugin::handleTransmogSetChange);
-			}, as != null ? as.animations[animationType.ordinal()] : -1, panel);
+			}, as != null ? as.animations[animationType.ordinal()] : -1, panel, -1);
 		}
 
 		if (animationReplacement.animationSet != null && animationReplacement.animationSet.custom) {
@@ -946,77 +946,77 @@ class TransmogSetPanel extends JPanel
 			pc.setCastAnimation(animId);
 			plugin.saveTransmogSets();
 			plugin.demoCast(pc);
-		}, defaultValue.castAnimation, panel);
+		}, defaultValue.castAnimation, panel, -1);
 		createProjectileEditPanelRow("cast gfx", ce -> {
 			ps.createCustomIfNull(rhs);
 			ProjectileCast pc = ps.getCustom(rhs);
 			pc.setCastGfx((int) ((JSpinner) ce.getSource()).getValue());
 			plugin.saveTransmogSets();
 			plugin.demoCast(pc);
-		}, defaultValue.castGfx, panel);
+		}, defaultValue.castGfx, panel, -1);
 		if (rhs) createProjectileEditPanelRow("cast gfx height", ce -> {
 			ps.createCustomIfNull(rhs);
 			ProjectileCast pc = ps.getCustom(rhs);
 			pc.setCastGfxHeight((int) ((JSpinner) ce.getSource()).getValue());
 			plugin.saveTransmogSets();
 			plugin.demoCast(pc);
-		}, defaultValue.castGfxHeight, panel);
+		}, defaultValue.castGfxHeight, panel, 0);
 		createProjectileEditPanelRow("hit gfx", ce -> {
 			ps.createCustomIfNull(rhs);
 			ProjectileCast pc = ps.getCustom(rhs);
 			pc.setHitGfx((int) ((JSpinner) ce.getSource()).getValue());
 			plugin.saveTransmogSets();
 			plugin.client.getLocalPlayer().createSpotAnim("demo".hashCode(), pc.hitGfx, 0, 0);
-		}, defaultValue.hitGfx, panel);
+		}, defaultValue.hitGfx, panel, -1);
 		if (rhs) createProjectileEditPanelRow("hit gfx height", ce -> {
 			ps.createCustomIfNull(rhs);
 			ProjectileCast pc = ps.getCustom(rhs);
 			pc.setHitGfxHeight((int) ((JSpinner) ce.getSource()).getValue());
 			plugin.saveTransmogSets();
 			plugin.client.getLocalPlayer().createSpotAnim("demo".hashCode(), pc.hitGfxHeight, 0, 0);
-		}, defaultValue.hitGfxHeight, panel);
+		}, defaultValue.hitGfxHeight, panel, 0);
 		createProjectileEditPanelRow("projectile id", ce -> {
 			ps.createCustomIfNull(rhs);
 			ProjectileCast pc = ps.getCustom(rhs);
 			pc.setProjectileId((int) ((JSpinner) ce.getSource()).getValue());
 			plugin.saveTransmogSets();
 			plugin.demoCast(pc);
-		}, defaultValue.projectileId, panel);
+		}, defaultValue.projectileId, panel, -1);
 		if (rhs) createProjectileEditPanelRow("arc", ce -> {
 			ps.createCustomIfNull(rhs);
 			ProjectileCast pc = ps.getCustom(rhs);
 			pc.setSlope((int) ((JSpinner) ce.getSource()).getValue());
 			plugin.saveTransmogSets();
 			plugin.demoCast(pc);
-		}, defaultValue.slope, panel, -64, 64);
+		}, defaultValue.slope, panel, 0, -64, 64);
 		if (rhs) createProjectileEditPanelRow("delay", ce -> {
 			ps.createCustomIfNull(rhs);
 			ProjectileCast pc = ps.getCustom(rhs);
 			pc.setStartMovement((int) ((JSpinner) ce.getSource()).getValue());
 			plugin.saveTransmogSets();
 			plugin.demoCast(pc);
-		}, defaultValue.startMovement, panel);
+		}, defaultValue.startMovement, panel, 0);
 		if (rhs) createProjectileEditPanelRow("start offset", ce -> {
 			ps.createCustomIfNull(rhs);
 			ProjectileCast pc = ps.getCustom(rhs);
 			pc.setStartPos((int) ((JSpinner) ce.getSource()).getValue());
 			plugin.saveTransmogSets();
 			plugin.demoCast(pc);
-		}, defaultValue.startPos, panel);
+		}, defaultValue.startPos, panel, 0);
 		if (rhs) createProjectileEditPanelRow("start height", ce -> {
 			ps.createCustomIfNull(rhs);
 			ProjectileCast pc = ps.getCustom(rhs);
 			pc.setStartHeight((int) ((JSpinner) ce.getSource()).getValue());
 			plugin.saveTransmogSets();
 			plugin.demoCast(pc);
-		}, defaultValue.startHeight, panel, Integer.MIN_VALUE, Integer.MAX_VALUE);
+		}, defaultValue.startHeight, panel, 0, Integer.MIN_VALUE, Integer.MAX_VALUE);
 		if (rhs) createProjectileEditPanelRow("end height", ce -> {
 			ps.createCustomIfNull(rhs);
 			ProjectileCast pc = ps.getCustom(rhs);
 			pc.setEndHeight((int) ((JSpinner) ce.getSource()).getValue());
 			plugin.saveTransmogSets();
 			plugin.demoCast(pc);
-		}, defaultValue.endHeight, panel);
+		}, defaultValue.endHeight, panel, 0);
 		JButton demo = new JButton("demo");
 		demo.addActionListener(al -> plugin.demoCast(rhs ? ps.getToReplaceWith() : ps.getToReplace()));
 		panel.add(demo);
@@ -1299,24 +1299,24 @@ class TransmogSetPanel extends JPanel
 		}
 	}
 
-	private void createProjectileEditPanelRow(String labelName, ChangeListener cl, int initialValue, JPanel panel)
+	private void createProjectileEditPanelRow(String labelName, ChangeListener cl, int initialValue, JPanel panel, int defaultValue)
 	{
-		createProjectileEditPanelRow(labelName, cl, initialValue, panel, -1, Integer.MAX_VALUE);
+		createProjectileEditPanelRow(labelName, cl, initialValue, panel, defaultValue, -1, Integer.MAX_VALUE);
 	}
 
-	private void createProjectileEditPanelRow(String labelName, ChangeListener cl, int initialValue, JPanel panel, int min, int max)
+	private void createProjectileEditPanelRow(String labelName, ChangeListener cl, int initialValue, JPanel panel, int defaultValue, int min, int max)
 	{
 		JPanel row = new JPanel();
 		row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
 		JLabel label = new JLabel(labelName);
 		row.add(label);
-		JSpinner input = createIntSpinner(initialValue, cl, min, max);
+		JSpinner input = createIntSpinner(initialValue, cl, min, max, defaultValue);
 		row.add(input);
 		panel.add(row);
 	}
 
 	// Copied from runelite's ConfigPanel class.
-	private JSpinner createIntSpinner(int value, ChangeListener onChange, int min, int max)
+	private JSpinner createIntSpinner(int value, ChangeListener onChange, int min, int max, int defaultValue)
 	{
 		// Config may previously have been out of range
 		value = Ints.constrainToRange(value, min, max);
@@ -1325,16 +1325,18 @@ class TransmogSetPanel extends JPanel
 		JSpinner spinner = new JSpinner(model);
 		Component editor = spinner.getEditor();
 		JFormattedTextField spinnerTextField = ((JSpinner.DefaultEditor) editor).getTextField();
+		spinnerTextField.addPropertyChangeListener("editValid", evt -> {
+			if (spinnerTextField.getText() == null || spinnerTextField.getText().trim().isEmpty()) {
+				try {
+					spinner.setValue(defaultValue);
+				} catch (Exception e) {
+				}
+			}
+		});
 		int SPINNER_FIELD_WIDTH = 6;
 		spinnerTextField.setColumns(SPINNER_FIELD_WIDTH);
 		spinner.addChangeListener(onChange);
 
-//		Units units = cid.getUnits();
-//		if (units != null)
-//		{
-//			spinnerTextField.setFormatterFactory(new UnitFormatterFactory(units));
-//		}
-//
 		return spinner;
 	}
 
@@ -1469,14 +1471,14 @@ class TransmogSetPanel extends JPanel
 			soundSwap.setToReplace(value);
 			plugin.saveTransmogSets();
 			plugin.clientThread.invoke(() -> plugin.client.playSoundEffect(value));
-		}, soundSwap.getToReplace(), animationReplacementPanel);
+		}, soundSwap.getToReplace(), animationReplacementPanel, -1);
 
 		createProjectileEditPanelRow("with", ce -> {
 			int value = (int) ((JSpinner) ce.getSource()).getValue();
 			soundSwap.setToReplaceWith(value);
 			plugin.saveTransmogSets();
 			plugin.clientThread.invoke(() -> plugin.client.playSoundEffect(value));
-		}, soundSwap.getToReplaceWith(), animationReplacementPanel);
+		}, soundSwap.getToReplaceWith(), animationReplacementPanel, -1);
 
 		return new EntryPanel(false, false, true, i == size - 1, animationReplacementPanel, () -> {
 			swap.getSoundSwaps().remove(i);
