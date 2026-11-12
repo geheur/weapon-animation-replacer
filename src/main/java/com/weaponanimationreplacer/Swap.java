@@ -1,5 +1,6 @@
 package com.weaponanimationreplacer;
 
+import com.weaponanimationreplacer.AnimationSet.GfxSlots;
 import com.weaponanimationreplacer.Constants.IdIconNameAndSlot;
 import static com.weaponanimationreplacer.Constants.TriggerItemIds.getHiddenSlot;
 import java.util.ArrayList;
@@ -456,7 +457,11 @@ public class Swap
             }
             return s;
         }
-    }
+
+		public GfxSlots gfx() {
+			return GfxSlots.forAnimationType(this);
+		}
+	}
 
     @Override
     public String toString() {

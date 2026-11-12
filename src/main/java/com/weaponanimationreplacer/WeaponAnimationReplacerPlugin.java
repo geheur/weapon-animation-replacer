@@ -14,6 +14,7 @@ import com.google.gson.JsonSerializer;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
 import com.google.inject.Provides;
+import com.weaponanimationreplacer.AnimationSet.GfxSlots;
 import com.weaponanimationreplacer.ChatBoxFilterableSearch.SelectionResult;
 import static com.weaponanimationreplacer.Constants.NegativeIdsMap.HIDE_SLOT;
 import static com.weaponanimationreplacer.Constants.NegativeIdsMap.SHOW_SLOT;
@@ -36,6 +37,7 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -484,12 +486,34 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		String s = configManager.getConfiguration(GROUP_NAME, "customAnimationSet" + name);
 		if (s == null) return null;
 		String[] split = s.split(",");
-		int[] ids = new int[split.length];
+		int[] ids = new int[AnimationType.values().length];
 		for (int i = 0; i < split.length; i++)
 		{
 			ids[i] = Integer.parseInt(split[i]);
 		}
-		return new AnimationSet(name, false, ids, true);
+		s = configManager.getConfiguration(GROUP_NAME, "gfxCustomAnimationSet" + name);
+		int[] gfxIds = new int[GfxSlots.values().length];
+		if (s != null) {
+			split = s.split(",");
+			for (int i = 0; i < split.length; i++)
+			{
+				gfxIds[i] = Integer.parseInt(split[i]);
+			}
+		} else {
+			Arrays.fill(gfxIds, -1);
+		}
+		s = configManager.getConfiguration(GROUP_NAME, "gfxHeightCustomAnimationSet" + name);
+		int[] gfxHeightIds = new int[GfxSlots.values().length];
+		if (s != null) {
+			split = s.split(",");
+			for (int i = 0; i < split.length; i++)
+			{
+				gfxHeightIds[i] = Integer.parseInt(split[i]);
+			}
+		} else {
+			Arrays.fill(gfxHeightIds, -1);
+		}
+		return new AnimationSet(name, false, ids, gfxIds, gfxHeightIds, true);
 	}
 
 	public String createCustomAnimationSetName(String name)
@@ -532,6 +556,20 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		}
 		s = s.substring(0, s.length() - 1);
 		configManager.setConfiguration(GROUP_NAME, "customAnimationSet" + as.name, s);
+		s = "";
+		for (int gfx : as.gfx)
+		{
+			s += gfx + ",";
+		}
+		s = s.substring(0, s.length() - 1);
+		configManager.setConfiguration(GROUP_NAME, "gfxCustomAnimationSet" + as.name, s);
+		s = "";
+		for (int gfxHeight : as.gfxHeight)
+		{
+			s += gfxHeight + ",";
+		}
+		s = s.substring(0, s.length() - 1);
+		configManager.setConfiguration(GROUP_NAME, "gfxHeightCustomAnimationSet" + as.name, s);
 		customAnimationSetsCache = null;
 	}
 
@@ -611,6 +649,8 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 			}
 		}
 		configManager.unsetConfiguration(GROUP_NAME, "customAnimationSet" + name);
+		configManager.unsetConfiguration(GROUP_NAME, "gfxCustomAnimationSet" + name);
+		configManager.unsetConfiguration(GROUP_NAME, "gfxHeightCustomAnimationSet" + name);
 		saveTransmogSets();
 		clientThread.invoke(this::handleTransmogSetChange);
 
@@ -880,6 +920,12 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 		{
 			log.debug("replacing animation {} with {}", playerAnimation, replacementAnim);
 			player.setAnimation(replacementAnim);
+			Integer gfx = data.currentAnimations.getGraphic(type.get());
+			if (gfx != null && gfx != -1) { // TODO why is it null sometimes?
+				Integer gfxHeight = data.currentAnimations.getGraphicHeight(type.get());
+				player.setGraphic(gfx);
+				player.setGraphicHeight(gfxHeight);
+			}
 		}
 
 		if (data.currentScytheGraphicEffect != null && AnimationType.ATTACK.appliesTo(type.get())) {
@@ -1260,6 +1306,8 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
 	private static final class AnimationReplacements {
 		private final Map<AnimationType, Integer> replacements = new HashMap<>();
+		private final Map<GfxSlots, Integer> gfxReplacements = new HashMap<>();
+		private final Map<GfxSlots, Integer> gfxHeightReplacements = new HashMap<>();
 
 		public AnimationReplacements() {
 			this(Collections.emptyList());
@@ -1282,28 +1330,63 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
 		private void replaceAnimations(AnimationSet animationSet, AnimationType toReplace, AnimationType replacement) {
 			if (toReplace == ATTACK) {
-				int defaultAttack = -1;
-				for (AnimationType attackAnimation : animationSet.getAttackAnimations())
-				{
-					defaultAttack = animationSet.getAnimation(attackAnimation);
-					if (defaultAttack != -1) break;
-				}
-				List<AnimationType> children = new ArrayList<>(ATTACK.children);
-				children.add(ATTACK);
-				for (AnimationType child : children)
-				{
-					int id = animationSet.getAnimation(replacement == null ? child : replacement);
-					if (id == -1) {
-						id = defaultAttack;
-					}
-					if (id != -1) {
+				if (replacement != null) {
+					int id = animationSet.getAnimation(replacement);
+					if (id == -1) return; // shouldn't happen
+
+					List<AnimationType> children = new ArrayList<>(ATTACK.children);
+					children.add(ATTACK);
+
+					for (AnimationType child : children) {
 						replacements.put(child, id);
+						if (replacement.gfx() != null) {
+							gfxReplacements.put(child.gfx(), animationSet.getGraphic(replacement));
+							gfxHeightReplacements.put(child.gfx(), animationSet.getGraphicHeight(replacement));
+						}
+					}
+				} else {
+					int defaultAttack = -1;
+					int defaultGfx = -1;
+					int defaultGfxHeight = -1;
+					for (AnimationType attackAnimation : animationSet.getAttackAnimations()) {
+						defaultAttack = animationSet.getAnimation(attackAnimation);
+						if (defaultAttack != -1) {
+							defaultGfx = animationSet.getGraphic(attackAnimation.gfx());
+							defaultGfxHeight = animationSet.getGraphicHeight(attackAnimation.gfx());
+							break;
+						}
+					}
+					if (defaultAttack == -1) return; // shouldn't be possible
+
+					List<AnimationType> children = new ArrayList<>(ATTACK.children);
+					children.add(ATTACK);
+
+					for (AnimationType child : children) {
+						int id = animationSet.getAnimation(child);
+						if (id == -1) {
+							replacements.put(child, defaultAttack);
+							GfxSlots gfx = child.gfx();
+							if (gfx != null) {
+								gfxReplacements.put(gfx, defaultGfx);
+								gfxHeightReplacements.put(gfx, defaultGfxHeight);
+							}
+						}
+						replacements.put(child, id);
+						GfxSlots gfx = child.gfx();
+						if (gfx != null) {
+							gfxReplacements.put(gfx, animationSet.getGraphic(gfx));
+							gfxHeightReplacements.put(gfx, animationSet.getGraphicHeight(gfx));
+						}
 					}
 				}
 			} else if (!toReplace.hasChildren()) {
 				int id = animationSet.getAnimation(replacement == null ? toReplace : replacement);
 				if (id != -1) {
 					replacements.put(toReplace, id);
+					GfxSlots gfx = toReplace.gfx();
+					if (gfx != null) {
+						gfxReplacements.put(gfx, animationSet.getGraphic(gfx));
+					}
 				}
 			} else {
 				for (AnimationType child : toReplace.children) {
@@ -1314,6 +1397,18 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 
 		public Integer getAnimation(AnimationType type) {
 			return replacements.get(type);
+		}
+
+		public Integer getGraphic(AnimationType type) {
+			GfxSlots gfx = type.gfx();
+			if (gfx == null) return -1;
+			return gfxReplacements.get(gfx);
+		}
+
+		public Integer getGraphicHeight(AnimationType type) {
+			GfxSlots gfx = type.gfx();
+			if (gfx == null) return -1;
+			return gfxHeightReplacements.get(type.gfx());
 		}
 	}
 
@@ -1389,7 +1484,6 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	{
 		PlayerData data = getData(e.getActor());
 		if (data == null) return;
-//		System.out.println("onanimationchanged");
 
 		data.lastRealAnimation = e.getActor().getAnimation();
 
@@ -1401,8 +1495,6 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	@Subscribe
 	public void onInteractingChanged(InteractingChanged e) {
 		if (e.getSource() != client.getLocalPlayer()) return;
-
-//		System.out.println("interactingchanged " + e.getTarget());
 	}
 
 	@Subscribe(priority = 1) // I need kit data to determine what the player is wearing (equipment inventory does not update fast enough to avoid flickering), so I need this information before other plugins might change it.
@@ -1479,6 +1571,9 @@ public class WeaponAnimationReplacerPlugin extends Plugin {
 	private void setPreviewItem(Integer itemId, boolean previewAnimations)
 	{
 		previewItem = itemId;
+
+		if (client.getLocalPlayer() == null) return;
+
 		transmogManager.changeTransmog(getLocalData());
 
 		AnimationSet animationSet = Constants.getAnimationSet(itemId);

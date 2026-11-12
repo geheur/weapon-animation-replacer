@@ -28,6 +28,7 @@
 package com.weaponanimationreplacer;
 
 import com.google.common.primitives.Ints;
+import com.weaponanimationreplacer.AnimationSet.GfxSlots;
 import com.weaponanimationreplacer.ChatBoxFilterableSearch.SelectionResult;
 import com.weaponanimationreplacer.Constants.IdIconNameAndSlot;
 import static com.weaponanimationreplacer.Constants.TriggerItemIds;
@@ -859,6 +860,23 @@ class TransmogSetPanel extends JPanel
 
 				plugin.clientThread.invoke(plugin::handleTransmogSetChange);
 			}, as != null ? as.animations[animationType.ordinal()] : -1, panel, -1);
+		}
+
+		for (GfxSlots gfx : GfxSlots.values()) {
+			createProjectileEditPanelRow(gfx.name(), ce -> {
+				// the current animation set may not be a custom set already, if not create a new one.
+				int gfxId = (int) ((JSpinner) ce.getSource()).getValue();
+//				if (plugin.animationIdCrashes(animId)) return;
+
+				boolean created = createAnimationSetIfNotCustom(animationReplacement, name);
+
+				animationReplacement.animationSet.gfx[gfx.ordinal()] = gfxId;
+				plugin.changeCustomAnimationSet(animationReplacement.animationSet.name, animationReplacement.animationSet);
+
+				if (created) pluginPanel.rebuild();
+
+				plugin.clientThread.invoke(plugin::handleTransmogSetChange);
+			}, as != null ? as.gfx[gfx.ordinal()] : -1, panel, -1);
 		}
 
 		if (animationReplacement.animationSet != null && animationReplacement.animationSet.custom) {

@@ -1,5 +1,6 @@
 package com.weaponanimationreplacer;
 
+import com.weaponanimationreplacer.AnimationSet.GfxSlots;
 import static com.weaponanimationreplacer.Swap.AnimationType.*;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -206,14 +207,14 @@ public class AnimationSets
 			.put(ATTACK_SLASH, 390)
 			.put(ATTACK_STAB, 386)
 			.put(DEFEND, 388)
-			.put(ATTACK_SPEC, 1872)
+			.put(ATTACK_SPEC, 1872, 347, 96)
 			.build();
 		new AnimationSetBuilder("Dragon longsword/Saeldor")
 			.poseAnims(809, 823, 819, 820, 821, 822, 824)
 			.put(ATTACK_SLASH, 390)
 			.put(ATTACK_STAB, 386)
 			.put(DEFEND, 388)
-			.put(ATTACK_SPEC, 1058)
+			.put(ATTACK_SPEC, 1058, 248, 96)
 			.build();
 		new AnimationSetBuilder("Ghrazi rapier")
 			.poseAnims(809, 823, 819, 820, 821, 822, 824)
@@ -418,7 +419,7 @@ public class AnimationSets
 			.put(ATTACK_CRUSH, 401)
 			.put(ATTACK_STAB, 400)
 			.put(DEFEND, 403)
-			.put(ATTACK_SPEC, 1060)
+			.put(ATTACK_SPEC, 1060, 251, 96)
 			.build();
 		new AnimationSetBuilder("Ancient mace")
 			.copy("Dragon mace")
@@ -529,7 +530,7 @@ public class AnimationSets
 			.poseAnims(808, 823, 819, 820, 821, 822, 824)
 			.put(ATTACK_SLASH, 377)
 			.put(ATTACK_STAB, 376)
-			.put(ATTACK_SPEC, 1062)
+			.put(ATTACK_SPEC, 1062, 252, 96)
 			.put(DEFEND, 378)
 			.build();
 		new AnimationSetBuilder("Clan vexillum")
@@ -734,6 +735,20 @@ public class AnimationSets
 			.put(ATTACK_CRUSH, 14469)
 			.put(DEFEND, 14472)
 			.build();
+		new AnimationSetBuilder("Obligator")
+			.stand(15118).walk(15119).run(15121)
+			.put(WALK_BACKWARD, 15120)
+			.put(ATTACK_CRUSH, 15123, 4425, 0)
+			.put(ATTACK_CRUSH2, 15122)
+			.put(DEFEND, 15134)
+			.build();
+		new AnimationSetBuilder("Obligator (uncharged)")
+			.stand(15118).walk(15119).run(15121)
+			.put(WALK_BACKWARD, 15120)
+			.put(ATTACK_CRUSH, 15123, 4426, 0)
+			.put(ATTACK_CRUSH2, 15122)
+			.put(DEFEND, 15134)
+			.build();
 
 		return animationSets;
 	}
@@ -744,6 +759,13 @@ public class AnimationSets
 
 	private static class AnimationSetBuilder {
 		public int[] animations = new int[Swap.AnimationType.values().length];
+		public int[] gfx = new int[GfxSlots.values().length];
+		public int[] gfxHeights = new int[GfxSlots.values().length];
+		{
+			Arrays.fill(animations, -1);
+			Arrays.fill(gfx, -1);
+			Arrays.fill(gfxHeights, -1);
+		}
 		private String name;
 		// This flag should be true for animations that are not the result of equipped weapons, such as the animations when the player crosses a tightrope. This animation is implemented as a pose animation but it should not be replaced by the player's current animation override.
 		private boolean doNotReplace = false;
@@ -765,11 +787,22 @@ public class AnimationSets
 			return put(type, id, null);
 		}
 
+		public AnimationSetBuilder put(Swap.AnimationType type, int id, int gfxId, int gfxHeight) {
+			assert ATTACK.hasChild(type);
+			return putInternal(type, id, gfxId, gfxHeight, null);
+		}
+
 		public AnimationSetBuilder put(Swap.AnimationType type, int id, String description) {
+			return putInternal(type, id, -1, -1, description);
+		}
+
+		public AnimationSetBuilder putInternal(Swap.AnimationType type, int id, int gfxId, int gfxHeight, String description) {
 			if (description != null) {
 				descriptions.put(id, description);
 			}
 			if (id != -1) animations[type.ordinal()] = id;
+			if (gfxId != -1) gfx[type.gfx().ordinal()] = gfxId;
+			if (gfxHeight != -1) gfxHeights[type.gfx().ordinal()] = gfxHeight;
 			return this;
 		}
 
@@ -798,7 +831,7 @@ public class AnimationSets
 				int animation = animations[STAND.ordinal()];
 //				if (animation > 0) doNotReplaceIdles.add(animation);
 			}
-			animationSets.add(new AnimationSet(name, doNotReplace, animations, false));
+			animationSets.add(new AnimationSet(name, doNotReplace, animations, gfx, gfxHeights, false));
 		}
 
 		public AnimationSetBuilder stand(int stand)

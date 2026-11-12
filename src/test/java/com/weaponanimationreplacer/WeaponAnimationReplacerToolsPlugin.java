@@ -82,8 +82,8 @@ import net.runelite.client.events.ClientShutdown;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.ItemVariationMapping;
 import net.runelite.client.plugins.Plugin;
-import net.runelite.client.plugins.PluginDependency;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.util.ColorUtil;
 import net.runelite.client.util.Text;
 import net.runelite.http.api.item.ItemEquipmentStats;
@@ -95,16 +95,14 @@ import net.runelite.http.api.item.ItemStats;
 	description = "",
 	tags = {"transmog", "fashionscape"}
 )
-@PluginDependency(WeaponAnimationReplacerPlugin.class)
 public class WeaponAnimationReplacerToolsPlugin extends Plugin
 {
-	@Inject private WeaponAnimationReplacerPlugin plugin;
+	private WeaponAnimationReplacerPlugin plugin;
 	@Inject private ItemManager itemManager;
 	@Inject private ClientThread clientThread;
 	@Inject private Client client;
-
-	@Inject
-	private EventBus eventBus;
+	@Inject private PluginManager pluginManager;
+	@Inject private EventBus eventBus;
 
 	int demoanim = -1;
 	int demogfx = -1;
@@ -123,6 +121,12 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 	@Override
 	public void startUp()
 	{
+		for (Plugin p : pluginManager.getPlugins()) {
+			if (p.getClass().getSimpleName().equals("WeaponAnimationReplacerPlugin")) {
+				plugin = (WeaponAnimationReplacerPlugin) p;
+				break;
+			}
+		}
 //		SpellDataCollector sdc = new SpellDataCollector(plugin);
 //		this.getInjector().injectMembers(sdc);
 //		eventBus.register(sdc);
@@ -1474,6 +1478,8 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		putWeapon(itemIdToAnimationSet, 28688 /* ItemID.BLAZING_BLOWPIPE */, "Toxic blowpipe");
 		putWeapon(itemIdToAnimationSet, 28682 /* ItemID.DINHS_BLAZING_BULWARK */, "Dinh's bulwhark");
 		putWeapon(itemIdToAnimationSet, ItemID.EYE_OF_AYAK, "Eye of ayak");
+		putWeaponNoVariation(itemIdToAnimationSet, ItemID.OBLIGATOR, "Obligator");
+		putWeaponNoVariation(itemIdToAnimationSet, ItemID.OBLIGATOR_UNCHARGED, "Obligator (uncharged)");
 		return itemIdToAnimationSet;
 	}
 
@@ -2044,9 +2050,17 @@ public class WeaponAnimationReplacerToolsPlugin extends Plugin
 		return matchingSets;
 	}
 
-	private void putWeapon(Map<Integer, AnimationSet> itemIdToAnimationSet, int itemId, String animationSetName)
+	private void putWeapon(Map<Integer, AnimationSet> itemIdToAnimationSet, int itemId, String animationSetName) {
+		putWeapon(itemIdToAnimationSet, itemId, animationSetName, true);
+	}
+
+	private void putWeaponNoVariation(Map<Integer, AnimationSet> itemIdToAnimationSet, int itemId, String animationSetName) {
+		putWeapon(itemIdToAnimationSet, itemId, animationSetName, false);
+	}
+
+	private void putWeapon(Map<Integer, AnimationSet> itemIdToAnimationSet, int itemId, String animationSetName, boolean useVariation)
 	{
-		int baseId = ItemVariationMapping.map(itemId);
+		int baseId = useVariation ? ItemVariationMapping.map(itemId) : itemId;
 		AnimationSet animationSet;
 		if ("".equals(animationSetName)) {
 			List<AnimationSet> matchingAnimationSets = findMatchingAnimationSets(baseId);

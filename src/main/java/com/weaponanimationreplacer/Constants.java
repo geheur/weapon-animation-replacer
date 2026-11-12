@@ -9,7 +9,6 @@ import static com.weaponanimationreplacer.Swap.AnimationType.WALK_BACKWARD;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -57,13 +56,19 @@ public class Constants
 
 	public static AnimationSet getAnimationSet(int itemId)
 	{
-		Collection<Integer> variations = ItemVariationMapping.getVariations(ItemVariationMapping.map(itemId));
-		for (Map.Entry<String, int[]> entry : poseanims.entrySet())
+		List<Integer> variations = new ArrayList<>(ItemVariationMapping.getVariations(ItemVariationMapping.map(itemId)));
+		// check the base id first, some things have different animations for different items in the variation group, such as obligator.
+		variations.remove(itemId);
+		variations.add(0, itemId);
+		for (Integer id : variations)
 		{
-			for (int itemId2 : entry.getValue())
+			for (Map.Entry<String, int[]> entry : poseanims.entrySet())
 			{
-				if (variations.contains(itemId2)) {
-					return AnimationSet.getAnimationSet(entry.getKey());
+				for (int itemId2 : entry.getValue())
+				{
+					if (id == itemId2) {
+						return AnimationSet.getAnimationSet(entry.getKey());
+					}
 				}
 			}
 		}
